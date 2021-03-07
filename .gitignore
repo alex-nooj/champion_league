@@ -5,7 +5,8 @@
 .idea*
 *.vscode/*
 */__pycache__/*
-logs/
+*.pyc
+*logs/
 trained_models/
 *egg-info
 dist/
