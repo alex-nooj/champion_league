@@ -16,6 +16,7 @@ Options
     --epoch_len <int>           Number of games to play before saving an agent [default: 1_000_000]
     --batch_size <int>          Batch size [default: 256]
     --device <int>              GPU to load the training agent on [default: 0]
+    --agent_type <str>          What type of agent we're training [default: challengers]
 """
 import importlib
 import os
@@ -79,12 +80,12 @@ def add_to_league(args, epoch):
 
 def run(player, agent, opponent, args):
     epoch = 0
+    total_win_rates = {}
     agent.save_model(agent.network, epoch)
     agent.save_args(epoch)
-
+    total_nb_steps = 0
     for i_episode in range(args.nb_train_episodes):
         state = player.reset()
-
         done = False
         info = {}
         nb_steps = 0
@@ -101,8 +102,23 @@ def run(player, agent, opponent, args):
             )
             state = next_state
 
-            agent.learn_step()
+            loss = agent.learn_step()
             nb_steps += 1
+            total_nb_steps += 1
+
+            agent.log_to_tensorboard(total_nb_steps, loss=loss)
+
+            if total_nb_steps % args.epoch_len == 0 and i_episode > 0:
+                agent.save_model(agent.network, epoch)
+
+                agent.save_args(epoch)
+
+                agent.save_wins(epoch, agent.win_rates)
+                if league_is_beaten(agent.win_rates):
+                    add_to_league(args, epoch)
+                    print("League beaten!")
+                epoch += 1
+                agent.win_rates = {}
 
         end_time = time.time()
         print(f"{i_episode} ({opponent.current_agent.tag}): {nb_steps/(end_time - start_time): 0.3f} steps/sec, REWARD: {int(reward[0])}")
@@ -111,18 +127,21 @@ def run(player, agent, opponent, args):
         else:
             agent.win_rates[opponent.current_agent.tag][0] += info["won"]
             agent.win_rates[opponent.current_agent.tag][1] += 1
-        if i_episode % args.epoch_len == 0 and i_episode > 0:
-            agent.save_model(agent.network, epoch)
 
-            agent.save_args(epoch)
+        if opponent.current_agent.tag not in total_win_rates:
+            total_win_rates[opponent.current_agent.tag] = [info["won"], 1]
+        else:
+            total_win_rates[opponent.current_agent.tag][0] += info["won"]
+            total_win_rates[opponent.current_agent.tag][1] += 1
 
-            agent.save_wins(epoch, agent.win_rates)
-            if league_is_beaten(agent.win_rates):
-                add_to_league(args, epoch)
-                print("League beaten!")
-            epoch += 1
+        agent.log_to_tensorboard(
+            total_nb_steps,
+            win_rates={opponent.current_agent.tag: total_win_rates[opponent.current_agent.tag]},
+            reward=reward
+        )
 
         opponent.change_agent(agent.win_rates)
+
     player.complete_current_battle()
 
 

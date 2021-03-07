@@ -123,7 +123,8 @@ class LeaguePlayer(Player):
         if all(name in win_rates for name in possible_agents):
             percent_wins = torch.tensor(
                 [win_rates[name][0] / win_rates[name][1] for name in possible_agents])
-            agent_ix = torch.multinomial(F.softmax(percent_wins, dim=0), 1).item()
+            distribution = 1.0 - percent_wins
+            agent_ix = torch.multinomial(F.softmax(distribution, dim=0), 1).item()
             return possible_agents[agent_ix]
         else:
             unseen_opponents = [name for name in possible_agents if name not in win_rates]
@@ -150,7 +151,11 @@ class LeaguePlayer(Player):
         else:
             exploiters = []
         league_agents = os.listdir(os.path.join(self.args.logdir, "league"))
-        previous_selves = os.listdir(os.path.join(self.args.logdir, "challengers", self.args.tag))
+        previous_selves = [
+            agent_path
+            for agent_path in os.listdir(os.path.join(self.args.logdir, "challengers", self.args.tag))
+            if self.args.tag in agent_path
+        ]
 
         if curr_mode < self.p_exploit and len(exploiters) != 0:
             agent = self.sample_agents(win_rates, exploiters)

@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 import torch.nn.functional as F
@@ -52,11 +52,11 @@ class DQNAgent(Agent):
         self.network.eval()
         self.target_net.eval()
 
-    def learn_step(self):
+    def learn_step(self) -> Union[float, None]:
         self.network.train()
         self.target_net.train()
         if len(self.memory) < self._batch_size:
-            return
+            return None
 
         transitions = self.memory.sample(self._batch_size)
 
@@ -110,6 +110,8 @@ class DQNAgent(Agent):
 
         self.network.eval()
         self.target_net.eval()
+
+        return loss.item()
 
     def step(self, state: torch.Tensor):
         if self._training:

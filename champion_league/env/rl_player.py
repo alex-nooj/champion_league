@@ -73,7 +73,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
         return self.embed_battle_cls(battle=battle)
 
     def compute_reward(self, battle) -> float:
-        return self.reward_computing_helper(battle, fainted_value=2, hp_value=1, victory_value=30)
+        return self.reward_computing_helper(battle, fainted_value=1, hp_value=0, victory_value=10)
 
     def step(self, action: int) -> Tuple:
         obs, reward, done, _ = super().step(action)
