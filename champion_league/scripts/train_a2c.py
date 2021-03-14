@@ -26,6 +26,7 @@ import torch
 from adept.utils.util import DotDict
 from poke_env.player_configuration import PlayerConfiguration
 
+from champion_league.agent.a2c.agent import ActorCriticAgent
 from champion_league.agent.dqn import DQNAgent
 from champion_league.agent.league.agent import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
@@ -63,7 +64,6 @@ def parse_args() -> DotDict:
     else:
         args.device = "cpu"
 
-    args.nb_steps = 0
     return args
 
 
@@ -86,6 +86,7 @@ def run(player, agent, opponent, args):
     agent.save_args(epoch)
     total_nb_steps = 0
     profile = False
+    entropy_term = 0
     for i_episode in range(args.nb_train_episodes):
         state = player.reset()
         done = False
@@ -94,26 +95,27 @@ def run(player, agent, opponent, args):
         start_time = time.time()
         while not done:
             state = state.float().to(args.device)
-            action = agent.choose_move(state.view(1, -1))
+            value, policy_dist = agent.forward(state)
+            value = value.detach()
+            dist = policy_dist.detach()
 
-            next_state, reward, done, info = player.step(action.item())
+            action = torch.multinomial(dist, 1).item()
+            log_prob = torch.log(policy_dist.squeeze(0)[action])
+            entropy = -torch.sum(torch.mean(dist) * torch.log(dist))
+
+            next_state, reward, done, info = player.step(action)
+
             reward = torch.tensor([reward], device=args.device)
 
-            agent.memory.push(
-                state, action, next_state.double(), reward
-            )
+            agent.memory.push(reward, value, log_prob)
+            entropy_term += entropy
             state = next_state
-
-            loss = agent.learn_step(profile)
             nb_steps += 1
             total_nb_steps += 1
-
-            agent.log_to_tensorboard(total_nb_steps, loss=loss)
-
             if total_nb_steps % args.epoch_len == 0:
                 epoch += 1
                 agent.save_model(agent.network, epoch)
-                args.nb_steps = total_nb_steps
+
                 agent.save_args(epoch)
 
                 agent.save_wins(epoch, agent.win_rates)
@@ -121,7 +123,10 @@ def run(player, agent, opponent, args):
                     add_to_league(args, epoch)
                     print("League beaten!")
                 agent.win_rates = {}
-            # state = player.reset()
+
+        loss = agent.learn_step(profile)
+        agent.log_to_tensorboard(total_nb_steps, loss=loss)
+
         end_time = time.time()
         steps_per_sec = nb_steps/(end_time - start_time)
         print(f"{i_episode} ({opponent.current_agent.tag}): {steps_per_sec: 0.3f} steps/sec, REWARD: {int(reward[0])}")
@@ -156,7 +161,7 @@ def main(args: DotDict):
     if not os.path.isdir(os.path.join(args.logdir, "exploiters", args.tag)):
         os.mkdir(os.path.join(args.logdir, "exploiters", args.tag))
 
-    agent = DQNAgent(args)
+    agent = ActorCriticAgent(args)
     agent.save_model(agent.network, 0)
 
     env_player = RLPlayer(

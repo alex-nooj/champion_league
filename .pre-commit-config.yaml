@@ -1,0 +1,57 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    -   id: check-added-large-files
+    -   id: check-ast
+    -   id: check-case-conflict
+    -   id: check-docstring-first
+    -   id: check-json
+    -   id: check-merge-conflict
+    -   id: check-symlinks
+    -   id: check-xml
+    -   id: debug-statements
+    -   id: end-of-file-fixer
+    -   id: name-tests-test
+    -   id: requirements-txt-fixer
+    -   id: trailing-whitespace
+-   repo: https://github.com/psf/black
+    rev: stable    # Replace by any tag/version: https://github.com/psf/black/tags
+    hooks:
+    -   id: black
+        language_version: python3 # Should be a command that runs python3.6+
+-   repo: https://github.com/asottile/reorder_python_imports
+    rev: v2.3.6
+    hooks:
+    -   id: reorder-python-imports
+        args: [--py3-plus]
+-   repo: https://github.com/asottile/setup-cfg-fmt
+    rev: v1.16.0
+    hooks:
+    -   id: setup-cfg-fmt
+#-   repo: https://github.com/pre-commit/mirrors-mypy
+#    rev: ''  # Use the sha / tag you want to point at
+#    hooks:
+#    -   id: mypy
+
+#
+# -   repo: https://github.com/pre-commit/mirrors-yapf
+#     rev: 'v0.30.0'  # Use the sha / tag you want to point at
+#     hooks:
+#     -   id: yapf
+#         name: yapf
+#         entry: yapf
+#         language: python
+#         'types': [python]
+#         args: ["-i"]
+#         require_serial: false
+#         additional_dependencies: []
+#
+# -   repo: local
+#     hooks:
+#     -   id: pytest-check
+#         name: pytest-check
+#         entry: [PATH TO PYTHON ENV]/python pytest
+#         language: python
+#         pass_filenames: false
+#         always_run: true

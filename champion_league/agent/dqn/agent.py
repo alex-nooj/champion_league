@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Optional, Union
 
 import torch
@@ -8,7 +9,7 @@ from torch import optim
 
 from champion_league.agent.base.base_agent import Agent
 from champion_league.agent.dqn.utils import (
-    ReplayMemory, Transition, )
+    ReplayMemory, Transition, greedy_policy, )
 from champion_league.network.linear_three_layer import LinearThreeLayer
 
 TARGET_UPDATE = 10
@@ -29,10 +30,9 @@ class DQNAgent(Agent):
         self._nb_actions = args.nb_actions
         self._batch_size = args.batch_size
         self._device = args.device
-        self._nb_train_episodes = args.nb_train_episodes or nb_train_episodes
-        self._memory_len = args.memory_len
+        self._memory_len = 10000
         self._gamma = args.gamma or gamma
-        self.memory = ReplayMemory(args.memory_len or memory_len)
+        self.memory = ReplayMemory(self._memory_len)
         self._training = training
 
         self.network = LinearThreeLayer(self._nb_actions)
@@ -52,12 +52,18 @@ class DQNAgent(Agent):
         self.network.eval()
         self.target_net.eval()
 
-    def learn_step(self) -> Union[float, None]:
+    def learn_step(self, profile: bool) -> Union[float, None]:
         self.network.train()
         self.target_net.train()
         if len(self.memory) < self._batch_size:
             return None
+        if profile:
+            from pyinstrument import Profiler
+            profiler = Profiler()
+            profiler.start()
 
+        if profile:
+            start = time.time()
         transitions = self.memory.sample(self._batch_size)
 
         batch = Transition(*zip(*transitions))
@@ -76,6 +82,10 @@ class DQNAgent(Agent):
         )
 
         state_batch = torch.cat(batch.state)
+        if profile:
+            quartertime = time.time()
+            print("QUARTER:", quartertime - start)
+
         state_batch = torch.reshape(state_batch, (self._batch_size, -1)).float().to(self._device)
 
         action_batch = torch.cat(batch.action).to(self._device)
@@ -90,6 +100,9 @@ class DQNAgent(Agent):
         next_state_values[non_final_mask] = (
             self.target_net(non_final_next_states.to(self._device)).max(1)[0].detach().to(self._device)
         )
+
+        if profile:
+            print("Halftime:", time.time() - quartertime)
 
         expected_state_action_values = (next_state_values * self._gamma) + reward_batch
 
@@ -121,4 +134,9 @@ class DQNAgent(Agent):
 
     def choose_move(self, state: torch.Tensor) -> torch.Tensor:
         self.target_net.eval()
-        return torch.multinomial(self.target_net(state), 1)
+        return greedy_policy(state, self.target_net, self._nb_actions, self._device)
+
+    def load_model(self, network, weights_path):
+        new_network = super().load_model(self.network, weights_path)
+        self.target_net.load_state_dict(self.network.state_dict())
+        return new_network

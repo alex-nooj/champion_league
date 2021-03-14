@@ -1,10 +1,15 @@
+import asyncio
 from abc import ABC
+from threading import Thread
 from typing import Tuple, Optional, Union, Callable
+from asyncio import Queue
 
 import torch
+from poke_env.data import to_id_str
 from poke_env.environment.battle import Battle
 from poke_env.environment.status import Status
-from poke_env.player.env_player import Gen8EnvSinglePlayer
+from poke_env.player.env_player import Gen8EnvSinglePlayer, EnvPlayer
+from poke_env.player.player import Player
 from poke_env.player_configuration import PlayerConfiguration
 from poke_env.server_configuration import ServerConfiguration
 from poke_env.teambuilder.teambuilder import Teambuilder
@@ -66,7 +71,8 @@ class RLPlayer(Gen8EnvSinglePlayer):
             start_listening=start_listening,
             team=team,
         )
-
+        self._max_concurrent_battles = 2
+        self._battle_count_queue = Queue(2)
         self.embed_battle_cls = embed_battle
 
     def embed_battle(self, battle):

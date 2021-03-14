@@ -7,6 +7,7 @@ from poke_env.environment.status import Status
 from champion_league.env.base.obs_idx import ObsIdx
 from champion_league.utils.abilities import ABILITIES
 
+
 class LinearThreeLayer(nn.Module):
     def __init__(self, nb_actions):
         super(LinearThreeLayer, self).__init__()

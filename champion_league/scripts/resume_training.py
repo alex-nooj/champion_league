@@ -1,30 +1,28 @@
 """
-Train an agent in the league
+Resume training on a stopped agent
 
 Usage:
-    train_agent [options]
+    resume_training [options]
 
 Options
-    --agent <str>               Python path to agent class [default: champion_league.agent.dqn.DQNAgent]
     --tag <str>                 Name of the agent [default: None]
     --opponent_device <int>     GPU to load the opponent onto [default: None]
-    --p_exploit <float>         % of time to play exploiters [default: 0]
-    --p_league <float>          % of time to play league agents [default: 0.2]
-    --logdir <str>              Path to agents [default: /home/alex/Documents/pokemon_trainers/]
-    --network <str>             Python path to network [default:
+    --logdir <str>              Path to agents [default: /home/alex/Documents/pokemon_trainers]
     --nb_train_episodes <int>   Number of games to train for [default: 10_000_000]
-    --epoch_len <int>           Number of games to play before saving an agent [default: 1_000_000]
-    --batch_size <int>          Batch size [default: 256]
+    --epoch_len <int>           Number of steps to take before saving an agent [default: 1_000_000]
+    --batch_size <int>          Batch size [default: 64]
     --device <int>              GPU to load the training agent on [default: 0]
     --agent_type <str>          What type of agent we're training [default: challengers]
 """
+import json
 import os
 import time
 from datetime import datetime
-
+import numpy as np
 import torch
 from adept.utils.util import DotDict
 from poke_env.player_configuration import PlayerConfiguration
+from typing import Tuple
 
 from champion_league.agent.dqn import DQNAgent
 from champion_league.agent.league.agent import LeaguePlayer
@@ -38,23 +36,18 @@ def parse_args() -> DotDict:
     args = {k.strip("--").replace("-", "_"): v for k, v in args.items()}
 
     args = DotDict(args)
-    args.agent = str(args.agent)
 
     if args.tag != "None":
         args.tag = str(args.tag)
     else:
-        args.tag = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
+        raise RuntimeError("Tag cannot be none! Must specify a trainer!")
 
     if args.opponent_device != "None":
         args.opponent_device = f"cuda:{int(args.opponent_device)}"
     else:
         args.opponent_device = "cpu"
 
-    args.p_exploit = float(args.p_exploit)
-    args.p_league = float(args.p_league)
-
     args.logdir = str(args.logdir)
-    args.network = str(args.network)
     args.nb_train_episodes = int(args.nb_train_episodes)
     args.epoch_len = int(args.epoch_len)
     args.batch_size = int(args.batch_size)
@@ -63,8 +56,23 @@ def parse_args() -> DotDict:
     else:
         args.device = "cpu"
 
-    args.nb_steps = 0
-    return args
+    # Get the old args
+    agent_epochs = [
+        int(agent.rsplit('_')[-1])
+        for agent in os.listdir(os.path.join(args.logdir, args.agent_type, args.tag))
+        if args.tag in agent
+    ]
+    epoch_num = sorted(agent_epochs)[-1]
+
+    with open(os.path.join(args.logdir, args.agent_type, args.tag, f"{args.tag}_{epoch_num}", "args.json"), "r") as fp:
+        old_args = json.load(fp)
+
+    for key in old_args:
+        if key in args:
+            old_args[key] = args[key]
+    old_args["epoch_num"] = epoch_num
+    print(f"Resuming {args.tag}_{epoch_num}")
+    return DotDict(old_args)
 
 
 def league_is_beaten(win_rates):
@@ -80,13 +88,13 @@ def add_to_league(args, epoch):
 
 
 def run(player, agent, opponent, args):
-    epoch = 0
+    epoch = args.epoch_num
     total_win_rates = {}
     agent.save_model(agent.network, epoch)
     agent.save_args(epoch)
-    total_nb_steps = 0
+    total_nb_steps = args.nb_steps
     profile = False
-    for i_episode in range(args.nb_train_episodes):
+    for i_episode in range(args.epoch_num * 1000, args.nb_train_episodes):
         state = player.reset()
         done = False
         info = {}
@@ -113,7 +121,7 @@ def run(player, agent, opponent, args):
             if total_nb_steps % args.epoch_len == 0:
                 epoch += 1
                 agent.save_model(agent.network, epoch)
-                args.nb_steps = total_nb_steps
+
                 agent.save_args(epoch)
 
                 agent.save_wins(epoch, agent.win_rates)
@@ -121,7 +129,7 @@ def run(player, agent, opponent, args):
                     add_to_league(args, epoch)
                     print("League beaten!")
                 agent.win_rates = {}
-            # state = player.reset()
+
         end_time = time.time()
         steps_per_sec = nb_steps/(end_time - start_time)
         print(f"{i_episode} ({opponent.current_agent.tag}): {steps_per_sec: 0.3f} steps/sec, REWARD: {int(reward[0])}")
@@ -143,6 +151,13 @@ def run(player, agent, opponent, args):
             win_rates={opponent.current_agent.tag: total_win_rates[opponent.current_agent.tag]},
             reward=reward
         )
+        nb_wins = np.sum([total_win_rates[key][0] for key in total_win_rates])
+        nb_games = np.sum([total_win_rates[key][1] for key in total_win_rates])
+        agent.log_to_tensorboard(
+            total_nb_steps,
+            win_rates={
+                "total": [nb_wins, nb_games]},
+        )
 
         opponent.change_agent(agent.win_rates)
 
@@ -157,8 +172,7 @@ def main(args: DotDict):
         os.mkdir(os.path.join(args.logdir, "exploiters", args.tag))
 
     agent = DQNAgent(args)
-    agent.save_model(agent.network, 0)
-
+    agent.network = agent.load_model(agent.network, os.path.join(args.logdir, args.agent_type, args.tag, f"{args.tag}_{args.epoch_num}", f"{args.tag}_{args.epoch_num}.pt"))
     env_player = RLPlayer(
         embed_battle=agent.network.embed_battle,
         battle_format="gen8randombattle",

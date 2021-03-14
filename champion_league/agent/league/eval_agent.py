@@ -3,8 +3,11 @@ import os
 
 import torch
 from poke_env.environment.abstract_battle import AbstractBattle
+from poke_env.environment.battle import Battle
+from typing import Dict
 
 from champion_league.network.linear_three_layer import LinearThreeLayer
+from champion_league.network.lstm_network import LSTMNetwork
 
 
 class EvalAgent:
@@ -17,7 +20,9 @@ class EvalAgent:
         self.tag = tag
         self._device = args.device
         # network_cls = importlib.import_module(args.network)
-        self.network = LinearThreeLayer(args.nb_actions).to(self._device)
+        # self.network = LinearThreeLayer(args.nb_actions).to(self._device)
+        self.network = LSTMNetwork(args.nb_actions).to(self._device)
+
         checkpoint = torch.load(
             os.path.join(
                 path,
@@ -29,10 +34,11 @@ class EvalAgent:
         self.network.eval()
 
     @torch.no_grad()
-    def choose_move(self, battle: AbstractBattle):
+    def choose_move(self, battle: Battle, internals: Dict[str, torch.Tensor]):
         state = self.network.embed_battle(battle).to(self._device).float()
-        action = torch.argmax(self.network(state), 0)
+        pred, new_internals = self.network(state, internals)
+        action = torch.argmax(pred["action"], 0)
         if action.ndim == 0:
-            return action.item()
+            return action.item(), new_internals
         else:
-            return action[0].item()
+            return action[0].item(), new_internals

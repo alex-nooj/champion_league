@@ -22,9 +22,9 @@ class Agent:
     def __init__(
         self, args: DotDict,
     ):
+        self.memory = None
         self._args = args
         self.win_rates = {}
-        self.save_args(0)
 
         self._summary_writer = SummaryWriter(os.path.join(args.logdir, args.agent_type, args.tag))
 
@@ -43,7 +43,7 @@ class Agent:
             os.mkdir(savedir)
 
         with open(os.path.join(savedir, "args.json"), "w") as fp:
-            json.dump(self._args, fp)
+            json.dump(self._args, fp, indent=2)
 
     def save_model(self, network, epoch):
         savedir = os.path.join(
@@ -64,39 +64,19 @@ class Agent:
             os.mkdir(savedir)
 
         with open(os.path.join(savedir, "win_rates.json"), "w") as fp:
-            json.dump(win_rates, fp)
+            json.dump(win_rates, fp, indent=2)
 
-    def load_model(self, network):
-        directory_contents = os.listdir(os.path.join(self._args.logdir, self._args.tag))
+    def load_model(self, network, weights_path):
+        checkpoint = torch.load(
+            weights_path,
+            map_location=lambda storage, loc: storage,
+        )
+        network.load_state_dict(checkpoint)
 
-        epoch_directories = [
-            int(directory_name.rsplit("_")[-1])
-            for directory_name in directory_contents
-            if "epoch" in directory_name
-        ]
-
-        epoch_directories.sort()
-        epoch_directories.reverse()
-        for epoch in epoch_directories:
-            try:
-                checkpoint = torch.load(
-                    os.path.join(self._args.logdir, self._args.tag, f"{self._args.tag}_{epoch}",),
-                    map_location=lambda storage, loc: storage,
-                )
-                network.load_state_dict(checkpoint)
-
-            except:
-                continue
-            finally:
-                break
         return network
 
     @abstractmethod
-    def learn_step(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def step(self, battle: Union[AbstractBattle, Battle]):
+    def learn_step(self, *args):
         raise NotImplementedError
 
     def log_to_tensorboard(
@@ -133,16 +113,22 @@ class Agent:
             total_wins = 0
             total_games = 0
             for key in win_rates:
-                self._summary_writer.add_scalar(
-                    f"Win_Rates/{key}", win_rates[key][0]/win_rates[key][1], nb_steps
-                )
+                if self._args.tag in key:
+                    self._summary_writer.add_scalar(
+                        f"Win_Rates/self", win_rates[key][0] / win_rates[key][1], nb_steps
+                    )
+                else:
+                    self._summary_writer.add_scalar(
+                        f"Win_Rates/{key}", win_rates[key][0]/win_rates[key][1], nb_steps
+                    )
                 total_wins += win_rates[key][0]
                 total_games += win_rates[key][1]
-            self._summary_writer.add_scalar(
-                "Win_Rates/total", total_wins / total_games, nb_steps
-            )
 
         if reward is not None:
             self._summary_writer.add_scalar(
                 f"Reward/reward", reward, nb_steps
             )
+
+        self._summary_writer.add_scalar(
+            "Memory/memory_len", len(self.memory), nb_steps
+        )

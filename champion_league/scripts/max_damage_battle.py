@@ -7,7 +7,14 @@ from poke_env.player.random_player import RandomPlayer
 
 
 class MaxDamagePlayer(Player):
+    BATTLES = {}
+
     def choose_move(self, battle):
+        if battle.battle_tag not in self.BATTLES:
+            self.BATTLES[battle.battle_tag] = [battle]
+        else:
+            self.BATTLES[battle.battle_tag].append(battle)
+
         # If the player can attack, it will
         if battle.available_moves:
             # Finds the best move among available ones
@@ -23,8 +30,8 @@ async def main():
     start = time.time()
 
     # We create two players.
-    random_player = RandomPlayer(battle_format="gen8randombattle")
-    max_damage_player = MaxDamagePlayer(battle_format="gen8randombattle")
+    random_player = RandomPlayer(battle_format="gen8randombattle", max_concurrent_battles=2)
+    max_damage_player = MaxDamagePlayer(battle_format="gen8randombattle", max_concurrent_battles=2)
 
     # Now, let's evaluate our player
     await max_damage_player.battle_against(random_player, n_battles=100)

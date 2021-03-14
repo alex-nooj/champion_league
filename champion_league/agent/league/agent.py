@@ -31,7 +31,7 @@ class LeaguePlayer(Player):
         avatar: Optional[int] = None,
         battle_format: str = "gen8randombattle",
         log_level: Optional[int] = None,
-        max_concurrent_battles: int = 1,
+        max_concurrent_battles: int = 2,
         server_configuration: Optional[ServerConfiguration] = None,
         start_timer_on_battle_start: bool = False,
         start_listening: bool = True,
@@ -83,7 +83,9 @@ class LeaguePlayer(Player):
         self._scripted = False
         self.p_exploit = 0
         self.p_league = 0
+        self.internals = {"hx": None, "cx": None}
         self.current_agent = None
+
         self.change_agent({})
         self.p_exploit = int(args.p_exploit * 100)
         self.p_league = int((args.p_exploit + args.p_league) * 100)
@@ -172,17 +174,17 @@ class LeaguePlayer(Player):
             agent_args = DotDict(agent_args)
         agent_args.device = self._device
 
-        if "scripted" in agent_args:
-            self._scripted = True
-            # agent_cls = importlib.import_module(agent_args["agent"])
-            if "Random" in agent_args.agent:
-                self.current_agent = RandomActor(agent_args)
-            elif "MaxBasePower" in agent_args.agent:
-                self.current_agent = MaxBasePower(agent_args)
-            else:
-                self.current_agent = SimpleHeuristic(agent_args)
+        if agent_args.tag == "max_base_power_0":
+            self.current_agent = MaxBasePower(agent_args)
+        elif agent_args.tag == "random_0":
+            self.current_agent = RandomActor(agent_args)
+        elif agent_args.tag == "simple_heuristic_0":
+            self.current_agent = SimpleHeuristic(agent_args)
         else:
-            self._scripted = False
+            self.internals = {
+                "hx": torch.zeros((1, 512)),
+                "cx": torch.zeros((1, 512))
+            }
             self.current_agent = EvalAgent(agent_args, agent, agent_path)
 
     def choose_move(self, battle: Battle) -> BattleOrder:
@@ -197,10 +199,14 @@ class LeaguePlayer(Player):
         BattleOrder
             The chosen move
         """
-        if self._scripted:
+        if any(
+                tag == self.current_agent.tag
+                for tag in ["max_base_power_0", "random_0", "simple_heuristic_0"]
+        ):
             return self.current_agent.choose_move(battle)
         else:
-            return self._action_to_move(self.current_agent.choose_move(battle), battle)
+            move, self.internals = self.current_agent.choose_move(battle, self.internals)
+            return self._action_to_move(move, battle)
 
     def _action_to_move(  # pyre-ignore
         self, action: int, battle: Battle
