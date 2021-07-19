@@ -8,6 +8,7 @@ import torch
 from poke_env.data import to_id_str
 from poke_env.environment.battle import Battle
 from poke_env.environment.status import Status
+from poke_env.player.battle_order import BattleOrder
 from poke_env.player.env_player import Gen8EnvSinglePlayer, EnvPlayer
 from poke_env.player.player import Player
 from poke_env.player_configuration import PlayerConfiguration
@@ -19,6 +20,8 @@ from champion_league.utils.abilities import ABILITIES
 
 
 class RLPlayer(Gen8EnvSinglePlayer):
+    _ACTION_SPACE = list(range(4 * 2 + 6))
+
     def __init__(
         self,
         embed_battle: Callable,
@@ -79,8 +82,16 @@ class RLPlayer(Gen8EnvSinglePlayer):
         return self.embed_battle_cls(battle=battle)
 
     def compute_reward(self, battle) -> float:
-        return self.reward_computing_helper(battle, fainted_value=1, hp_value=0, victory_value=10)
+        return self.reward_computing_helper(battle, fainted_value=1, hp_value=0, victory_value=0)
 
     def step(self, action: int) -> Tuple:
         obs, reward, done, _ = super().step(action)
         return obs, reward, done, {"won": 1 if self._current_battle.won else 0}
+
+    def _action_to_move(self, action: int, battle: Battle) -> BattleOrder:
+        if action < 4 and action < len(battle.available_moves) and not battle.force_switch:
+            return self.create_order(battle.available_moves[action])
+        elif 0 <= action - 4 < len(battle.available_switches):
+            return self.create_order(battle.available_switches[action - 4])
+        else:
+            return self.choose_random_move(battle)

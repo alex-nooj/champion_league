@@ -124,7 +124,8 @@ class LeaguePlayer(Player):
         """
         if all(name in win_rates for name in possible_agents):
             percent_wins = torch.tensor(
-                [win_rates[name][0] / win_rates[name][1] for name in possible_agents])
+                [win_rates[name][0] / win_rates[name][1] for name in possible_agents]
+            )
             distribution = 1.0 - percent_wins
             agent_ix = torch.multinomial(F.softmax(distribution, dim=0), 1).item()
             return possible_agents[agent_ix]
@@ -155,7 +156,9 @@ class LeaguePlayer(Player):
         league_agents = os.listdir(os.path.join(self.args.logdir, "league"))
         previous_selves = [
             agent_path
-            for agent_path in os.listdir(os.path.join(self.args.logdir, "challengers", self.args.tag))
+            for agent_path in os.listdir(
+                os.path.join(self.args.logdir, "challengers", self.args.tag)
+            )
             if self.args.tag in agent_path
         ]
 
@@ -181,10 +184,7 @@ class LeaguePlayer(Player):
         elif agent_args.tag == "simple_heuristic_0":
             self.current_agent = SimpleHeuristic(agent_args)
         else:
-            self.internals = {
-                "hx": torch.zeros((1, 512)),
-                "cx": torch.zeros((1, 512))
-            }
+            self.internals = {"hx": torch.zeros((1, 512)), "cx": torch.zeros((1, 512))}
             self.current_agent = EvalAgent(agent_args, agent, agent_path)
 
     def choose_move(self, battle: Battle) -> BattleOrder:
@@ -200,17 +200,15 @@ class LeaguePlayer(Player):
             The chosen move
         """
         if any(
-                tag == self.current_agent.tag
-                for tag in ["max_base_power_0", "random_0", "simple_heuristic_0"]
+            tag == self.current_agent.tag
+            for tag in ["max_base_power_0", "random_0", "simple_heuristic_0"]
         ):
             return self.current_agent.choose_move(battle)
         else:
             move, self.internals = self.current_agent.choose_move(battle, self.internals)
             return self._action_to_move(move, battle)
 
-    def _action_to_move(  # pyre-ignore
-        self, action: int, battle: Battle
-    ) -> BattleOrder:
+    def _action_to_move(self, action: int, battle: Battle) -> BattleOrder:  # pyre-ignore
         """Converts actions to move orders.
 
         The conversion is done as follows:
@@ -241,19 +239,13 @@ class LeaguePlayer(Player):
         :return: the order to send to the server.
         :rtype: str
         """
-        if (
-            action < 4
-            and action < len(battle.available_moves)
-            and not battle.force_switch
-        ):
+        if action < 4 and action < len(battle.available_moves) and not battle.force_switch:
             return self.create_order(battle.available_moves[action])
         elif (
             not battle.force_switch
             and battle.can_z_move
             and battle.active_pokemon
-            and 0
-            <= action - 4
-            < len(battle.active_pokemon.available_z_moves)  # pyre-ignore
+            and 0 <= action - 4 < len(battle.active_pokemon.available_z_moves)  # pyre-ignore
         ):
             return self.create_order(
                 battle.active_pokemon.available_z_moves[action - 4], z_move=True

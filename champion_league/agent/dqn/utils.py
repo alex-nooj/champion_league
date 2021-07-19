@@ -8,9 +8,7 @@ import torch.nn.functional as F
 
 from champion_league.env.base.obs_idx import ObsIdx
 
-Transition = namedtuple(
-    "Transition", ("state", "action", "next_state", "reward")
-)
+Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
 
 class CNN(nn.Module):
@@ -18,25 +16,17 @@ class CNN(nn.Module):
         super().__init__()
 
         self.convs = nn.ModuleList(
-            nn.Conv1d(
-                in_shape[0],
-                in_shape[0],
-                kernel_size=3,
-                stride=2,
-                padding=1,
-            )
+            nn.Conv1d(in_shape[0], in_shape[0], kernel_size=3, stride=2, padding=1,)
             for i in range(4)
         )
 
-        self.norms = nn.ModuleList(
-            [nn.BatchNorm1d(in_shape[0]) for _ in range(4)]
-        )
+        self.norms = nn.ModuleList([nn.BatchNorm1d(in_shape[0]) for _ in range(4)])
 
         relu_gain = nn.init.calculate_gain("relu")
         for i in range(4):
             self.convs[i].weight.data.mul_(relu_gain)
 
-        self.linear1 = nn.Linear(6*(in_shape[1] // (2**4) + 1), 128)
+        self.linear1 = nn.Linear(6 * (in_shape[1] // (2 ** 4) + 1), 128)
         self.bn1 = nn.BatchNorm1d(128)
         self.linear2 = nn.Linear(128, 64)
         self.bn2 = nn.BatchNorm1d(64)
@@ -110,17 +100,13 @@ steps_done = 0
 def greedy_policy(state, model, nb_actions, device):
     global steps_done
     sample = random.random()
-    eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(
-        -1.0 * steps_done / EPS_DECAY
-    )
+    eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1.0 * steps_done / EPS_DECAY)
     steps_done += 1
     if sample > eps_threshold:
         with torch.no_grad():
             return model(state.float()).max(1)[1].view(1, 1)
     else:
-        return torch.tensor(
-            [[random.randrange(nb_actions)]], device=device, dtype=torch.long
-        )
+        return torch.tensor([[random.randrange(nb_actions)]], device=device, dtype=torch.long)
 
 
 def sampling_policy(state: torch.Tensor, model: nn.Module):
@@ -135,38 +121,26 @@ def optimize_model(policy_net, target_net, memory, device, optimizer):
     batch = Transition(*zip(*transitions))
 
     non_final_mask = torch.tensor(
-        tuple(map(lambda s: s is not None, batch.next_state)),
-        device=device,
-        dtype=torch.bool,
+        tuple(map(lambda s: s is not None, batch.next_state)), device=device, dtype=torch.bool,
     )
 
-    non_final_next_states = torch.cat(
-        [s for s in batch.next_state if s is not None]
-    )
+    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
     non_final_next_states = (
-        torch.reshape(non_final_next_states, (BATCH_SIZE, -1))
-        .float()
-        .to(device)
+        torch.reshape(non_final_next_states, (BATCH_SIZE, -1)).float().to(device)
     )
     state_batch = torch.cat(batch.state)
     state_batch = torch.reshape(state_batch, (BATCH_SIZE, -1)).to(device)
     action_batch = torch.cat(batch.action).to(device)
     reward_batch = torch.cat(batch.reward).to(device)
 
-    state_action_values = policy_net(state_batch.float()).gather(
-        1, action_batch
-    )
+    state_action_values = policy_net(state_batch.float()).gather(1, action_batch)
 
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
-    next_state_values[non_final_mask] = (
-        target_net(non_final_next_states).max(1)[0].detach()
-    )
+    next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
 
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
-    loss = F.smooth_l1_loss(
-        state_action_values, expected_state_action_values.unsqueeze(1)
-    )
+    loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
     optimizer.zero_grad()

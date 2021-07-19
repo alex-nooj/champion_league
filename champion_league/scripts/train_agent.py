@@ -27,7 +27,7 @@ from adept.utils.util import DotDict
 from poke_env.player_configuration import PlayerConfiguration
 
 from champion_league.agent.dqn import DQNAgent
-from champion_league.agent.league.agent import LeaguePlayer
+from champion_league.agent.league.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 
 
@@ -75,7 +75,7 @@ def league_is_beaten(win_rates):
 def add_to_league(args, epoch):
     os.symlink(
         os.path.join(args.logdir, "challengers", args.tag, f"{args.tag}_{epoch}"),
-        os.path.join(args.logdir, "league", f"{args.tag}_{epoch}")
+        os.path.join(args.logdir, "league", f"{args.tag}_{epoch}"),
     )
 
 
@@ -99,9 +99,7 @@ def run(player, agent, opponent, args):
             next_state, reward, done, info = player.step(action.item())
             reward = torch.tensor([reward], device=args.device)
 
-            agent.memory.push(
-                state, action, next_state.double(), reward
-            )
+            agent.memory.push(state, action, next_state.double(), reward)
             state = next_state
 
             loss = agent.learn_step(profile)
@@ -123,8 +121,10 @@ def run(player, agent, opponent, args):
                 agent.win_rates = {}
             # state = player.reset()
         end_time = time.time()
-        steps_per_sec = nb_steps/(end_time - start_time)
-        print(f"{i_episode} ({opponent.current_agent.tag}): {steps_per_sec: 0.3f} steps/sec, REWARD: {int(reward[0])}")
+        steps_per_sec = nb_steps / (end_time - start_time)
+        print(
+            f"{i_episode} ({opponent.current_agent.tag}): {steps_per_sec: 0.3f} steps/sec, REWARD: {int(reward[0])}"
+        )
         profile = steps_per_sec < 20.0
         if opponent.current_agent.tag not in agent.win_rates:
             agent.win_rates[opponent.current_agent.tag] = [info["won"], 1]
@@ -141,7 +141,7 @@ def run(player, agent, opponent, args):
         agent.log_to_tensorboard(
             total_nb_steps,
             win_rates={opponent.current_agent.tag: total_win_rates[opponent.current_agent.tag]},
-            reward=reward
+            reward=reward,
         )
 
         opponent.change_agent(agent.win_rates)
@@ -170,11 +170,7 @@ def main(args: DotDict):
     env_player.play_against(
         env_algorithm=run,
         opponent=opponent,
-        env_algorithm_kwargs={
-            "agent": agent,
-            "args": args,
-            "opponent": opponent
-        }
+        env_algorithm_kwargs={"agent": agent, "args": args, "opponent": opponent},
     )
 
 

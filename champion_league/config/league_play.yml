@@ -1,0 +1,28 @@
+nb_actions: 10
+battle_format: gen8randombattle
+device: 0
+
+logdir: /home/alex/Documents/pokemon_trainers/
+tag: league_is_go
+
+network: gated_encoder
+preprocessor: modular_processor
+subprocessor: simple_preprocessor
+
+nb_steps: 100_000_000
+epoch_len: 10_000
+batch_size: 128
+
+lr: 0.001
+entropy_weight: 0.001
+clip: 0.2
+
+sequence_len: 5
+
+nb_encoders: 1
+nb_heads: 1
+scale: False
+
+self_play_prob: 0.7
+league_play_prob: 0.2
+sample_moves: False

@@ -1,0 +1,8 @@
+Cinderace (M) @ Life Orb
+Ability: Blaze
+EVs: 252 Atk / 4 SpD / 252 Spe
+Jolly Nature
+- Pyro Ball
+- Sucker Punch
+- U-turn
+- High Jump Kick

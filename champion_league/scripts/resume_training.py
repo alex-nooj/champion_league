@@ -25,7 +25,7 @@ from poke_env.player_configuration import PlayerConfiguration
 from typing import Tuple
 
 from champion_league.agent.dqn import DQNAgent
-from champion_league.agent.league.agent import LeaguePlayer
+from champion_league.agent.league.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 
 
@@ -58,13 +58,18 @@ def parse_args() -> DotDict:
 
     # Get the old args
     agent_epochs = [
-        int(agent.rsplit('_')[-1])
+        int(agent.rsplit("_")[-1])
         for agent in os.listdir(os.path.join(args.logdir, args.agent_type, args.tag))
         if args.tag in agent
     ]
     epoch_num = sorted(agent_epochs)[-1]
 
-    with open(os.path.join(args.logdir, args.agent_type, args.tag, f"{args.tag}_{epoch_num}", "args.json"), "r") as fp:
+    with open(
+        os.path.join(
+            args.logdir, args.agent_type, args.tag, f"{args.tag}_{epoch_num}", "args.json"
+        ),
+        "r",
+    ) as fp:
         old_args = json.load(fp)
 
     for key in old_args:
@@ -83,7 +88,7 @@ def league_is_beaten(win_rates):
 def add_to_league(args, epoch):
     os.symlink(
         os.path.join(args.logdir, "challengers", args.tag, f"{args.tag}_{epoch}"),
-        os.path.join(args.logdir, "league", f"{args.tag}_{epoch}")
+        os.path.join(args.logdir, "league", f"{args.tag}_{epoch}"),
     )
 
 
@@ -107,9 +112,7 @@ def run(player, agent, opponent, args):
             next_state, reward, done, info = player.step(action.item())
             reward = torch.tensor([reward], device=args.device)
 
-            agent.memory.push(
-                state, action, next_state.double(), reward
-            )
+            agent.memory.push(state, action, next_state.double(), reward)
             state = next_state
 
             loss = agent.learn_step(profile)
@@ -131,8 +134,10 @@ def run(player, agent, opponent, args):
                 agent.win_rates = {}
 
         end_time = time.time()
-        steps_per_sec = nb_steps/(end_time - start_time)
-        print(f"{i_episode} ({opponent.current_agent.tag}): {steps_per_sec: 0.3f} steps/sec, REWARD: {int(reward[0])}")
+        steps_per_sec = nb_steps / (end_time - start_time)
+        print(
+            f"{i_episode} ({opponent.current_agent.tag}): {steps_per_sec: 0.3f} steps/sec, REWARD: {int(reward[0])}"
+        )
         profile = steps_per_sec < 20.0
         if opponent.current_agent.tag not in agent.win_rates:
             agent.win_rates[opponent.current_agent.tag] = [info["won"], 1]
@@ -149,14 +154,12 @@ def run(player, agent, opponent, args):
         agent.log_to_tensorboard(
             total_nb_steps,
             win_rates={opponent.current_agent.tag: total_win_rates[opponent.current_agent.tag]},
-            reward=reward
+            reward=reward,
         )
         nb_wins = np.sum([total_win_rates[key][0] for key in total_win_rates])
         nb_games = np.sum([total_win_rates[key][1] for key in total_win_rates])
         agent.log_to_tensorboard(
-            total_nb_steps,
-            win_rates={
-                "total": [nb_wins, nb_games]},
+            total_nb_steps, win_rates={"total": [nb_wins, nb_games]},
         )
 
         opponent.change_agent(agent.win_rates)
@@ -172,7 +175,16 @@ def main(args: DotDict):
         os.mkdir(os.path.join(args.logdir, "exploiters", args.tag))
 
     agent = DQNAgent(args)
-    agent.network = agent.load_model(agent.network, os.path.join(args.logdir, args.agent_type, args.tag, f"{args.tag}_{args.epoch_num}", f"{args.tag}_{args.epoch_num}.pt"))
+    agent.network = agent.load_model(
+        agent.network,
+        os.path.join(
+            args.logdir,
+            args.agent_type,
+            args.tag,
+            f"{args.tag}_{args.epoch_num}",
+            f"{args.tag}_{args.epoch_num}.pt",
+        ),
+    )
     env_player = RLPlayer(
         embed_battle=agent.network.embed_battle,
         battle_format="gen8randombattle",
@@ -184,11 +196,7 @@ def main(args: DotDict):
     env_player.play_against(
         env_algorithm=run,
         opponent=opponent,
-        env_algorithm_kwargs={
-            "agent": agent,
-            "args": args,
-            "opponent": opponent
-        }
+        env_algorithm_kwargs={"agent": agent, "args": args, "opponent": opponent},
     )
 
 

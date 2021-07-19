@@ -1,0 +1,9 @@
+Sylveon (M) @ Leftovers
+Ability: Pixilate
+EVs: 248 HP / 244 Def / 16 SpD
+Calm Nature
+IVs: 0 Atk
+- Hyper Voice
+- Mystical Fire
+- Protect
+- Wish

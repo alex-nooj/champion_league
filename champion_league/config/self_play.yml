@@ -1,0 +1,24 @@
+nb_actions: 10
+battle_format: gen8randombattle
+device: 0
+
+logdir: /home/alex/Documents/pokemon_trainers/challengers/
+tag: self_play_2
+
+network: gated_encoder
+preprocessor: modular_processor
+subprocessor: simple_preprocessor
+
+nb_steps: 1_000_000
+epoch_len: 10_000
+batch_size: 32
+
+lr: 0.001
+entropy_weight: 0.001
+clip: 0.2
+
+sequence_len: 5
+
+nb_encoders: 1
+nb_heads: 1
+scale: False

@@ -7,23 +7,26 @@ import torch.nn.functional as F
 from adept.utils.util import DotDict
 from torch import optim
 
-from champion_league.agent.base.base_agent import Agent
+from champion_league.agent.base.base_agent import BaseAgent
 from champion_league.agent.dqn.utils import (
-    ReplayMemory, Transition, greedy_policy, )
+    ReplayMemory,
+    Transition,
+    greedy_policy,
+)
 from champion_league.network.linear_three_layer import LinearThreeLayer
 
 TARGET_UPDATE = 10
 
 
-class DQNAgent(Agent):
+class DQNAgent(BaseAgent):
     def __init__(
-            self,
-            args: DotDict,
-            gamma: Optional[float] = 0.999,
-            device: Optional[int] = None,
-            nb_train_episodes: Optional[int] = 10_000_000,
-            memory_len: Optional[int] = 100_000,
-            training: Optional[bool] = True
+        self,
+        args: DotDict,
+        gamma: Optional[float] = 0.999,
+        device: Optional[int] = None,
+        nb_train_episodes: Optional[int] = 10_000_000,
+        memory_len: Optional[int] = 100_000,
+        training: Optional[bool] = True,
     ):
         super().__init__(args)
         self._args = args
@@ -59,6 +62,7 @@ class DQNAgent(Agent):
             return None
         if profile:
             from pyinstrument import Profiler
+
             profiler = Profiler()
             profiler.start()
 
@@ -74,12 +78,8 @@ class DQNAgent(Agent):
             dtype=torch.bool,
         )
 
-        non_final_next_states = torch.cat(
-            [s for s in batch.next_state if s is not None]
-        )
-        non_final_next_states = (
-            torch.reshape(non_final_next_states, (self._batch_size, -1)).float()
-        )
+        non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
+        non_final_next_states = torch.reshape(non_final_next_states, (self._batch_size, -1)).float()
 
         state_batch = torch.cat(batch.state)
         if profile:
@@ -92,13 +92,14 @@ class DQNAgent(Agent):
 
         reward_batch = torch.cat(batch.reward).to(self._device)
 
-        state_action_values = self.network(state_batch).gather(
-            1, action_batch
-        )
+        state_action_values = self.network(state_batch).gather(1, action_batch)
 
         next_state_values = torch.zeros(self._batch_size, device=self._device)
         next_state_values[non_final_mask] = (
-            self.target_net(non_final_next_states.to(self._device)).max(1)[0].detach().to(self._device)
+            self.target_net(non_final_next_states.to(self._device))
+            .max(1)[0]
+            .detach()
+            .to(self._device)
         )
 
         if profile:
@@ -106,9 +107,7 @@ class DQNAgent(Agent):
 
         expected_state_action_values = (next_state_values * self._gamma) + reward_batch
 
-        loss = F.smooth_l1_loss(
-            state_action_values, expected_state_action_values.unsqueeze(1)
-        )
+        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
 
         # Optimize the model
         self.optimizer.zero_grad()

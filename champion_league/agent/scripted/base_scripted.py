@@ -11,12 +11,8 @@ from typing import Union
 
 
 class BaseScripted:
-    def __init__(
-        self,
-        args: DotDict
-    ):
-        self._args = args
-        self.tag = args.tag
+    def __init__(self, tag: str):
+        self.tag = tag
 
     def choose_random_move(self, battle: AbstractBattle) -> BattleOrder:
         """Returns a random legal move from battle.
@@ -36,9 +32,7 @@ class BaseScripted:
     @staticmethod
     def choose_random_singles_move(battle: Battle) -> BattleOrder:
         available_orders = [BattleOrder(move) for move in battle.available_moves]
-        available_orders.extend(
-            [BattleOrder(switch) for switch in battle.available_switches]
-        )
+        available_orders.extend([BattleOrder(switch) for switch in battle.available_switches])
 
         if battle.can_mega_evolve:
             available_orders.extend(
@@ -51,9 +45,7 @@ class BaseScripted:
             )
 
         if battle.can_z_move and battle.active_pokemon:
-            available_z_moves = set(
-                battle.active_pokemon.available_z_moves  # pyre-ignore
-            )
+            available_z_moves = set(battle.active_pokemon.available_z_moves)  # pyre-ignore
             available_orders.extend(
                 [
                     BattleOrder(move, z_move=True)

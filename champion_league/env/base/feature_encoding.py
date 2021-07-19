@@ -13,7 +13,7 @@ MOVE_LEN = 40
 
 
 def encode_battle(battle: AbstractBattle) -> torch.Tensor:
-    encoded_battle = torch.zeros(6, (POKEMON_LEN + 4*MOVE_LEN)).float()
+    encoded_battle = torch.zeros(6, (POKEMON_LEN + 4 * MOVE_LEN)).float()
 
     for pokemon_ix, pokemon in enumerate(battle.team):
         encoded_battle[pokemon_ix, 0:POKEMON_LEN] = encode_pokemon(battle.team[pokemon])
@@ -21,8 +21,12 @@ def encode_battle(battle: AbstractBattle) -> torch.Tensor:
             if move_ix == 4:
                 break
             new_move = encode_move(battle.team[pokemon].moves[move])
-            encoded_battle[pokemon_ix, POKEMON_LEN + move_ix * MOVE_LEN: POKEMON_LEN + (move_ix + 1) * MOVE_LEN] = new_move
+            encoded_battle[
+                pokemon_ix,
+                POKEMON_LEN + move_ix * MOVE_LEN : POKEMON_LEN + (move_ix + 1) * MOVE_LEN,
+            ] = new_move
     return encoded_battle
+
 
 def encode_pokemon(pokemon: Pokemon) -> torch.Tensor:
     encoded_pokemon = torch.zeros(27).float()
@@ -34,8 +38,9 @@ def encode_pokemon(pokemon: Pokemon) -> torch.Tensor:
     else:
         encoded_pokemon[ObsIdx.type2] = 1.0
     # TODO: Abilities need to be binary
-    encoded_pokemon[ObsIdx.ability_bit0:ObsIdx.ability_bit0+9] = torch.tensor(ABILITIES[
-        pokemon.ability.lower().replace(" ", "").replace("-", "")])
+    encoded_pokemon[ObsIdx.ability_bit0 : ObsIdx.ability_bit0 + 9] = torch.tensor(
+        ABILITIES[pokemon.ability.lower().replace(" ", "").replace("-", "")]
+    )
 
     # Blissey has the maximum HP at 714
     if pokemon.current_hp is None:
@@ -70,7 +75,7 @@ def encode_move(move: Move) -> torch.Tensor:
     encoded_move = torch.zeros(40).float()
 
     encoded_move[0] = move.accuracy
-    encoded_move[1] = move.base_power / 250 # Eruption
+    encoded_move[1] = move.base_power / 250  # Eruption
     if move.boosts is not None:
         if "atk" in move.boosts:
             encoded_move[2] = move.boosts["atk"] / 4.0

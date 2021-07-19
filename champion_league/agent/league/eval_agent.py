@@ -21,14 +21,10 @@ class EvalAgent:
         self._device = args.device
         # network_cls = importlib.import_module(args.network)
         # self.network = LinearThreeLayer(args.nb_actions).to(self._device)
-        self.network = LSTMNetwork(args.nb_actions).to(self._device)
+        self.network = LinearThreeLayer(args.nb_actions).to(self._device)
 
         checkpoint = torch.load(
-            os.path.join(
-                path,
-                f"{tag}.pt"
-            ),
-            map_location=lambda storage, loc: storage
+            os.path.join(path, f"{tag}.pt"), map_location=lambda storage, loc: storage
         )
         self.network.load_state_dict(checkpoint)
         self.network.eval()

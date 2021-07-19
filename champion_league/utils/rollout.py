@@ -16,9 +16,11 @@ Readout = namedtuple(
         "log_probs",
         "hx",
         "cx",
-        "step_id"
-    ]
+        "step_id",
+    ],
 )
+
+
 class Rollout:
     def __init__(self, rollout_len: int, batch_size: int):
         """
@@ -43,17 +45,17 @@ class Rollout:
         self.curr_ix = 0
 
     def push(
-            self,
-            state: torch.Tensor,
-            next_state: torch.Tensor,
-            action: torch.Tensor,
-            value: torch.Tensor,
-            reward: float,
-            terminal: bool,
-            log_probs: torch.Tensor,
-            hx: torch.Tensor,
-            cx: torch.Tensor,
-            step_nb: int
+        self,
+        state: torch.Tensor,
+        next_state: torch.Tensor,
+        action: torch.Tensor,
+        value: torch.Tensor,
+        reward: float,
+        terminal: bool,
+        log_probs: torch.Tensor,
+        hx: torch.Tensor,
+        cx: torch.Tensor,
+        step_nb: int,
     ) -> None:
         self.states.append(state)
         self.next_states.append(next_state)
@@ -84,21 +86,26 @@ class Rollout:
 
     def read(self) -> Readout:
         return Readout(
-            states=torch.stack(self.states).view(
-                [self.rollout_len, self._batch_size] + list(self.states[0].shape)
-            ),
-            next_states=torch.stack(self.next_states).view(
-                [self.rollout_len, self._batch_size] + list(self.next_states[0].shape)
-            ),
+            states=torch.stack(self.states).view(self.rollout_len, self._batch_size, -1),
+            next_states=torch.stack(self.next_states).view(self.rollout_len, self._batch_size, -1),
             actions=torch.stack(self.actions).view(self.rollout_len, self._batch_size),
             values=torch.stack(self.values).view(self.rollout_len, self._batch_size),
-            rewards=torch.tensor(self.rewards, dtype=torch.float, device=self.states[0].device).view(self.rollout_len, self._batch_size),
-            terminals=torch.tensor(self.terminals, device=self.states[0].device).view(self.rollout_len, self._batch_size),
-            log_probs=torch.stack(self.log_probs).view([self.rollout_len, self._batch_size] + list(self.log_probs[0].shape)),
-            hx=torch.stack(self.hx).view([self.rollout_len, self._batch_size] + list(self.hx[0].shape)),
+            rewards=torch.tensor(
+                self.rewards, dtype=torch.float, device=self.states[0].device
+            ).view(self.rollout_len, self._batch_size),
+            terminals=torch.tensor(self.terminals, device=self.states[0].device).view(
+                self.rollout_len, self._batch_size
+            ),
+            log_probs=torch.stack(self.log_probs).view(
+                [self.rollout_len, self._batch_size] + list(self.log_probs[0].shape)
+            ),
+            hx=torch.stack(self.hx).view(
+                [self.rollout_len, self._batch_size] + list(self.hx[0].shape)
+            ),
             cx=torch.stack(self.cx).view(
-                [self.rollout_len, self._batch_size] + list(self.cx[0].shape)),
-            step_id=torch.tensor(self.step_ids).view(self.rollout_len, self._batch_size)
+                [self.rollout_len, self._batch_size] + list(self.cx[0].shape)
+            ),
+            step_id=torch.tensor(self.step_ids).view(self.rollout_len, self._batch_size),
         )
 
     def __len__(self):

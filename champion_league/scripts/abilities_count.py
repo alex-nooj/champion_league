@@ -7,10 +7,7 @@ count = 0
 if __name__ == "__main__":
     for key in POKEDEX:
         for ability in POKEDEX[key]["abilities"]:
-            if (
-                POKEDEX[key]["abilities"][ability].lower().replace(" ", "")
-                not in abilities
-            ):
+            if POKEDEX[key]["abilities"][ability].lower().replace(" ", "") not in abilities:
                 binary_count = [int(i) for i in bin(count)[2:]]
 
                 abilities[
@@ -25,8 +22,5 @@ if __name__ == "__main__":
 
 print(abilities)
 
-with open(
-    "/home/alex/Documents/champion_league/champion_league/utils/abilities.json",
-    "w",
-) as fp:
+with open("/home/alex/Documents/champion_league/champion_league/utils/abilities.json", "w",) as fp:
     json.dump(abilities, fp, indent=4)

@@ -1,11 +1,11 @@
+from typing import Dict
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from poke_env.environment.battle import Battle
 from poke_env.environment.status import Status
-from typing import Tuple
-from typing import Dict
-from typing import List
 
 from champion_league.env.base.obs_idx import ObsIdx
 from champion_league.utils.abilities import ABILITIES
@@ -15,8 +15,7 @@ class LSTMNetwork(nn.Module):
     INPUT_SIZE = (1, 12 * 55)
 
     def __init__(
-            self,
-            nb_actions: int,
+        self, nb_actions: int,
     ):
         super(LSTMNetwork, self).__init__()
 
@@ -38,14 +37,12 @@ class LSTMNetwork(nn.Module):
         self.output_layers = nn.ModuleDict(
             {
                 "critic": nn.Linear(lstm_hidden_size, 1, bias=True),
-                "action": nn.Linear(lstm_hidden_size, nb_actions, bias=True)
+                "action": nn.Linear(lstm_hidden_size, nb_actions, bias=True),
             }
         )
 
     def forward(
-        self,
-        xs: torch.Tensor,
-        internals: Dict[str, torch.Tensor]
+        self, xs: torch.Tensor, internals: Dict[str, torch.Tensor]
     ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         hxs = internals["hx"]
         cxs = internals["cx"]
@@ -61,7 +58,7 @@ class LSTMNetwork(nn.Module):
 
         outputs = {
             "critic": self.output_layers["critic"](next_hx),
-            "action": F.softmax(self.output_layers["action"](next_hx), dim=-1)
+            "action": F.softmax(self.output_layers["action"](next_hx), dim=-1),
         }
 
         return outputs, {"hx": next_hx, "cx": next_cx}
@@ -117,7 +114,7 @@ class LSTMNetwork(nn.Module):
             if len(all_moves) > 4:
                 for effect in pokemon.effects:
                     if effect.name == "DYNAMAX":
-                        all_moves = all_moves[len(all_moves)-4:]
+                        all_moves = all_moves[len(all_moves) - 4 :]
                         break
                 else:
                     all_moves = all_moves[0:4]
@@ -139,7 +136,9 @@ class LSTMNetwork(nn.Module):
                     if "status" in pokemon.moves[move].secondary[0]:
                         for value in Status:
                             if pokemon.moves[move].secondary[0]["status"] == value.name.lower():
-                                state[ix, ObsIdx.move_1_secondary_status + 7 * move_ix] = value.value / 7
+                                state[ix, ObsIdx.move_1_secondary_status + 7 * move_ix] = (
+                                    value.value / 7
+                                )
                 state[ix, ObsIdx.move_1_type + 7 * move_ix] = pokemon.moves[move].type.value / 19.0
 
         for ix, pokemon in enumerate(battle.opponent_team):
@@ -188,7 +187,7 @@ class LSTMNetwork(nn.Module):
             if len(all_moves) > 4:
                 for effect in battle.opponent_team[pokemon].effects:
                     if effect.name == "DYNAMAX":
-                        all_moves = all_moves[len(all_moves) - 4:]
+                        all_moves = all_moves[len(all_moves) - 4 :]
                         break
                 else:
                     all_moves = all_moves[0:4]
@@ -218,7 +217,9 @@ class LSTMNetwork(nn.Module):
                                 battle.opponent_team[pokemon].moves[move].secondary[0]["status"]
                                 == value.name.lower()
                             ):
-                                state[ix + 6, ObsIdx.move_1_secondary_status + 7 * move_ix] = value.value / 7
+                                state[ix + 6, ObsIdx.move_1_secondary_status + 7 * move_ix] = (
+                                    value.value / 7
+                                )
                 state[ix + 6, ObsIdx.move_1_type + 7 * move_ix] = (
                     battle.opponent_team[pokemon].moves[move].type.value / 19.0
                 )

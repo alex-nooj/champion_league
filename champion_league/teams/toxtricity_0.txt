@@ -1,0 +1,8 @@
+Toxtricity (M) @ Throat Spray
+Ability: Punk Rock
+EVs: 4 Atk / 252 SpA / 252 Spe
+Rash Nature
+- Overdrive
+- Boomburst
+- Shift Gear
+- Fire Punch
