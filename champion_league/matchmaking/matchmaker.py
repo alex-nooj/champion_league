@@ -13,10 +13,9 @@ class MatchMaker:
         tag: str,
         alpha: Optional[float] = 50,
     ):
-        assert (
-            1 - self_play_prob - league_play_prob >= 0,
-            "Self Play and League Play Probs are too high!",
-        )
+        if 1 - self_play_prob - league_play_prob < 0:
+            raise RuntimeError("Self Play and League Play Probs are too high!")
+
         self.game_mode_probs = {
             "challengers": self_play_prob,
             "league": league_play_prob,
@@ -45,17 +44,14 @@ class MatchMaker:
 
         if game_mode == "challengers":
             # Self-play
-            if np.random.randint(low=0, high=100) > 80:
-                agents = os.listdir(os.path.join(self.logdir, "challengers", self.tag))
-                agents = [
-                    epoch
-                    for epoch in agents
-                    if os.path.isdir(os.path.join(self.logdir, "challengers", self.tag, epoch))
-                ]
-                opponent = np.random.choice(agents)
-                return os.path.join(self.logdir, "challengers", self.tag, opponent)
-            else:
-                return "self"
+            agents = os.listdir(os.path.join(self.logdir, "challengers", self.tag))
+            agents = [
+                epoch
+                for epoch in agents
+                if os.path.isdir(os.path.join(self.logdir, "challengers", self.tag, epoch)) and epoch != "sl"
+            ]
+            opponent = np.random.choice(agents)
+            return os.path.join(self.logdir, "challengers", self.tag, opponent)
         elif game_mode == "league":
             # League play
             agents = os.listdir(os.path.join(self.logdir, "league"))

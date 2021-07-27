@@ -14,18 +14,20 @@ class LeagueOpponent:
         self,
         network: torch.nn.Module,
         preprocessor: Preprocessor,
+        device: str,
         sample_moves: Optional[bool] = True,
     ):
-        self.network = network
+        self.network = network.eval()
         self.preprocessor = preprocessor
         self.sample_moves = sample_moves
+        self.device = device
 
     def choose_move(self, battle: Battle) -> BattleOrder:
         state = self.preprocessor.embed_battle(battle)
         if len(state.size()) == 2:
             state = state.unsqueeze(0)
 
-        y = self.network(state)
+        y = self.network(state.to(self.device))
 
         if self.sample_moves:
             action = torch.multinomial(y["action"], 1)

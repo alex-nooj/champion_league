@@ -43,6 +43,7 @@ class PPOAgent(BaseAgent):
         self.clip = clip
 
         self.mini_epochs = mini_epochs
+        self.updates = 0
 
     def sample_action(self, state: torch.Tensor) -> Tuple[int, int, int]:
         if len(state.size()) == 2:
@@ -79,9 +80,9 @@ class PPOAgent(BaseAgent):
 
     def learn_step(self, data_loader: DataLoader) -> Dict[str, List[float]]:
         self.network = self.network.train()
+        self.updates += 1
         epoch_losses = {"Policy Loss": [], "Entropy Loss": [], "Value Loss": [], "Total Loss": []}
         for i in range(self.mini_epochs):
-
             losses = {"Policy Loss": [], "Entropy Loss": [], "Value Loss": [], "Total Loss": []}
             for observations, actions, advantages, log_probabilities, rewards_to_go in data_loader:
                 actions = actions.long().to(self.device)

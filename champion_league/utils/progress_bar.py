@@ -38,6 +38,8 @@ class ProgressBar:
             mode_divider += "|" + centered(k, v)
         mode_divider += "|"
 
+        self.divider = divider
+
         self.header = (
             divider + "\n" + mode_divider + "\n" + divider + "\n" + title_bar + "\n" + divider
         )
@@ -89,3 +91,6 @@ class ProgressBar:
 
         sys.stdout.write(epoch_bar_section + self._training_str + validation_str)
         sys.stdout.flush()
+
+    def close(self):
+        print(self.divider)

@@ -22,13 +22,6 @@ class LSTMNetwork(nn.Module):
         input_linear_size = 512
         lstm_hidden_size = 512
         self.lstm_hidden_size = lstm_hidden_size
-        # self.input_head = nn.Linear(self.INPUT_SIZE[1], input_linear_size)
-        # self.input_heads = nn.ModuleDict(
-        #     {
-        #         f"pokemon_{i}": nn.Linear(self.INPUT_SIZE[1], input_linear_size)
-        #         for i in range(self.INPUT_SIZE[0])
-        #     }
-        # )
 
         self.lstm = nn.LSTMCell(self.INPUT_SIZE[1], lstm_hidden_size)
         self.lstm.bias_ih.data.fill_(0)
@@ -47,13 +40,6 @@ class LSTMNetwork(nn.Module):
         hxs = internals["hx"]
         cxs = internals["cx"]
 
-        # Separate all 12 pokemon into separate tensors to pass into the linear networks
-        # separated_inputs = torch.split(xs, 1, dim=1)
-        # processed_mons = []
-        # for input_mon, key in zip(separated_inputs, self.input_heads):
-        #     processed_mons.append(F.relu(self.input_heads[key](input_mon.squeeze(1))))
-        # lstm_input = F.relu(self.input_head(xs))
-        # lstm_input = torch.cat(processed_mons, dim=1)
         next_hx, next_cx = self.lstm(xs, (hxs, cxs))
 
         outputs = {

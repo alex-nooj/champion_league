@@ -1,9 +1,8 @@
 nb_actions: 10
-battle_format: gen8randombattle
 device: 0
 
-logdir: /home/alex/Documents/pokemon_trainers/challengers/
-tag: sl_imitator
+logdir: /home/alex/Documents/pokemon_trainers/
+tag: quick_test
 
 network: gated_encoder
 preprocessor: modular_processor

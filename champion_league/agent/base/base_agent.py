@@ -13,6 +13,7 @@ class BaseAgent:
         self.logdir = logdir
         self.tag = tag
         self.writer = SummaryWriter(log_dir=os.path.join(logdir, tag))
+        self.index_dict = {}
 
     def sample_action(self, state: torch.Tensor):
         raise NotImplementedError
@@ -29,6 +30,9 @@ class BaseAgent:
 
         with open(os.path.join(save_dir, "args.json"), "w") as fp:
             json.dump(args, fp, indent=2)
+
+        with open(os.path.join(save_dir, "tboad_info.json"), "w") as fp:
+            json.dump(self.index_dict, fp, indent=2)
 
     def save_args(self, args: DotDict):
         self._check_and_make_dir(self.logdir)
@@ -52,5 +56,16 @@ class BaseAgent:
         if not os.path.isdir(path):
             os.mkdir(path)
 
-    def write_to_tboard(self, label: str, value: float, idx: int):
-        self.writer.add_scalar(label, value, idx)
+    def write_to_tboard(self, label: str, value: float):
+        if label not in self.index_dict:
+            self.index_dict[label] = 0
+
+        self.writer.add_scalar(label, value, self.index_dict[label])
+        self.index_dict[label] += 1
+
+    def reload_tboard(self, epoch: int):
+        try:
+            with open(os.path.join(self._get_save_dir(epoch), "tboard_info.json"), "r") as fp:
+                self.index_dict = json.load(fp)
+        except FileNotFoundError:
+            pass

@@ -18,13 +18,16 @@ class LeaguePlayer(Player):
     BATTLES = {}
 
     def __init__(
-        self, sample_moves: Optional[bool] = True, **kwargs,
+        self, device: int, sample_moves: Optional[bool] = True, **kwargs,
     ):
         super().__init__(**kwargs)
         self.sample_moves = sample_moves
 
         self.opponent = None
         self.mode = None
+        self.device = f"cuda:{device}"
+
+        self.tag = None
 
     def choose_move(self, battle: Battle) -> BattleOrder:
         if self.mode is None:
@@ -35,17 +38,13 @@ class LeaguePlayer(Player):
     def change_agent(
         self,
         agent_path: str,
-        network: Optional[torch.nn.Module] = None,
-        preprocessor: Optional[Preprocessor] = None,
     ) -> str:
-        if network is not None and preprocessor is not None:
-            self.opponent = LeagueOpponent(network, preprocessor, self.sample_moves)
-            self.mode = "self"
-            return "self"
-
         with open(os.path.join(agent_path, "args.json"), "r") as fp:
             args = json.load(fp)
             args = DotDict(args)
+
+        self.tag = args.tag
+
         if "scripted" in args:
             self.mode = "scripted"
             self.opponent = SCRIPTED_AGENTS[args.agent]
@@ -54,6 +53,6 @@ class LeaguePlayer(Player):
             network = build_network_from_args(args).eval()
             network.load_state_dict(torch.load(os.path.join(agent_path, "network.pt")))
             preprocessor = build_preprocessor_from_args(args)
-            self.opponent = LeagueOpponent(network, preprocessor, self.sample_moves)
+            self.opponent = LeagueOpponent(network=network, preprocessor=preprocessor, device=self.device, sample_moves=self.sample_moves)
 
         return args.tag

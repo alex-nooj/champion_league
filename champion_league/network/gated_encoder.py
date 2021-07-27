@@ -189,6 +189,7 @@ class GatedEncoder(nn.Module):
         nb_heads: Optional[int],
         nb_layers: Optional[int],
         scale: Optional[bool],
+        dropout: Optional[float]
     ):
         super().__init__()
 
@@ -241,5 +242,5 @@ class GatedEncoder(nn.Module):
 
 def build_from_args(args: DotDict) -> GatedEncoder:
     return GatedEncoder(
-        args.nb_actions, args.in_shape, args.nb_encoders, args.nb_heads, args.nb_layers, args.scale
+        args.nb_actions, args.in_shape, args.nb_encoders, args.nb_heads, args.nb_layers, args.scale, args.dropout
     )

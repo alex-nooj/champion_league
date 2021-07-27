@@ -34,10 +34,10 @@ def main(
     n_actions = env.action_space.n
     feature_dim = observation.size
 
-    value_model = ValueNetwork(in_dim=feature_dim).to(device)
+    value_model = ValueNetwork(in_dim=feature_dim).to(device).eval()
     value_optimizer = optim.Adam(value_model.parameters(), lr=learning_rate)
 
-    policy_model = PolicyNetwork(in_dim=feature_dim, n=n_actions).to(device)
+    policy_model = PolicyNetwork(in_dim=feature_dim, n=n_actions).to(device).eval()
     policy_optimizer = optim.Adam(policy_model.parameters(), lr=learning_rate)
 
     n_epoch = 4
@@ -70,7 +70,6 @@ def main(
             episode = Episode()
 
             for timestep in range(max_timesteps):
-
                 action, log_probability = policy_model.sample_action(observation / state_scale)
                 value = value_model.state_value(observation / state_scale)
 
@@ -108,16 +107,20 @@ def main(
         history.build_dataset()
         data_loader = DataLoader(history, batch_size=batch_size, shuffle=True)
 
+        policy_model = policy_model.train()
         policy_loss = train_policy_network(
             policy_model, policy_optimizer, data_loader, epochs=n_epoch, clip=clip
         )
+        policy_model = policy_model.eval()
 
+        value_model = value_model.train()
         value_loss = train_value_network(value_model, value_optimizer, data_loader, epochs=n_epoch)
+        value_model = value_model.eval()
 
-        for p_l, v_l in zip(policy_loss, value_loss):
-            epoch_ite += 1
-            writer.add_scalar("Policy Loss", p_l, epoch_ite)
-            writer.add_scalar("Value Loss", v_l, epoch_ite)
+        # for p_l, v_l in zip(policy_loss, value_loss):
+        #     epoch_ite += 1
+        #     writer.add_scalar("Policy Loss", p_l, epoch_ite)
+        #     writer.add_scalar("Value Loss", v_l, epoch_ite)
 
         history.free_memory()
 

@@ -1,5 +1,6 @@
 import json
 import os
+from collections import OrderedDict
 from typing import Dict, Tuple, Any, Optional, Union
 
 import numpy as np
@@ -7,6 +8,7 @@ import torch
 from adept.utils.util import DotDict
 from numpy.lib.npyio import NpzFile
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.tensorboard import SummaryWriter
 
 from champion_league.network import build_network_from_args
 from champion_league.utils.progress_bar import ProgressBar
@@ -36,33 +38,34 @@ def save_model(save_path: str, network: torch.nn.Module):
 
 
 class PokeSet(Dataset):
-    def __init__(self, states: torch.Tensor, actions: torch.Tensor, rewards: torch.Tensor):
+    def __init__(self, states: torch.Tensor, actions: torch.Tensor, rewards: torch.Tensor, device: int):
         self.states = states
         self.actions = actions
         self.rewards = rewards
+        self.device = f"cuda:{device}"
 
     def __len__(self) -> int:
         return self.states.shape[0]
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         return (
-            self.states[idx].float(),
-            self.actions[idx],
-            self.rewards[idx].float(),
+            self.states[idx].float().to(self.device),
+            self.actions[idx].to(self.device),
+            self.rewards[idx].float().to(self.device),
         )
 
 
 def create_datasets(
     dataset: Union[Dict[str, np.ndarray], NpzFile], split_ratio: float, device: int, batch_size: int
 ) -> Tuple[DataLoader, DataLoader]:
-    states = torch.tensor(dataset["states"], device=f"cuda:{device}")
-    actions = torch.tensor(dataset["actions"], device=f"cuda:{device}")
-    rewards = torch.tensor(dataset["rewards"], device=f"cuda:{device}")
+    states = torch.tensor(dataset["states"])
+    actions = torch.tensor(dataset["actions"])
+    rewards = torch.tensor(dataset["rewards"])
 
     split_idx = int(split_ratio * states.shape[0])
 
-    train_set = PokeSet(states[:split_idx], actions[:split_idx], rewards[:split_idx])
-    val_set = PokeSet(states[split_idx:], actions[split_idx:], rewards[split_idx:])
+    train_set = PokeSet(states[:split_idx], actions[:split_idx], rewards[:split_idx], device)
+    val_set = PokeSet(states[split_idx:], actions[split_idx:], rewards[split_idx:], device)
 
     return (
         DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True),
@@ -89,7 +92,7 @@ def eval_over_dataset(
 
         sample_count += dataset.batch_size
         action_loss = action_loss_fcn(preds["rough_action"], action)
-        reward_loss = reward_loss_fcn(preds["critic"], reward)
+        reward_loss = reward_loss_fcn(preds["critic"].squeeze(-1), reward)
         total_loss = action_loss + reward_loss
 
         epoch_action_loss += action_loss
@@ -132,11 +135,15 @@ def imitation_learning(
     tag: str,
     patience: Optional[int],
 ) -> torch.nn.Module:
+
+    writer = SummaryWriter(log_dir=os.path.join(logdir, tag))
+
     if type(dataset) == str:
         dataset = np.load(dataset)
 
     train_set, val_set = create_datasets(dataset, split_ratio, device, batch_size)
 
+    check_and_make_dir(os.path.join(logdir, tag))
     check_and_make_dir(os.path.join(logdir, tag, "sl"))
 
     optim = torch.optim.Adam(network.parameters(), lr)
@@ -145,16 +152,30 @@ def imitation_learning(
 
     min_val_loss = None
     epochs_since_improvement = 0
+    best_model = None
     for epoch in range(nb_epochs):
         if epoch != 0:
             progress_bar.set_epoch(epoch)
         training_results = eval_over_dataset(train_set, network, progress_bar, optim)
 
+        for k, v in training_results.items():
+            writer.add_scalar(f"Imitation Training/{k}", v, epoch)
+
         with torch.no_grad():
             validation_results = eval_over_dataset(val_set, network, progress_bar)
+            for k, v in validation_results.items():
+                writer.add_scalar(f"Imitation Validation/{k}", v, epoch)
+
             save_model(os.path.join(logdir, tag, "sl", f"network_{epoch:03d}.pt"), network)
             if min_val_loss is None or validation_results["Total Loss"] < min_val_loss:
                 min_val_loss = validation_results["Total Loss"]
+                best_model = OrderedDict(
+                    [
+                        (k, torch.clone(v))
+                        for k, v in network.state_dict().items()
+                    ]
+                )
+
                 save_model(os.path.join(logdir, tag, "sl", "best_model.pt"), network)
                 epochs_since_improvement = 0
             elif 0 < patience < epochs_since_improvement:
@@ -162,6 +183,8 @@ def imitation_learning(
             else:
                 epochs_since_improvement += 1
 
+    progress_bar.close()
+    network.load_state_dict(best_model)
     return network
 
 
@@ -170,7 +193,7 @@ def main(args: DotDict):
 
     args.in_shape = dataset["states"].shape[1:]
 
-    network = build_network_from_args(args).to(args.device)
+    network = build_network_from_args(args).to(f"cuda:{args.device}")
 
     network = imitation_learning(
         dataset=dataset,
@@ -180,7 +203,7 @@ def main(args: DotDict):
         nb_epochs=args.nb_epochs,
         lr=args.lr,
         network=network,
-        logdir=args.logdir,
+        logdir=os.path.join(args.logdir, "challengers"),
         tag=args.tag,
         patience=args.patience,
     )

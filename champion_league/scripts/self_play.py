@@ -63,11 +63,9 @@ def self_play(
 
         if done:
             episode.end_episode(last_value=0)
+            agent.write_to_tboard("Average Episode Reward", float(np.sum(episode.rewards)))
             agent.write_to_tboard(
-                "Average Episode Reward", float(np.sum(episode.rewards)), episode_ite
-            )
-            agent.write_to_tboard(
-                "Average Probabilities", np.exp(np.mean(episode.log_probabilities)), episode_ite
+                "Average Probabilities", np.exp(np.mean(episode.log_probabilities))
             )
 
             history.add_episode(episode)
@@ -82,7 +80,7 @@ def self_play(
                 if key not in epoch_loss_count:
                     epoch_loss_count[key] = 0
                 for val in epoch_losses[key]:
-                    agent.write_to_tboard(f"Loss/{key}", val, epoch_loss_count[key])
+                    agent.write_to_tboard(f"Loss/{key}", val, )
                     epoch_loss_count[key] += 1
 
             history.free_memory()
