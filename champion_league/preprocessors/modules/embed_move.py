@@ -44,7 +44,7 @@ def embed_move(battle: Battle, move: Move) -> torch.Tensor:
     embedded_move[MoveIdx.curr_power] = move.type.damage_multiplier(
         battle.opponent_active_pokemon.type_1, battle.opponent_active_pokemon.type_2
     )
-    embedded_move[MoveIdx.base_power] = move.base_power
+    embedded_move[MoveIdx.base_power] = move.base_power / 1000
     embedded_move[MoveIdx.is_physical + move.category.value - 1] = 1.0
     embedded_move[MoveIdx.drain] = move.drain
     embedded_move[MoveIdx.heal] = move.heal

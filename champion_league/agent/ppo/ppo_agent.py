@@ -119,4 +119,7 @@ class PPOAgent(BaseAgent):
                 epoch_losses[key].append(np.mean(losses[key]))
 
         self.network = self.network.eval()
+        for k, v in epoch_losses.items():
+            if np.isnan(np.sum(v)):
+                print("")
         return epoch_losses

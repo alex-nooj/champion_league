@@ -23,6 +23,11 @@ def parse_args() -> DotDict:
     )
 
 
+class NoDynamaxingPlayer(SimpleHeuristicsPlayer):
+    def _should_dynamax(self, *args, **kwargs) -> bool:
+        return False
+
+
 def identity_embedding(battle: Battle) -> Battle:
     return battle
 
@@ -75,7 +80,7 @@ def main(args: DotDict):
 
     env_player.play_against(
         env_algorithm=record_dataset,
-        opponent=SimpleHeuristicsPlayer(),
+        opponent=NoDynamaxingPlayer(),
         env_algorithm_kwargs={
             "preprocessor": preprocessor,
             "nb_games": args.nb_games,
