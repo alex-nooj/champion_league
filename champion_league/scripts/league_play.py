@@ -268,7 +268,6 @@ def main(args: DotDict):
             "batch_size": args.batch_size,
             "args": args,
             "logdir": args.logdir,
-            "preprocessor": preprocessor,
             "rollout_len": args.rollout_len,
         },
     )
