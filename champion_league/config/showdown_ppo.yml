@@ -2,7 +2,7 @@ nb_actions: 10
 battle_format: gen8randombattle
 device: 0
 
-logdir: /home/alex/Documents/pokemon_trainers/challengers/
+logdir: /home/anewgent/Documents/pokemon_trainers/challengers/
 tag: encoder2
 
 network: gated_encoder

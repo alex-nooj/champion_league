@@ -1,5 +1,6 @@
 import os
-from typing import Dict, List
+from typing import Dict
+from typing import List
 
 import numpy as np
 import torch
@@ -10,16 +11,19 @@ from tqdm import tqdm
 
 from champion_league.agent.scripted import SimpleHeuristic
 from champion_league.env.rl_player import RLPlayer
-from champion_league.ppo.replay import cumulative_sum
-from champion_league.preprocessors import Preprocessor
 from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.preprocessors import Preprocessor
+from champion_league.utils.replay import cumulative_sum
 
 
 def parse_args() -> DotDict:
     from champion_league.config import CFG
 
     return DotDict(
-        {k: tuple(v) if type(v) not in [int, float, str, bool] else v for k, v in CFG.items()}
+        {
+            k: tuple(v) if type(v) not in [int, float, str, bool] else v
+            for k, v in CFG.items()
+        }
     )
 
 
@@ -33,7 +37,9 @@ def identity_embedding(battle: Battle) -> Battle:
 
 
 @torch.no_grad()
-def record_game(player: RLPlayer, preprocessor: Preprocessor, gamma: float) -> Dict[str, List]:
+def record_game(
+    player: RLPlayer, preprocessor: Preprocessor, gamma: float
+) -> Dict[str, List]:
     done = False
     episode_reward = []
     episode_states = []
@@ -58,7 +64,11 @@ def record_game(player: RLPlayer, preprocessor: Preprocessor, gamma: float) -> D
 
 
 def record_dataset(
-    player: RLPlayer, preprocessor: Preprocessor, nb_games: int, save_dir: str, gamma: float
+    player: RLPlayer,
+    preprocessor: Preprocessor,
+    nb_games: int,
+    save_dir: str,
+    gamma: float,
 ):
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
@@ -76,7 +86,10 @@ def record_dataset(
 
 def main(args: DotDict):
     preprocessor = build_preprocessor_from_args(args)
-    env_player = RLPlayer(battle_format=args.battle_format, embed_battle=identity_embedding,)
+    env_player = RLPlayer(
+        battle_format=args.battle_format,
+        embed_battle=identity_embedding,
+    )
 
     env_player.play_against(
         env_algorithm=record_dataset,

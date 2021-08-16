@@ -1,6 +1,7 @@
+from typing import Tuple
+
 import torch
 from poke_env.environment.battle import Battle
-from typing import Tuple
 
 
 class Preprocessor:

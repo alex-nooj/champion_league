@@ -9,6 +9,18 @@ class MaxDamagePlayer(Player):
         super().__init__()
 
     def choose_move(self, battle):
+        """Chooses a move for the agent. Determines the move that has the highest power.
+
+        Parameters
+        ----------
+        battle: Battle
+            The raw battle output from the environment.
+
+        Returns
+        -------
+        BattleOrder
+            The order the agent wants to take, converted into a form readable by the environment.
+        """
         if battle.battle_tag not in self.BATTLES:
             self.BATTLES[battle.battle_tag] = [battle]
         else:

@@ -149,7 +149,9 @@ def train_value_network(value_model, value_optimizer, data_loader, epochs=4):
 
 def ac_loss(new_log_probabilities, old_log_probabilities, advantages, epsilon_clip=0.2):
     probability_ratios = torch.exp(new_log_probabilities - old_log_probabilities)
-    clipped_probabiliy_ratios = torch.clamp(probability_ratios, 1 - epsilon_clip, 1 + epsilon_clip)
+    clipped_probabiliy_ratios = torch.clamp(
+        probability_ratios, 1 - epsilon_clip, 1 + epsilon_clip
+    )
 
     surrogate_1 = probability_ratios * advantages
     surrogate_2 = clipped_probabiliy_ratios * advantages
@@ -157,7 +159,9 @@ def ac_loss(new_log_probabilities, old_log_probabilities, advantages, epsilon_cl
     return -torch.min(surrogate_1, surrogate_2)
 
 
-def train_policy_network(policy_model, policy_optimizer, data_loader, epochs=4, clip=0.2):
+def train_policy_network(
+    policy_model, policy_optimizer, data_loader, epochs=4, clip=0.2
+):
     epochs_losses = []
     epochs_entropies = []
 
@@ -175,11 +179,16 @@ def train_policy_network(policy_model, policy_optimizer, data_loader, epochs=4, 
 
             policy_optimizer.zero_grad()
 
-            new_log_probabilities, entropy = policy_model.evaluate_actions(observations, actions)
+            new_log_probabilities, entropy = policy_model.evaluate_actions(
+                observations, actions
+            )
 
             loss = (
                 ac_loss(
-                    new_log_probabilities, old_log_probabilities, advantages, epsilon_clip=clip,
+                    new_log_probabilities,
+                    old_log_probabilities,
+                    advantages,
+                    epsilon_clip=clip,
                 ).mean()
                 - c1 * entropy.mean()
             )

@@ -2,10 +2,10 @@ import json
 import os
 from typing import Optional
 from typing import Tuple
-import torch
-from torch import nn
 
+import torch
 from adept.utils.util import DotDict
+from torch import nn
 
 from champion_league.agent.ppo import PPOAgent
 from champion_league.network import build_network_from_args
@@ -14,11 +14,13 @@ from champion_league.network import build_network_from_args
 def resume(args: DotDict) -> Tuple[DotDict, nn.Module, PPOAgent]:
     agent_dir = os.path.join(args.logdir, "challengers", args.tag)
     if args.epoch is None:
-        args.epoch = max([
-            int(e.rsplit("_")[-1])
-            for e in os.listdir(agent_dir)
-            if e != "sl" and os.path.isdir(os.path.join(agent_dir, e))
-        ])
+        args.epoch = max(
+            [
+                int(e.rsplit("_")[-1])
+                for e in os.listdir(agent_dir)
+                if e != "sl" and os.path.isdir(os.path.join(agent_dir, e))
+            ]
+        )
 
     old_args = reload_old_args(args.logdir, "challengers", args.tag, args.epoch)
 
@@ -26,9 +28,7 @@ def resume(args: DotDict) -> Tuple[DotDict, nn.Module, PPOAgent]:
         if arg not in args:
             args[arg] = old_args[arg]
 
-    network = rebuild_network_from_args(
-        args, "challengers", args.epoch
-    )
+    network = rebuild_network_from_args(args, "challengers", args.epoch)
 
     agent = PPOAgent(
         device=args.device,
@@ -48,7 +48,9 @@ def resume(args: DotDict) -> Tuple[DotDict, nn.Module, PPOAgent]:
     return args, network, agent
 
 
-def reload_old_args(logdir: str, agent_type: str, tag: str, epoch: Optional[int]) -> DotDict:
+def reload_old_args(
+    logdir: str, agent_type: str, tag: str, epoch: Optional[int]
+) -> DotDict:
     """Reloads the arguments from a previous model
 
     Parameters

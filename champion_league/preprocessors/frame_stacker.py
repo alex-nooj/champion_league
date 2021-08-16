@@ -1,7 +1,8 @@
+from typing import Tuple
+
 import torch
 from adept.utils.util import DotDict
 from poke_env.environment.battle import Battle
-from typing import Tuple
 
 from champion_league.preprocessors import Preprocessor
 
@@ -21,7 +22,9 @@ class FrameStacker(Preprocessor):
     def embed_battle(self, battle: Battle) -> torch.Tensor:
         self.frames[self.frame_idx, :] = self.processor.embed_battle(battle)[0]
 
-        frames = torch.cat((self.frames[self.frame_idx :], self.frames[: self.frame_idx]), dim=0)
+        frames = torch.cat(
+            (self.frames[self.frame_idx :], self.frames[: self.frame_idx]), dim=0
+        )
         self.frame_idx = (self.frame_idx + 1) % self.sequence_len
 
         return frames.unsqueeze(0).to(self.device)

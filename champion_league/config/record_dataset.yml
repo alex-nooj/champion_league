@@ -1,5 +1,5 @@
 nb_games: 20_000
-save_dir: /home/alex/Documents/pokemon_dataset/
+save_dir: /home/anewgent/Documents/pokemon_dataset/
 battle_format: gen8randombattle
 preprocessor: modular_processor
 gamma: 0.99

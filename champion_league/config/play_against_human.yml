@@ -1,4 +1,4 @@
-logdir: /home/alex/Documents/pokemon_trainers/
+logdir: /home/anewgent/Documents/pokemon_trainers/
 tag: self_play
 epoch: 100
 gpu_id: 0

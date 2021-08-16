@@ -1,5 +1,6 @@
 from collections import OrderedDict
-from typing import Dict, Optional
+from typing import Dict
+from typing import Optional
 from typing import Tuple
 
 import torch
@@ -8,14 +9,20 @@ from adept.utils.util import DotDict
 
 
 class Attn(nn.Module):
-    def __init__(self, in_shape: Tuple[int, int], nb_heads: int, scale: Optional[bool] = True):
-        """
+    def __init__(
+        self, in_shape: Tuple[int, int], nb_heads: int, scale: Optional[bool] = True
+    ):
+        """The attention layer of the transformer encoder.
 
         Parameters
         ----------
-        in_shape
-        nb_heads
-        scale
+        in_shape: Tuple[int, int]
+            The input shape of the data. This should not include batch size and should be the same
+            shape as the input to the overall encoder.
+        nb_heads: int
+            How many input heads to use in the attention layer.
+        scale: Optional[bool]
+            Option to scale the encoder's attention weights.
         """
         super().__init__()
         _, nb_features = in_shape
@@ -27,7 +34,10 @@ class Attn(nn.Module):
         self.projection_output = nn.Sequential(
             OrderedDict(
                 [
-                    ("projection", nn.Linear(nb_features * nb_heads, nb_features, bias=False)),
+                    (
+                        "projection",
+                        nn.Linear(nb_features * nb_heads, nb_features, bias=False),
+                    ),
                     ("relu", nn.ReLU()),
                 ]
             )
@@ -37,16 +47,22 @@ class Attn(nn.Module):
     def forward(
         self, q_input: torch.Tensor, kv_input: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
-        """
+        """The forward function for the attention layer.
 
         Parameters
         ----------
-        q_input
-        kv_input
+        q_input: torch.Tensor
+            This is the input that will be passed through the linear layer representing the Q
+            matrix.
+        kv_input: Optional[torch.Tensor]
+            This is the input that will be passed through the linear layers representing the K and
+            V matrices. If this attention layer is being in the encoder, then this is the same as
+            the kv_input. Otherwise, for the decoder, it is the same as the encoder's output.
 
         Returns
         -------
-
+        torch.Tensor
+            The output of the attention layer.
         """
         b, q_s, f = q_input.shape
         if kv_input is None:
@@ -73,14 +89,16 @@ class Attn(nn.Module):
 
 class Gate(nn.Module):
     def __init__(self, in_shape: Tuple[int, int]):
-        """
+        """The gating layer for the encoder.
 
         Parameters
         ----------
-        in_shape
+        in_shape: Tuple[int, int]
+            The input shape of the data. This should not include batch size and should be the same
+            shape as the input to the overall encoder.
         """
         super().__init__()
-        self.gru = nn.GRU(input_size=in_shape[1], hidden_size=in_shape[1])
+        # self.gru = nn.GRU(input_size=in_shape[1], hidden_size=in_shape[1])
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
@@ -96,11 +114,13 @@ class Gate(nn.Module):
         """
         b, s, f = x.shape
 
-        gate_output, _ = self.gru(
-            torch.reshape(y, (1, b * s, f)), torch.reshape(x, (1, b * s, f)).contiguous(),
-        )
+        # gate_output, _ = self.gru(
+        #     torch.reshape(y, (1, b * s, f)),
+        #     torch.reshape(x, (1, b * s, f)),
+        # )
 
-        return gate_output.view(b, s, f)
+        # return gate_output.view(b, s, f)
+        return x + y
 
 
 class LNorm(nn.Module):
@@ -109,7 +129,9 @@ class LNorm(nn.Module):
 
         Parameters
         ----------
-        in_shape
+        in_shape: Tuple[int, int]
+            The input shape of the data. This should not include batch size and should be the same
+            shape as the input to the overall encoder.
         """
         super().__init__()
         self.layer_norm = nn.LayerNorm(in_shape[1])
@@ -131,12 +153,16 @@ class LNorm(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_shape: Tuple[int, int], nb_heads: int, scale: Optional[bool] = True):
+    def __init__(
+        self, in_shape: Tuple[int, int], nb_heads: int, scale: Optional[bool] = True
+    ):
         """
 
         Parameters
         ----------
-        in_shape
+        in_shape: Tuple[int, int]
+            The input shape of the data. This should not include batch size and should be the same
+            shape as the input to the overall encoder.
         nb_heads
         scale
         """
@@ -155,7 +181,10 @@ class Encoder(nn.Module):
             OrderedDict(
                 [
                     ("second_norm", nn.LayerNorm(in_shape[1])),
-                    ("projection_layer", nn.Linear(in_shape[1], in_shape[1], bias=False)),
+                    (
+                        "projection_layer",
+                        nn.Linear(in_shape[1], in_shape[1], bias=False),
+                    ),
                     ("projection_relu", nn.ReLU()),
                 ]
             )
@@ -189,8 +218,21 @@ class GatedEncoder(nn.Module):
         nb_heads: Optional[int],
         nb_layers: Optional[int],
         scale: Optional[bool],
-        dropout: Optional[float]
+        dropout: Optional[float],
     ):
+        """
+
+        Parameters
+        ----------
+        nb_actions
+        in_shape: Tuple[int, int]
+            The input shape of the data. This should not include batch size.
+        nb_encoders
+        nb_heads
+        nb_layers
+        scale
+        dropout
+        """
         super().__init__()
 
         if nb_encoders is None:
@@ -203,13 +245,19 @@ class GatedEncoder(nn.Module):
             scale = False
 
         encoders = [
-            (f"encoder_{i}", Encoder(in_shape, nb_heads, scale=scale)) for i in range(nb_encoders)
+            (f"encoder_{i}", Encoder(in_shape, nb_heads, scale=scale))
+            for i in range(nb_encoders)
         ]
-        avg_pooling = [("avg_pooling", nn.AvgPool2d((in_shape[0], 1))), ("flatten", nn.Flatten())]
+        avg_pooling = [
+            ("avg_pooling", nn.AvgPool2d((in_shape[0], 1))),
+            ("flatten", nn.Flatten()),
+        ]
 
         linears = []
         for i in range(nb_layers):
-            linears.append((f"linear_{i}", nn.Linear(in_shape[1], in_shape[1], bias=False)))
+            linears.append(
+                (f"linear_{i}", nn.Linear(in_shape[1], in_shape[1], bias=False))
+            )
             linears.append((f"norm_{i}", nn.BatchNorm1d(in_shape[1])))
             linears.append((f"relu_{i}", nn.ReLU()))
 
@@ -218,7 +266,11 @@ class GatedEncoder(nn.Module):
         self.output_layers = nn.ModuleDict(
             {
                 "action": nn.Sequential(
-                    OrderedDict([("action_1", nn.Linear(in_shape[1], nb_actions, bias=True)),])
+                    OrderedDict(
+                        [
+                            ("action_1", nn.Linear(in_shape[1], nb_actions, bias=True)),
+                        ]
+                    )
                 ),
                 "critic": nn.Sequential(
                     OrderedDict([("critic_1", nn.Linear(in_shape[1], 1, bias=True))])
@@ -242,5 +294,11 @@ class GatedEncoder(nn.Module):
 
 def build_from_args(args: DotDict) -> GatedEncoder:
     return GatedEncoder(
-        args.nb_actions, args.in_shape, args.nb_encoders, args.nb_heads, args.nb_layers, args.scale, args.dropout
+        args.nb_actions,
+        args.in_shape,
+        args.nb_encoders,
+        args.nb_heads,
+        args.nb_layers,
+        args.scale,
+        args.dropout,
     )

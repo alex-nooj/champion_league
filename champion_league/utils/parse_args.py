@@ -1,4 +1,5 @@
 from adept.utils.util import DotDict
+
 from champion_league.config import CFG
 
 

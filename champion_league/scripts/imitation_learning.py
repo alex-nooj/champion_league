@@ -1,13 +1,18 @@
 import json
 import os
 from collections import OrderedDict
-from typing import Dict, Tuple, Any, Optional, Union
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import torch
 from adept.utils.util import DotDict
 from numpy.lib.npyio import NpzFile
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 from champion_league.network import build_network_from_args
@@ -38,7 +43,13 @@ def save_model(save_path: str, network: torch.nn.Module):
 
 
 class PokeSet(Dataset):
-    def __init__(self, states: torch.Tensor, actions: torch.Tensor, rewards: torch.Tensor, device: int):
+    def __init__(
+        self,
+        states: torch.Tensor,
+        actions: torch.Tensor,
+        rewards: torch.Tensor,
+        device: int,
+    ):
         self.states = states
         self.actions = actions
         self.rewards = rewards
@@ -56,7 +67,10 @@ class PokeSet(Dataset):
 
 
 def create_datasets(
-    dataset: Union[Dict[str, np.ndarray], NpzFile], split_ratio: float, device: int, batch_size: int
+    dataset: Union[Dict[str, np.ndarray], NpzFile],
+    split_ratio: float,
+    device: int,
+    batch_size: int,
 ) -> Tuple[DataLoader, DataLoader]:
     states = torch.tensor(dataset["states"])
     actions = torch.tensor(dataset["actions"])
@@ -64,8 +78,12 @@ def create_datasets(
 
     split_idx = int(split_ratio * states.shape[0])
 
-    train_set = PokeSet(states[:split_idx], actions[:split_idx], rewards[:split_idx], device)
-    val_set = PokeSet(states[split_idx:], actions[split_idx:], rewards[split_idx:], device)
+    train_set = PokeSet(
+        states[:split_idx], actions[:split_idx], rewards[:split_idx], device
+    )
+    val_set = PokeSet(
+        states[split_idx:], actions[split_idx:], rewards[split_idx:], device
+    )
 
     return (
         DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True),
@@ -148,7 +166,9 @@ def imitation_learning(
 
     optim = torch.optim.Adam(network.parameters(), lr)
 
-    progress_bar = ProgressBar(["Accuracy", "Action Loss", "Reward Loss", "Total Loss"],)
+    progress_bar = ProgressBar(
+        ["Accuracy", "Action Loss", "Reward Loss", "Total Loss"],
+    )
 
     min_val_loss = None
     epochs_since_improvement = 0
@@ -166,14 +186,13 @@ def imitation_learning(
             for k, v in validation_results.items():
                 writer.add_scalar(f"Imitation Validation/{k}", v, epoch)
 
-            save_model(os.path.join(logdir, tag, "sl", f"network_{epoch:03d}.pt"), network)
+            save_model(
+                os.path.join(logdir, tag, "sl", f"network_{epoch:03d}.pt"), network
+            )
             if min_val_loss is None or validation_results["Total Loss"] < min_val_loss:
                 min_val_loss = validation_results["Total Loss"]
                 best_model = OrderedDict(
-                    [
-                        (k, torch.clone(v))
-                        for k, v in network.state_dict().items()
-                    ]
+                    [(k, torch.clone(v)) for k, v in network.state_dict().items()]
                 )
 
                 save_model(os.path.join(logdir, tag, "sl", "best_model.pt"), network)

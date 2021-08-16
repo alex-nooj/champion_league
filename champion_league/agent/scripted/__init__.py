@@ -1,7 +1,7 @@
-from champion_league.agent.scripted.simple_heuristic import SimpleHeuristic
+from champion_league.agent.scripted.always_switches import AlwaysSwitches
 from champion_league.agent.scripted.max_base_power import MaxBasePower
 from champion_league.agent.scripted.random_actor import RandomActor
-from champion_league.agent.scripted.always_switches import AlwaysSwitches
+from champion_league.agent.scripted.simple_heuristic import SimpleHeuristic
 
 
 SCRIPTED_AGENTS = {

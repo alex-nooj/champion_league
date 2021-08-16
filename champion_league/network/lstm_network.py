@@ -15,13 +15,21 @@ class LSTMNetwork(nn.Module):
     INPUT_SIZE = (1, 12 * 55)
 
     def __init__(
-        self, nb_actions: int,
+        self,
+        nb_actions: int,
     ):
         super(LSTMNetwork, self).__init__()
 
         input_linear_size = 512
         lstm_hidden_size = 512
         self.lstm_hidden_size = lstm_hidden_size
+        # self.input_head = nn.Linear(self.INPUT_SIZE[1], input_linear_size)
+        # self.input_heads = nn.ModuleDict(
+        #     {
+        #         f"pokemon_{i}": nn.Linear(self.INPUT_SIZE[1], input_linear_size)
+        #         for i in range(self.INPUT_SIZE[0])
+        #     }
+        # )
 
         self.lstm = nn.LSTMCell(self.INPUT_SIZE[1], lstm_hidden_size)
         self.lstm.bias_ih.data.fill_(0)
@@ -40,6 +48,13 @@ class LSTMNetwork(nn.Module):
         hxs = internals["hx"]
         cxs = internals["cx"]
 
+        # Separate all 12 pokemon into separate tensors to pass into the linear networks
+        # separated_inputs = torch.split(xs, 1, dim=1)
+        # processed_mons = []
+        # for input_mon, key in zip(separated_inputs, self.input_heads):
+        #     processed_mons.append(F.relu(self.input_heads[key](input_mon.squeeze(1))))
+        # lstm_input = F.relu(self.input_head(xs))
+        # lstm_input = torch.cat(processed_mons, dim=1)
         next_hx, next_cx = self.lstm(xs, (hxs, cxs))
 
         outputs = {
@@ -79,9 +94,13 @@ class LSTMNetwork(nn.Module):
             state[ix, ObsIdx.hp_ratio] = pokemon.current_hp_fraction
 
             state[ix, ObsIdx.base_hp] = pokemon.base_stats["hp"] / 255.0  # Blissey
-            state[ix, ObsIdx.base_atk] = pokemon.base_stats["atk"] / 190.0  # Mega Mewtwo X
+            state[ix, ObsIdx.base_atk] = (
+                pokemon.base_stats["atk"] / 190.0
+            )  # Mega Mewtwo X
             state[ix, ObsIdx.base_def] = pokemon.base_stats["def"] / 250.0  # Eternatus
-            state[ix, ObsIdx.base_spa] = pokemon.base_stats["spa"] / 194.0  # Mega Mewtwo Y
+            state[ix, ObsIdx.base_spa] = (
+                pokemon.base_stats["spa"] / 194.0
+            )  # Mega Mewtwo Y
             state[ix, ObsIdx.base_spd] = pokemon.base_stats["spd"] / 250.0  # Eternatus
             state[ix, ObsIdx.base_spe] = pokemon.base_stats["spe"] / 200.0  # Regieleki
 
@@ -107,8 +126,12 @@ class LSTMNetwork(nn.Module):
 
             for move_ix, move in enumerate(all_moves):
 
-                state[ix, ObsIdx.move_1_accuracy + 7 * move_ix] = pokemon.moves[move].accuracy
-                state[ix, ObsIdx.move_1_base_power + 7 * move_ix] = pokemon.moves[move].accuracy
+                state[ix, ObsIdx.move_1_accuracy + 7 * move_ix] = pokemon.moves[
+                    move
+                ].accuracy
+                state[ix, ObsIdx.move_1_base_power + 7 * move_ix] = pokemon.moves[
+                    move
+                ].accuracy
                 state[ix, ObsIdx.move_1_category + 7 * move_ix] = (
                     pokemon.moves[move].category.value / 3.0
                 )
@@ -121,23 +144,36 @@ class LSTMNetwork(nn.Module):
                     )
                     if "status" in pokemon.moves[move].secondary[0]:
                         for value in Status:
-                            if pokemon.moves[move].secondary[0]["status"] == value.name.lower():
-                                state[ix, ObsIdx.move_1_secondary_status + 7 * move_ix] = (
-                                    value.value / 7
-                                )
-                state[ix, ObsIdx.move_1_type + 7 * move_ix] = pokemon.moves[move].type.value / 19.0
+                            if (
+                                pokemon.moves[move].secondary[0]["status"]
+                                == value.name.lower()
+                            ):
+                                state[
+                                    ix, ObsIdx.move_1_secondary_status + 7 * move_ix
+                                ] = (value.value / 7)
+                state[ix, ObsIdx.move_1_type + 7 * move_ix] = (
+                    pokemon.moves[move].type.value / 19.0
+                )
 
         for ix, pokemon in enumerate(battle.opponent_team):
             # Divide by the number of types + 1 (for no type)
-            state[ix + 6, ObsIdx.type1] = battle.opponent_team[pokemon].type_1.value / 19.0
+            state[ix + 6, ObsIdx.type1] = (
+                battle.opponent_team[pokemon].type_1.value / 19.0
+            )
             if battle.opponent_team[pokemon].type_2 is not None:
-                state[ix + 6, ObsIdx.type2] = battle.opponent_team[pokemon].type_2.value / 19.0
+                state[ix + 6, ObsIdx.type2] = (
+                    battle.opponent_team[pokemon].type_2.value / 19.0
+                )
 
             # Blissey has the maximum HP at 714
             if battle.opponent_team[pokemon].current_hp is not None:
-                state[ix + 6, ObsIdx.current_hp] = battle.opponent_team[pokemon].current_hp / 714.0
+                state[ix + 6, ObsIdx.current_hp] = (
+                    battle.opponent_team[pokemon].current_hp / 714.0
+                )
 
-            state[ix + 6, ObsIdx.hp_ratio] = battle.opponent_team[pokemon].current_hp_fraction
+            state[ix + 6, ObsIdx.hp_ratio] = battle.opponent_team[
+                pokemon
+            ].current_hp_fraction
 
             state[ix + 6, ObsIdx.base_hp] = (
                 battle.opponent_team[pokemon].base_stats["hp"] / 255.0
@@ -158,16 +194,32 @@ class LSTMNetwork(nn.Module):
                 battle.opponent_team[pokemon].base_stats["spe"] / 200.0
             )  # Regieleki
 
-            state[ix + 6, ObsIdx.boost_acc] = battle.opponent_team[pokemon].boosts["accuracy"] / 4.0
-            state[ix + 6, ObsIdx.boost_eva] = battle.opponent_team[pokemon].boosts["evasion"] / 4.0
-            state[ix + 6, ObsIdx.boost_atk] = battle.opponent_team[pokemon].boosts["atk"] / 4.0
-            state[ix + 6, ObsIdx.boost_def] = battle.opponent_team[pokemon].boosts["def"] / 4.0
-            state[ix + 6, ObsIdx.boost_spa] = battle.opponent_team[pokemon].boosts["spa"] / 4.0
-            state[ix + 6, ObsIdx.boost_spd] = battle.opponent_team[pokemon].boosts["spd"] / 4.0
-            state[ix + 6, ObsIdx.boost_spe] = battle.opponent_team[pokemon].boosts["spe"] / 4.0
+            state[ix + 6, ObsIdx.boost_acc] = (
+                battle.opponent_team[pokemon].boosts["accuracy"] / 4.0
+            )
+            state[ix + 6, ObsIdx.boost_eva] = (
+                battle.opponent_team[pokemon].boosts["evasion"] / 4.0
+            )
+            state[ix + 6, ObsIdx.boost_atk] = (
+                battle.opponent_team[pokemon].boosts["atk"] / 4.0
+            )
+            state[ix + 6, ObsIdx.boost_def] = (
+                battle.opponent_team[pokemon].boosts["def"] / 4.0
+            )
+            state[ix + 6, ObsIdx.boost_spa] = (
+                battle.opponent_team[pokemon].boosts["spa"] / 4.0
+            )
+            state[ix + 6, ObsIdx.boost_spd] = (
+                battle.opponent_team[pokemon].boosts["spd"] / 4.0
+            )
+            state[ix + 6, ObsIdx.boost_spe] = (
+                battle.opponent_team[pokemon].boosts["spe"] / 4.0
+            )
 
             if battle.opponent_team[pokemon].status is not None:
-                state[ix + 6, ObsIdx.status] = battle.opponent_team[pokemon].status.value / 3.0
+                state[ix + 6, ObsIdx.status] = (
+                    battle.opponent_team[pokemon].status.value / 3.0
+                )
 
             all_moves = [move for move in battle.opponent_team[pokemon].moves]
             if len(all_moves) > 4:
@@ -195,17 +247,23 @@ class LSTMNetwork(nn.Module):
 
                 if len(battle.opponent_team[pokemon].moves[move].secondary) > 0:
                     state[ix + 6, ObsIdx.move_1_secondary_chance + 7 * move_ix] = (
-                        battle.opponent_team[pokemon].moves[move].secondary[0]["chance"] / 100
+                        battle.opponent_team[pokemon].moves[move].secondary[0]["chance"]
+                        / 100
                     )
-                    if "status" in battle.opponent_team[pokemon].moves[move].secondary[0]:
+                    if (
+                        "status"
+                        in battle.opponent_team[pokemon].moves[move].secondary[0]
+                    ):
                         for value in Status:
                             if (
-                                battle.opponent_team[pokemon].moves[move].secondary[0]["status"]
+                                battle.opponent_team[pokemon]
+                                .moves[move]
+                                .secondary[0]["status"]
                                 == value.name.lower()
                             ):
-                                state[ix + 6, ObsIdx.move_1_secondary_status + 7 * move_ix] = (
-                                    value.value / 7
-                                )
+                                state[
+                                    ix + 6, ObsIdx.move_1_secondary_status + 7 * move_ix
+                                ] = (value.value / 7)
                 state[ix + 6, ObsIdx.move_1_type + 7 * move_ix] = (
                     battle.opponent_team[pokemon].moves[move].type.value / 19.0
                 )

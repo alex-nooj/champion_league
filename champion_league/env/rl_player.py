@@ -1,22 +1,15 @@
-import asyncio
-from abc import ABC
-from threading import Thread
-from typing import Tuple, Optional, Union, Callable
 from asyncio import Queue
+from typing import Callable
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
-import torch
-from poke_env.data import to_id_str
 from poke_env.environment.battle import Battle
-from poke_env.environment.status import Status
 from poke_env.player.battle_order import BattleOrder
-from poke_env.player.env_player import Gen8EnvSinglePlayer, EnvPlayer
-from poke_env.player.player import Player
+from poke_env.player.env_player import Gen8EnvSinglePlayer
 from poke_env.player_configuration import PlayerConfiguration
 from poke_env.server_configuration import ServerConfiguration
 from poke_env.teambuilder.teambuilder import Teambuilder
-
-from champion_league.env.base.obs_idx import ObsIdx
-from champion_league.utils.abilities import ABILITIES
 
 
 class RLPlayer(Gen8EnvSinglePlayer):
@@ -82,14 +75,20 @@ class RLPlayer(Gen8EnvSinglePlayer):
         return self.embed_battle_cls(battle=battle)
 
     def compute_reward(self, battle) -> float:
-        return self.reward_computing_helper(battle, fainted_value=1, hp_value=0, victory_value=0)
+        return self.reward_computing_helper(
+            battle, fainted_value=1, hp_value=0, victory_value=0
+        )
 
     def step(self, action: int) -> Tuple:
         obs, reward, done, _ = super().step(action)
         return obs, reward, done, {"won": 1 if self._current_battle.won else 0}
 
     def _action_to_move(self, action: int, battle: Battle) -> BattleOrder:
-        if action < 4 and action < len(battle.available_moves) and not battle.force_switch:
+        if (
+            action < 4
+            and action < len(battle.available_moves)
+            and not battle.force_switch
+        ):
             return self.create_order(battle.available_moves[action])
         elif 0 <= action - 4 < len(battle.available_switches):
             return self.create_order(battle.available_switches[action - 4])

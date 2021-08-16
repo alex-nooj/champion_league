@@ -1,15 +1,16 @@
 import asyncio
 import os
 import time
+from typing import Dict
 
 import torch
 from adept.utils.util import DotDict
-from typing import Dict
 
 from champion_league.agent.opponent.league_player import LeaguePlayer
 from champion_league.agent.ppo import PPOAgent
 from champion_league.env.rl_player import RLPlayer
 from champion_league.matchmaking.matchmaker import MatchMaker
+from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
@@ -64,34 +65,56 @@ def main(multi_args: Dict[str, DotDict]):
             if os.path.isdir(os.path.join(args.logdir, "challengers", args.tag, epoch))
         ]
         if len(epochs) > 0:
-            rl_epochs = [int(epoch.rsplit("_")[-1]) for epoch in epochs if args.tag in epoch]
-            model_dir = f"{args.tag}_{max(rl_epochs):05d}" if len(rl_epochs) > 0 else "sl"
+            rl_epochs = [
+                int(epoch.rsplit("_")[-1]) for epoch in epochs if args.tag in epoch
+            ]
+            model_dir = (
+                f"{args.tag}_{max(rl_epochs):05d}" if len(rl_epochs) > 0 else "sl"
+            )
             model_file = "network.pt" if len(rl_epochs) > 0 else "best_model.pt"
 
             network.load_state_dict(
                 torch.load(
-                    os.path.join(args.logdir, "challengers", args.tag, model_dir, model_file),
+                    os.path.join(
+                        args.logdir, "challengers", args.tag, model_dir, model_file
+                    ),
                     map_location=lambda storage, loc: storage,
                 )
             )
     elif os.path.isdir(
         os.path.join(args.logdir, "challengers", args.tag, "sl")
-    ) and "best_model.pt" in os.listdir(os.path.join(args.logdir, "challengers", args.tag, "sl")):
+    ) and "best_model.pt" in os.listdir(
+        os.path.join(args.logdir, "challengers", args.tag, "sl")
+    ):
         network.load_state_dict(
             torch.load(
-                os.path.join(args.logdir, "challengers", args.tag, "sl", "best_model.pt"),
+                os.path.join(
+                    args.logdir, "challengers", args.tag, "sl", "best_model.pt"
+                ),
                 map_location=lambda storage, loc: storage,
             )
         )
     args = DotDict(multi_args["league"])
     network = network.eval()
 
+    opponent_network = build_network_from_args(multi_args["imitation"]).eval()
+
     args.in_shape = list(args.in_shape)
-    env_player = RLPlayer(battle_format=args.battle_format, embed_battle=preprocessor.embed_battle,)
+    env_player = RLPlayer(
+        battle_format=args.battle_format,
+        embed_battle=preprocessor.embed_battle,
+    )
 
-    matchmaker = MatchMaker(args.self_play_prob, args.league_play_prob, args.logdir, args.tag)
+    matchmaker = MatchMaker(
+        args.self_play_prob, args.league_play_prob, args.logdir, args.tag
+    )
 
-    opponent = LeaguePlayer(args.device, args.sample_moves)
+    opponent = LeaguePlayer(
+        device=args.device,
+        network=opponent_network,
+        preprocessor=preprocessor,
+        sample_moves=args.sample_moves,
+    )
 
     agent = PPOAgent(
         device=args.device,
@@ -106,6 +129,8 @@ def main(multi_args: Dict[str, DotDict]):
     agent.save_args(args)
     agent.save_model(agent.network, 0, args)
 
+    skilltracker = SkillTracker.from_args(args)
+
     _ = opponent.change_agent(os.path.join(args.logdir, "league", "random_0"))
 
     league_play(
@@ -113,6 +138,7 @@ def main(multi_args: Dict[str, DotDict]):
         agent,
         opponent,
         matchmaker,
+        skilltracker,
         args.nb_steps,
         args.epoch_len,
         args.batch_size,

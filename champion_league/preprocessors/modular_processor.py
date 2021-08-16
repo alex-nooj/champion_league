@@ -6,9 +6,14 @@ from poke_env.environment.battle import Battle
 
 from champion_league.preprocessors import Preprocessor
 from champion_league.preprocessors.modules.embed_allied_pokemon import AlliedPokemonIdx
-from champion_league.preprocessors.modules.embed_allied_pokemon import embed_allied_pokemon
-from champion_league.preprocessors.modules.embed_enemy_pokemon import embed_enemy_pokemon
-from champion_league.preprocessors.modules.embed_move import MoveIdx, embed_move
+from champion_league.preprocessors.modules.embed_allied_pokemon import (
+    embed_allied_pokemon,
+)
+from champion_league.preprocessors.modules.embed_enemy_pokemon import (
+    embed_enemy_pokemon,
+)
+from champion_league.preprocessors.modules.embed_move import embed_move
+from champion_league.preprocessors.modules.embed_move import MoveIdx
 
 
 NB_MOVES = 4
@@ -27,8 +32,12 @@ class ModularProcessor(Preprocessor):
                 if move_ix == 4:
                     break
                 embedded_moves[move_ix, :] = embed_move(battle, move)
-            embedded_battle[poke_ix, 0 : len(embedded_pokemon)] = torch.clone(embedded_pokemon)
-            embedded_battle[poke_ix, len(embedded_pokemon) :] = torch.clone(embedded_moves.view(-1))
+            embedded_battle[poke_ix, 0 : len(embedded_pokemon)] = torch.clone(
+                embedded_pokemon
+            )
+            embedded_battle[poke_ix, len(embedded_pokemon) :] = torch.clone(
+                embedded_moves.view(-1)
+            )
 
         for poke_ix, (_, pokemon) in enumerate(battle.opponent_team.items()):
             embedded_pokemon = embed_enemy_pokemon(pokemon)
@@ -37,7 +46,9 @@ class ModularProcessor(Preprocessor):
                 if move_ix == 4:
                     break
                 embedded_moves[move_ix, :] = embed_move(battle, move)
-            embedded_battle[poke_ix + 6, 0 : len(embedded_pokemon)] = torch.clone(embedded_pokemon)
+            embedded_battle[poke_ix + 6, 0 : len(embedded_pokemon)] = torch.clone(
+                embedded_pokemon
+            )
             embedded_battle[poke_ix + 6, len(embedded_pokemon) :] = torch.clone(
                 embedded_moves.view(-1)
             )

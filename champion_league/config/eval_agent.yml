@@ -1,4 +1,4 @@
-logdir: /home/alex/Documents/pokemon_trainers/
+logdir: /home/anewgent/Documents/pokemon_trainers/
 tag: Red
 n_battles: 100
 epoch: 0

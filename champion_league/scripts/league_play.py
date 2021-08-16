@@ -1,34 +1,43 @@
 import json
-import json
 import os
-from typing import Dict, Optional
+import time
+from typing import Dict
+from typing import Optional
 
 import numpy as np
 import torch
 from adept.utils.util import DotDict
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 from champion_league.agent.opponent.league_player import LeaguePlayer
 from champion_league.agent.ppo import PPOAgent
 from champion_league.env.rl_player import RLPlayer
 from champion_league.matchmaking.matchmaker import MatchMaker
+from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
-from champion_league.ppo.replay import History, Episode
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
+from champion_league.utils.replay import Episode
+from champion_league.utils.replay import History
 
 
-def print_table(entries: Dict[str, float], float_precision: Optional[int] = 1):
+def print_table(entries: Dict[str, float], float_precision: Optional[int] = 1) -> None:
+    """Used for printing a table of win rates against agents
+
+    Parameters
+    ----------
+    entries: Dict[str, float]
+        Dictionary with agent ID's for keys and win rates for values
+    float_precision: Optional[int]
+        How many values to show after the decimal point
+    """
     header1 = "League Agent"
     header2 = "Win Rate"
 
-    max_string_length = max(
-        [len(header1)] + [len(key) for key in entries]
-    ) + 2
+    max_string_length = max([len(header1)] + [len(key) for key in entries]) + 2
 
-    header2_length = float_precision + 7
+    header2_length = max([len(header2), float_precision + 7]) + 2
     divider = "+" + "-" * max_string_length + "+" + "-" * header2_length + "+"
 
     print(divider)
@@ -63,6 +72,30 @@ def league_check(
     epoch: int,
     args: DotDict,
 ) -> None:
+    """Function for determining if an agent has met the minimum requirements needed to be admitted
+    into the league
+
+    Parameters
+    ----------
+    player: RLPlayer
+        The player, used for communicating with the server
+    agent: PPOAgent
+        The agent that handles acting and contains the learn step
+    opponent: LeaguePlayer
+        The opponent that the agent is playing against
+    skilltracker: SkillTracker
+        Tracks the true skill of the agent
+    logdir: str
+        Where the agent is stored
+    epoch: int
+        Which epoch this is
+    args: DotDict
+        The arguments used to construct the agent
+    """
+    import tracemalloc
+
+    tracemalloc.start()
+
     # Grab all of the league agents
     league_agents = os.listdir(os.path.join(logdir, "league"))
 
@@ -90,9 +123,34 @@ def league_check(
     if overall_wins / len(league_agents) >= 0.75:
         move_to_league(logdir, agent.tag, epoch, args, agent.network)
     print_table(win_dict)
+    player.complete_current_battle()
+
+    snapshot = tracemalloc.take_snapshot()
+    top_stats = snapshot.statistics("lineno")
+
+    print("[ Top 10 ]")
+    for stat in top_stats[:10]:
+        print(stat)
 
 
-def move_to_league(logdir: str, tag: str, epoch: int, args: DotDict, network: torch.nn.Module):
+def move_to_league(
+    logdir: str, tag: str, epoch: int, args: DotDict, network: torch.nn.Module
+) -> None:
+    """Adds the files necessary to build an agent into the league directory
+
+    Parameters
+    ----------
+    logdir: str
+        The path to the agent
+    tag: str
+        The name of the agent
+    epoch: int
+        The epoch of training
+    args: DotDict
+        The arguments used to construct the agent
+    network: torch.nn.Module
+        The neural network being trained
+    """
     save_dir = os.path.join(logdir, "league", f"{tag}_{epoch:07d}")
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
@@ -108,6 +166,7 @@ def league_epoch(
     agent: PPOAgent,
     opponent: LeaguePlayer,
     matchmaker: MatchMaker,
+    skilltracker: SkillTracker,
     epoch_len: int,
     batch_size: int,
     rollout_len: int,
@@ -121,11 +180,12 @@ def league_epoch(
     episode = Episode()
     win_rates = {}
 
-    for step in tqdm(range(epoch_len)):
+    start_time = time.time()
+    start_step = 0
+    for step in range(epoch_len):
         if done:
             observation = player.reset()
             episode = Episode()
-
         observation = observation.float().to(agent.device)
 
         action, log_prob, value = agent.sample_action(observation)
@@ -145,10 +205,13 @@ def league_epoch(
 
         if done:
             episode.end_episode(last_value=0)
-            agent.write_to_tboard("Agent Outputs/Average Episode Reward", float(np.sum(episode.rewards)))
+            agent.write_to_tboard(
+                "Agent Outputs/Average Episode Reward", float(np.sum(episode.rewards))
+            )
 
             agent.write_to_tboard(
-                "League Agent Outputs/Average Probabilities", np.exp(np.mean(episode.log_probabilities))
+                "League Agent Outputs/Average Probabilities",
+                np.exp(np.mean(episode.log_probabilities)),
             )
 
             if opponent.tag not in win_rates:
@@ -162,16 +225,25 @@ def league_epoch(
                 float(win_rates[opponent.tag][0] / win_rates[opponent.tag][1]),
             )
 
-            opponent_name = matchmaker.choose_match(win_rates)
-            _ = opponent.change_agent(opponent_name)
+            if opponent.tag != "self":
+                skilltracker.update(reward > 0, opponent.tag)
+                for k, v in skilltracker.skill.items():
+                    agent.write_to_tboard(f"True Skill/{k}", v)
+
             history.add_episode(episode)
 
-            if step % rollout_len == 0 and step > 0:
+            if len(history) > batch_size * rollout_len:
+                print(
+                    f"Step {step}: {(step - start_step) / (time.time() - start_time)}"
+                )
+                start_step = step
+                start_time = time.time()
                 history.build_dataset()
                 data_loader = DataLoader(
                     history, batch_size=batch_size, shuffle=True, drop_last=True
                 )
                 epoch_losses = agent.learn_step(data_loader)
+                opponent.update_network(agent.network)
 
                 for key in epoch_losses:
                     if key not in epoch_loss_count:
@@ -182,6 +254,11 @@ def league_epoch(
 
                 history.free_memory()
 
+            opponent_name = matchmaker.choose_match(
+                skilltracker.agent_skill, skilltracker.skill_ratings
+            )
+            _ = opponent.change_agent(opponent_name)
+
     player.complete_current_battle()
 
 
@@ -190,6 +267,7 @@ def league_play(
     agent: PPOAgent,
     opponent: LeaguePlayer,
     matchmaker: MatchMaker,
+    skilltracker: SkillTracker,
     nb_steps: int,
     epoch_len: int,
     batch_size: int,
@@ -201,7 +279,6 @@ def league_play(
 
     for epoch in range(nb_steps // epoch_len):
         agent.save_model(agent.network, epoch, args)
-        opponent.network = agent.network
 
         player.play_against(
             env_algorithm=league_check,
@@ -222,13 +299,17 @@ def league_play(
                 "agent": agent,
                 "opponent": opponent,
                 "matchmaker": matchmaker,
+                "skilltracker": skilltracker,
                 "epoch_len": epoch_len,
                 "batch_size": batch_size,
                 "rollout_len": rollout_len,
             },
         )
 
+        skilltracker.save_skill_ratings(epoch)
     agent.save_model(agent.network, nb_steps // epoch_len, args)
+    player.reset_battles()
+    opponent.reset_battles()
 
 
 def main(args: DotDict):
@@ -237,11 +318,21 @@ def main(args: DotDict):
 
     network = build_network_from_args(args).eval()
 
-    env_player = RLPlayer(battle_format=args.battle_format, embed_battle=preprocessor.embed_battle,)
+    env_player = RLPlayer(
+        battle_format=args.battle_format,
+        embed_battle=preprocessor.embed_battle,
+    )
 
-    matchmaker = MatchMaker(args.self_play_prob, args.league_play_prob, args.logdir, args.tag)
+    matchmaker = MatchMaker(
+        args.self_play_prob, args.league_play_prob, args.logdir, args.tag
+    )
 
-    opponent = LeaguePlayer(args.device, args.sample_moves)
+    opponent = LeaguePlayer(
+        device=args.device,
+        network=network,
+        preprocessor=preprocessor,
+        sample_moves=args.sample_moves,
+    )
 
     agent = PPOAgent(
         device=args.device,
@@ -254,7 +345,6 @@ def main(args: DotDict):
     )
 
     agent.save_args(args)
-    agent.save_model(agent.network, 0, args)
 
     env_player.play_against(
         env_algorithm=league_play,

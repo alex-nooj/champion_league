@@ -4,7 +4,7 @@ resume: False
 default:
   nb_actions: 10
   device: 0
-  logdir: /home/alex/Documents/pokemon_trainers/
+  logdir: /home/anewgent/Documents/pokemon_trainers/
   tag: combo_training
   network: gated_encoder
   nb_encoders: 1
@@ -13,9 +13,9 @@ default:
   batch_size: 64
 
 imitation:
-  dataset: /home/alex/Documents/pokemon_dataset/dataset.npz
+  dataset: /home/anewgent/Documents/pokemon_dataset/dataset.npz
   nb_epochs: 100
-  split_ratio: 0.8
+  split_ratio: 0.9
   lr: 0.001
   patience: 5
 
@@ -23,11 +23,11 @@ league:
   battle_format: gen8randombattle
   preprocessor: modular_processor
   nb_steps: 100_000_000
-  epoch_len: 100_000
+  epoch_len: 1_000_000
   lr: 0.0002
   entropy_weight: 0
   clip: 0.2
   self_play_prob: 0.7
   league_play_prob: 0.2
   sample_moves: True
-  rollout_len: 30
+  rollout_len: 60

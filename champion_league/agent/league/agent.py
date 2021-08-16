@@ -5,9 +5,10 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
+
 import numpy as np
-import torch.nn.functional as F
 import torch
+import torch.nn.functional as F
 from adept.utils.util import DotDict
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
@@ -16,10 +17,11 @@ from poke_env.player.player import Player
 from poke_env.player_configuration import PlayerConfiguration
 from poke_env.server_configuration import ServerConfiguration
 from poke_env.teambuilder.teambuilder import Teambuilder
-from champion_league.agent.scripted.simple_heuristic import SimpleHeuristic
+
+from champion_league.agent.league.eval_agent import EvalAgent
 from champion_league.agent.scripted.max_base_power import MaxBasePower
 from champion_league.agent.scripted.random_actor import RandomActor
-from champion_league.agent.league.eval_agent import EvalAgent
+from champion_league.agent.scripted.simple_heuristic import SimpleHeuristic
 
 
 class LeaguePlayer(Player):
@@ -103,7 +105,9 @@ class LeaguePlayer(Player):
         )
 
     @staticmethod
-    def sample_agents(win_rates: Dict[str, List[int]], possible_agents: List[str]) -> str:
+    def sample_agents(
+        win_rates: Dict[str, List[int]], possible_agents: List[str]
+    ) -> str:
         """Determines what agent to play as, given a list of agents played, their win rates, and the
         list of possible agents. This function will prioritize agents that have not yet been played
         (do not appear in win_rates)
@@ -130,7 +134,9 @@ class LeaguePlayer(Player):
             agent_ix = torch.multinomial(F.softmax(distribution, dim=0), 1).item()
             return possible_agents[agent_ix]
         else:
-            unseen_opponents = [name for name in possible_agents if name not in win_rates]
+            unseen_opponents = [
+                name for name in possible_agents if name not in win_rates
+            ]
             return unseen_opponents[0]
 
     def change_agent(self, win_rates: Dict[str, List[int]]):
@@ -150,7 +156,9 @@ class LeaguePlayer(Player):
         curr_mode = np.random.randint(low=0, high=100)
 
         if os.path.isdir(os.path.join(self.args.logdir, "exploiters", self.args.tag)):
-            exploiters = os.listdir(os.path.join(self.args.logdir, "exploiters", self.args.tag))
+            exploiters = os.listdir(
+                os.path.join(self.args.logdir, "exploiters", self.args.tag)
+            )
         else:
             exploiters = []
         league_agents = os.listdir(os.path.join(self.args.logdir, "league"))
@@ -164,13 +172,17 @@ class LeaguePlayer(Player):
 
         if curr_mode < self.p_exploit and len(exploiters) != 0:
             agent = self.sample_agents(win_rates, exploiters)
-            agent_path = os.path.join(self.args.logdir, "exploiters", self.args.tag, agent)
+            agent_path = os.path.join(
+                self.args.logdir, "exploiters", self.args.tag, agent
+            )
         elif curr_mode < self.p_league and len(league_agents):
             agent = self.sample_agents(win_rates, league_agents)
             agent_path = os.path.join(self.args.logdir, "league", agent)
         else:
             agent = self.sample_agents(win_rates, previous_selves)
-            agent_path = os.path.join(self.args.logdir, "challengers", self.args.tag, agent)
+            agent_path = os.path.join(
+                self.args.logdir, "challengers", self.args.tag, agent
+            )
 
         with open(os.path.join(agent_path, "args.json"), "r") as fp:
             agent_args = json.load(fp)
@@ -205,10 +217,14 @@ class LeaguePlayer(Player):
         ):
             return self.current_agent.choose_move(battle)
         else:
-            move, self.internals = self.current_agent.choose_move(battle, self.internals)
+            move, self.internals = self.current_agent.choose_move(
+                battle, self.internals
+            )
             return self._action_to_move(move, battle)
 
-    def _action_to_move(self, action: int, battle: Battle) -> BattleOrder:  # pyre-ignore
+    def _action_to_move(  # pyre-ignore
+        self, action: int, battle: Battle
+    ) -> BattleOrder:
         """Converts actions to move orders.
 
         The conversion is done as follows:
@@ -239,13 +255,19 @@ class LeaguePlayer(Player):
         :return: the order to send to the server.
         :rtype: str
         """
-        if action < 4 and action < len(battle.available_moves) and not battle.force_switch:
+        if (
+            action < 4
+            and action < len(battle.available_moves)
+            and not battle.force_switch
+        ):
             return self.create_order(battle.available_moves[action])
         elif (
             not battle.force_switch
             and battle.can_z_move
             and battle.active_pokemon
-            and 0 <= action - 4 < len(battle.active_pokemon.available_z_moves)  # pyre-ignore
+            and 0
+            <= action - 4
+            < len(battle.active_pokemon.available_z_moves)  # pyre-ignore
         ):
             return self.create_order(
                 battle.active_pokemon.available_z_moves[action - 4], z_move=True
