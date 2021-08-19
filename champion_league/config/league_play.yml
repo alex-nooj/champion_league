@@ -2,15 +2,15 @@ nb_actions: 10
 battle_format: gen8randombattle
 device: 0
 
-logdir: /home/anewgent/Documents/pokemon_trainers/
-tag: league_test
+logdir: None
+tag: None
 
 network: gated_encoder
 preprocessor: modular_processor
 subprocessor: simple_preprocessor
 
-nb_steps: 100_000_000
-epoch_len: 10_000
+nb_steps: 1_000_000
+epoch_len: 100_000
 batch_size: 64
 
 lr: 0.001

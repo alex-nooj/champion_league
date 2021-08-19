@@ -470,13 +470,6 @@ def main(args: DotDict):
         args.self_play_prob, args.league_play_prob, args.logdir, args.tag
     )
 
-    opponent = LeaguePlayer(
-        device=args.device,
-        network=network,
-        preprocessor=preprocessor,
-        sample_moves=args.sample_moves,
-    )
-
     agent = PPOAgent(
         device=args.device,
         network=network,
@@ -489,20 +482,21 @@ def main(args: DotDict):
 
     agent.save_args(args)
 
-    env_player.play_against(
-        env_algorithm=league_play,
-        opponent=opponent,
-        env_algorithm_kwargs={
-            "agent": agent,
-            "opponent": opponent,
-            "matchmaker": matchmaker,
-            "nb_steps": args.nb_steps,
-            "epoch_len": args.epoch_len,
-            "batch_size": args.batch_size,
-            "args": args,
-            "logdir": args.logdir,
-            "rollout_len": args.rollout_len,
-        },
+    skilltracker = SkillTracker.from_args(args)
+
+    league_play(
+        args.battle_format,
+        preprocessor,
+        args.sample_moves,
+        agent,
+        matchmaker,
+        skilltracker,
+        args.nb_steps,
+        args.epoch_len,
+        args.batch_size,
+        args,
+        args.logdir,
+        args.rollout_len,
     )
 
 
