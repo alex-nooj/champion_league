@@ -1,4 +1,5 @@
-from enum import IntEnum, auto
+from enum import auto
+from enum import IntEnum
 
 import torch
 from poke_env.environment.pokemon import Pokemon
@@ -81,28 +82,43 @@ def embed_allied_pokemon(pokemon: Pokemon) -> torch.Tensor:
             ]
         )
     else:
-        embedded_pokemon[AlliedPokemonIdx.ability_bit0 : AlliedPokemonIdx.ability_bit8 + 1] = -1
+        embedded_pokemon[
+            AlliedPokemonIdx.ability_bit0 : AlliedPokemonIdx.ability_bit8 + 1
+        ] = -1
     embedded_pokemon[AlliedPokemonIdx.health_ratio] = pokemon.current_hp_fraction
-    embedded_pokemon[AlliedPokemonIdx.atk_stat] = pokemon.stats["atk"] / 190.0  # Mega Mewtwo X
-    embedded_pokemon[AlliedPokemonIdx.def_stat] = pokemon.stats["def"] / 250.0  # Eternatus
-    embedded_pokemon[AlliedPokemonIdx.spa_stat] = pokemon.stats["spa"] / 194.0  # Mega Mewtwo Y
-    embedded_pokemon[AlliedPokemonIdx.spd_stat] = pokemon.stats["spd"] / 250.0  # Eternatus
-    embedded_pokemon[AlliedPokemonIdx.spe_stat] = pokemon.stats["spe"] / 200.0  # Regieleki
+    embedded_pokemon[AlliedPokemonIdx.atk_stat] = (
+        pokemon.stats["atk"] / 526.0
+    )  # Mega Mewtwo X
+    embedded_pokemon[AlliedPokemonIdx.def_stat] = (
+        pokemon.stats["def"] / 614.0
+    )  # Eternatus
+    embedded_pokemon[AlliedPokemonIdx.spa_stat] = (
+        pokemon.stats["spa"] / 526.0
+    )  # Mega Mewtwo Y
+    embedded_pokemon[AlliedPokemonIdx.spd_stat] = (
+        pokemon.stats["spd"] / 614.0
+    )  # Eternatus
+    embedded_pokemon[AlliedPokemonIdx.spe_stat] = (
+        pokemon.stats["spe"] / 504.0
+    )  # Regieleki
 
-    embedded_pokemon[AlliedPokemonIdx.acc_boost] = pokemon.boosts["accuracy"] / 4.0
-    embedded_pokemon[AlliedPokemonIdx.eva_boost] = pokemon.boosts["evasion"] / 4.0
-    embedded_pokemon[AlliedPokemonIdx.atk_boost] = pokemon.boosts["atk"] / 4.0
-    embedded_pokemon[AlliedPokemonIdx.def_boost] = pokemon.boosts["def"] / 4.0
-    embedded_pokemon[AlliedPokemonIdx.spa_boost] = pokemon.boosts["spa"] / 4.0
-    embedded_pokemon[AlliedPokemonIdx.spd_boost] = pokemon.boosts["spd"] / 4.0
-    embedded_pokemon[AlliedPokemonIdx.spe_boost] = pokemon.boosts["spe"] / 4.0
+    embedded_pokemon[AlliedPokemonIdx.acc_boost] = pokemon.boosts["accuracy"] / 6.0
+    embedded_pokemon[AlliedPokemonIdx.eva_boost] = pokemon.boosts["evasion"] / 6.0
+    embedded_pokemon[AlliedPokemonIdx.atk_boost] = pokemon.boosts["atk"] / 6.0
+    embedded_pokemon[AlliedPokemonIdx.def_boost] = pokemon.boosts["def"] / 6.0
+    embedded_pokemon[AlliedPokemonIdx.spa_boost] = pokemon.boosts["spa"] / 6.0
+    embedded_pokemon[AlliedPokemonIdx.spd_boost] = pokemon.boosts["spd"] / 6.0
+    embedded_pokemon[AlliedPokemonIdx.spe_boost] = pokemon.boosts["spe"] / 6.0
 
     if pokemon.status is not None:
         status = torch.zeros(len(Status))
         status[pokemon.status.value - 1] = 1.0
         embedded_pokemon[AlliedPokemonIdx.burned :] = status
     embedded_pokemon[AlliedPokemonIdx.active] = pokemon.active
-    embedded_pokemon[AlliedPokemonIdx.female + pokemon.gender.value - 1] = 1.0
+    try:
+        embedded_pokemon[AlliedPokemonIdx.female + pokemon.gender.value - 1] = 1.0
+    except AttributeError:
+        pass
     embedded_pokemon[AlliedPokemonIdx.preparing] = True if pokemon.preparing else False
     embedded_pokemon[AlliedPokemonIdx.weight] = pokemon.weight / 2300
 

@@ -18,7 +18,10 @@ def parse_args() -> DotDict:
     from champion_league.config import CFG
 
     args = DotDict(
-        {k: tuple(v) if type(v) not in [int, float, str, bool] else v for k, v in CFG.items()}
+        {
+            k: tuple(v) if type(v) not in [int, float, str, bool] else v
+            for k, v in CFG.items()
+        }
     )
 
     with open(os.path.join(args.logdir, args.tag, "args.json"), "r") as fp:
@@ -29,9 +32,13 @@ def parse_args() -> DotDict:
     return old_args
 
 
-def load_model(network: torch.nn.Module, logdir: str, tag: str, epoch: int) -> torch.nn.Module:
+def load_model(
+    network: torch.nn.Module, logdir: str, tag: str, epoch: int
+) -> torch.nn.Module:
     model_file = os.path.join(logdir, tag, f"{tag}_{epoch:05d}", "network.pth")
-    network.load_state_dict(torch.load(model_file, map_location=lambda storage, loc: storage))
+    network.load_state_dict(
+        torch.load(model_file, map_location=lambda storage, loc: storage)
+    )
     return network
 
 
@@ -54,7 +61,10 @@ class MaxDamagePlayer(Player):
         for i, mon in enumerate(battle.team.values()):
             # We store their average performance against the opponent team
             mon_performance[i] = np.mean(
-                [teampreview_performance(mon, opp) for opp in battle.opponent_team.values()]
+                [
+                    teampreview_performance(mon, opp)
+                    for opp in battle.opponent_team.values()
+                ]
             )
 
         # We sort our mons by performance

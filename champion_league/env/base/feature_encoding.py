@@ -1,9 +1,9 @@
 import torch
 from poke_env.environment.abstract_battle import AbstractBattle
-from poke_env.environment.weather import Weather
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
 from poke_env.environment.status import Status
+from poke_env.environment.weather import Weather
 
 from champion_league.env.base.obs_idx import ObsIdx
 from champion_league.utils.abilities import ABILITIES
@@ -23,7 +23,9 @@ def encode_battle(battle: AbstractBattle) -> torch.Tensor:
             new_move = encode_move(battle.team[pokemon].moves[move])
             encoded_battle[
                 pokemon_ix,
-                POKEMON_LEN + move_ix * MOVE_LEN : POKEMON_LEN + (move_ix + 1) * MOVE_LEN,
+                POKEMON_LEN
+                + move_ix * MOVE_LEN : POKEMON_LEN
+                + (move_ix + 1) * MOVE_LEN,
             ] = new_move
     return encoded_battle
 
@@ -51,9 +53,13 @@ def encode_pokemon(pokemon: Pokemon) -> torch.Tensor:
     encoded_pokemon[ObsIdx.hp_ratio] = pokemon.current_hp_fraction
 
     encoded_pokemon[ObsIdx.base_hp] = pokemon.base_stats["hp"] / 255.0  # Blissey
-    encoded_pokemon[ObsIdx.base_atk] = pokemon.base_stats["atk"] / 190.0  # Mega Mewtwo X
+    encoded_pokemon[ObsIdx.base_atk] = (
+        pokemon.base_stats["atk"] / 190.0
+    )  # Mega Mewtwo X
     encoded_pokemon[ObsIdx.base_def] = pokemon.base_stats["def"] / 250.0  # Eternatus
-    encoded_pokemon[ObsIdx.base_spa] = pokemon.base_stats["spa"] / 194.0  # Mega Mewtwo Y
+    encoded_pokemon[ObsIdx.base_spa] = (
+        pokemon.base_stats["spa"] / 194.0
+    )  # Mega Mewtwo Y
     encoded_pokemon[ObsIdx.base_spd] = pokemon.base_stats["spd"] / 250.0  # Eternatus
     encoded_pokemon[ObsIdx.base_spe] = pokemon.base_stats["spe"] / 200.0  # Regieleki
 

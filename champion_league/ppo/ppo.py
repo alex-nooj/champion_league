@@ -8,14 +8,13 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from champion_league.ppo.model import (
-    PolicyNetwork,
-    ValueNetwork,
-    device,
-    train_value_network,
-    train_policy_network,
-)
-from champion_league.ppo.replay import Episode, History
+from champion_league.ppo.model import device
+from champion_league.ppo.model import PolicyNetwork
+from champion_league.ppo.model import train_policy_network
+from champion_league.ppo.model import train_value_network
+from champion_league.ppo.model import ValueNetwork
+from champion_league.utils.replay import Episode
+from champion_league.utils.replay import History
 
 
 def main(
@@ -34,10 +33,10 @@ def main(
     n_actions = env.action_space.n
     feature_dim = observation.size
 
-    value_model = ValueNetwork(in_dim=feature_dim).to(device)
+    value_model = ValueNetwork(in_dim=feature_dim).to(device).eval()
     value_optimizer = optim.Adam(value_model.parameters(), lr=learning_rate)
 
-    policy_model = PolicyNetwork(in_dim=feature_dim, n=n_actions).to(device)
+    policy_model = PolicyNetwork(in_dim=feature_dim, n=n_actions).to(device).eval()
     policy_optimizer = optim.Adam(policy_model.parameters(), lr=learning_rate)
 
     n_epoch = 4
@@ -58,10 +57,12 @@ def main(
 
         if ite % 50 == 0:
             torch.save(
-                policy_model.state_dict(), Path(log_dir) / (env_name + f"_{str(ite)}_policy.pth"),
+                policy_model.state_dict(),
+                Path(log_dir) / (env_name + f"_{str(ite)}_policy.pth"),
             )
             torch.save(
-                value_model.state_dict(), Path(log_dir) / (env_name + f"_{str(ite)}_value.pth"),
+                value_model.state_dict(),
+                Path(log_dir) / (env_name + f"_{str(ite)}_value.pth"),
             )
 
         for episode_i in range(max_episodes):
@@ -70,8 +71,9 @@ def main(
             episode = Episode()
 
             for timestep in range(max_timesteps):
-
-                action, log_probability = policy_model.sample_action(observation / state_scale)
+                action, log_probability = policy_model.sample_action(
+                    observation / state_scale
+                )
                 value = value_model.state_value(observation / state_scale)
 
                 new_observation, reward, done, info = env.step(action)
@@ -97,10 +99,14 @@ def main(
 
             episode_ite += 1
             writer.add_scalar(
-                "Average Episode Reward", reward_scale * np.sum(episode.rewards), episode_ite,
+                "Average Episode Reward",
+                reward_scale * np.sum(episode.rewards),
+                episode_ite,
             )
             writer.add_scalar(
-                "Average Probabilities", np.exp(np.mean(episode.log_probabilities)), episode_ite,
+                "Average Probabilities",
+                np.exp(np.mean(episode.log_probabilities)),
+                episode_ite,
             )
 
             history.add_episode(episode)
@@ -108,16 +114,22 @@ def main(
         history.build_dataset()
         data_loader = DataLoader(history, batch_size=batch_size, shuffle=True)
 
+        policy_model = policy_model.train()
         policy_loss = train_policy_network(
             policy_model, policy_optimizer, data_loader, epochs=n_epoch, clip=clip
         )
+        policy_model = policy_model.eval()
 
-        value_loss = train_value_network(value_model, value_optimizer, data_loader, epochs=n_epoch)
+        value_model = value_model.train()
+        value_loss = train_value_network(
+            value_model, value_optimizer, data_loader, epochs=n_epoch
+        )
+        value_model = value_model.eval()
 
-        for p_l, v_l in zip(policy_loss, value_loss):
-            epoch_ite += 1
-            writer.add_scalar("Policy Loss", p_l, epoch_ite)
-            writer.add_scalar("Value Loss", v_l, epoch_ite)
+        # for p_l, v_l in zip(policy_loss, value_loss):
+        #     epoch_ite += 1
+        #     writer.add_scalar("Policy Loss", p_l, epoch_ite)
+        #     writer.add_scalar("Value Loss", v_l, epoch_ite)
 
         history.free_memory()
 
@@ -130,5 +142,5 @@ if __name__ == "__main__":
         env_name="CartPole-v0",
         learning_rate=0.001,
         state_scale=1.0,
-        log_dir="/home/alex/Desktop/tests/challengers/cartpole_new_ppo",
+        log_dir="/home/anewgent/Desktop/tests/challengers/cartpole_new_ppo",
     )

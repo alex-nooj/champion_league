@@ -7,4 +7,4 @@ def build_network_from_args(args: DotDict) -> nn.Module:
 
     network_path = f"champion_league.network.{args.network}"
     build_cls = getattr(importlib.import_module(network_path), "build_from_args")
-    return build_cls(args).to(args.gpu_id)
+    return build_cls(args).to(f"cuda:{args.device}")

@@ -7,15 +7,19 @@ from champion_league.agent.ppo.ppo_agent import PPOAgent
 from champion_league.agent.scripted.max_damage_player import MaxDamagePlayer
 from champion_league.env.rl_player import RLPlayer
 from champion_league.network import build_network_from_args
-from champion_league.ppo.replay import Episode, History
 from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.utils.replay import Episode
+from champion_league.utils.replay import History
 
 
 def parse_args() -> DotDict:
     from champion_league.config import CFG
 
     args = DotDict(
-        {k: tuple(v) if type(v) not in [int, float, str, bool] else v for k, v in CFG.items()}
+        {
+            k: tuple(v) if type(v) not in [int, float, str, bool] else v
+            for k, v in CFG.items()
+        }
     )
 
     return args
@@ -68,13 +72,17 @@ def train_loop(
                 "Average Episode Reward", float(np.sum(episode.rewards)), episode_ite
             )
             agent.write_to_tboard(
-                "Average Probabilities", np.exp(np.mean(episode.log_probabilities)), episode_ite
+                "Average Probabilities",
+                np.exp(np.mean(episode.log_probabilities)),
+                episode_ite,
             )
 
             history.add_episode(episode)
 
         history.build_dataset()
-        data_loader = DataLoader(history, batch_size=batch_size, shuffle=True, drop_last=True)
+        data_loader = DataLoader(
+            history, batch_size=batch_size, shuffle=True, drop_last=True
+        )
         epoch_losses = agent.learn_step(data_loader)
 
         for key in epoch_losses:
@@ -95,7 +103,10 @@ def main(args: DotDict):
 
     network = build_network_from_args(args).eval()
 
-    env_player = RLPlayer(battle_format=args.battle_format, embed_battle=preprocessor.embed_battle,)
+    env_player = RLPlayer(
+        battle_format=args.battle_format,
+        embed_battle=preprocessor.embed_battle,
+    )
 
     opponent = MaxDamagePlayer(args)
 

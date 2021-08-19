@@ -7,7 +7,7 @@ Usage:
 Options
     --tag <str>                 Name of the agent [default: None]
     --opponent_device <int>     GPU to load the opponent onto [default: None]
-    --logdir <str>              Path to agents [default: /home/alex/Documents/pokemon_trainers]
+    --logdir <str>              Path to agents [default: /home/anewgent/Documents/pokemon_trainers]
     --nb_train_episodes <int>   Number of games to train for [default: 10_000_000]
     --epoch_len <int>           Number of steps to take before saving an agent [default: 1_000_000]
     --batch_size <int>          Batch size [default: 64]
@@ -18,14 +18,15 @@ import json
 import os
 import time
 from datetime import datetime
+from typing import Tuple
+
 import numpy as np
 import torch
 from adept.utils.util import DotDict
 from poke_env.player_configuration import PlayerConfiguration
-from typing import Tuple
 
 from champion_league.agent.dqn import DQNAgent
-from champion_league.agent.league.league_player import LeaguePlayer
+from champion_league.agent.league.agent import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 
 
@@ -66,7 +67,11 @@ def parse_args() -> DotDict:
 
     with open(
         os.path.join(
-            args.logdir, args.agent_type, args.tag, f"{args.tag}_{epoch_num}", "args.json"
+            args.logdir,
+            args.agent_type,
+            args.tag,
+            f"{args.tag}_{epoch_num}",
+            "args.json",
         ),
         "r",
     ) as fp:
@@ -153,13 +158,16 @@ def run(player, agent, opponent, args):
 
         agent.log_to_tensorboard(
             total_nb_steps,
-            win_rates={opponent.current_agent.tag: total_win_rates[opponent.current_agent.tag]},
+            win_rates={
+                opponent.current_agent.tag: total_win_rates[opponent.current_agent.tag]
+            },
             reward=reward,
         )
         nb_wins = np.sum([total_win_rates[key][0] for key in total_win_rates])
         nb_games = np.sum([total_win_rates[key][1] for key in total_win_rates])
         agent.log_to_tensorboard(
-            total_nb_steps, win_rates={"total": [nb_wins, nb_games]},
+            total_nb_steps,
+            win_rates={"total": [nb_wins, nb_games]},
         )
 
         opponent.change_agent(agent.win_rates)

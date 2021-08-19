@@ -1,10 +1,10 @@
 import importlib
 import os
+from typing import Dict
 
 import torch
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
-from typing import Dict
 
 from champion_league.network.linear_three_layer import LinearThreeLayer
 from champion_league.network.lstm_network import LSTMNetwork

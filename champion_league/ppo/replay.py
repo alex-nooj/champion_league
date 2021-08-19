@@ -1,5 +1,4 @@
 import numpy as np
-
 from torch.utils.data import Dataset
 
 
@@ -26,7 +25,9 @@ class Episode:
         self.gamma = gamma
         self.lambd = lambd
 
-    def append(self, observation, action, reward, value, log_probability, reward_scale=20):
+    def append(
+        self, observation, action, reward, value, log_probability, reward_scale=20
+    ):
         self.observations.append(observation)
         self.actions.append(action)
         self.rewards.append(reward / reward_scale)

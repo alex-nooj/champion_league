@@ -1,6 +1,8 @@
 import sys
-from typing import List, Dict
+from typing import Dict
+from typing import List
 from typing import Optional
+
 import numpy as np
 
 
@@ -38,8 +40,18 @@ class ProgressBar:
             mode_divider += "|" + centered(k, v)
         mode_divider += "|"
 
+        self.divider = divider
+
         self.header = (
-            divider + "\n" + mode_divider + "\n" + divider + "\n" + title_bar + "\n" + divider
+            divider
+            + "\n"
+            + mode_divider
+            + "\n"
+            + divider
+            + "\n"
+            + title_bar
+            + "\n"
+            + divider
         )
         self.epoch = 0
         self._header_printed = False
@@ -50,7 +62,9 @@ class ProgressBar:
         self.epoch = epoch
         print("")
 
-    def print_bar(self, progress: float, data: Dict[str, float], train_step: bool) -> None:
+    def print_bar(
+        self, progress: float, data: Dict[str, float], train_step: bool
+    ) -> None:
         if not self._header_printed:
             print(self.header)
             self._header_printed = True
@@ -74,7 +88,9 @@ class ProgressBar:
             + "]"
         )
 
-        epoch_bar_section = f"\r|{centered(str(self.epoch), len(centered('Epoch')))}|{bar}|"
+        epoch_bar_section = (
+            f"\r|{centered(str(self.epoch), len(centered('Epoch')))}|{bar}|"
+        )
 
         if train_step:
             self._training_str = ""
@@ -89,3 +105,7 @@ class ProgressBar:
 
         sys.stdout.write(epoch_bar_section + self._training_str + validation_str)
         sys.stdout.flush()
+
+    def close(self):
+        print("")
+        print(self.divider)

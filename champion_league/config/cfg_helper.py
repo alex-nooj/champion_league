@@ -9,7 +9,9 @@ from omegaconf import OmegaConf
 
 def load_cfg(base_cfg_path: str, script_cfg_path: str) -> DictConfig:
     # Load base config
-    base_conf = OmegaConf.merge(_conf_from_path(base_cfg_path), _conf_from_path(script_cfg_path))
+    base_conf = OmegaConf.merge(
+        _conf_from_path(base_cfg_path), _conf_from_path(script_cfg_path)
+    )
     cli_conf = OmegaConf.from_cli()
     resume_conf = _get_special_conf(cli_conf, "resume")
     user_conf = _get_special_conf(cli_conf, "config")

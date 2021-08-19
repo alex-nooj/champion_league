@@ -10,7 +10,7 @@ Options
     --opponent_device <int>     GPU to load the opponent onto [default: None]
     --p_exploit <float>         % of time to play exploiters [default: 0]
     --p_league <float>          % of time to play league agents [default: 0.2]
-    --logdir <str>              Path to agents [default: /home/alex/Documents/pokemon_trainers/]
+    --logdir <str>              Path to agents [default: /home/anewgent/Documents/pokemon_trainers/]
     --network <str>             Python path to network [default:
     --nb_train_episodes <int>   Number of games to train for [default: 10_000_000]
     --epoch_len <int>           Number of games to play before saving an agent [default: 1_000_000]
@@ -27,7 +27,7 @@ from adept.utils.util import DotDict
 from poke_env.player_configuration import PlayerConfiguration
 
 from champion_league.agent.dqn import DQNAgent
-from champion_league.agent.league.league_player import LeaguePlayer
+from champion_league.agent.league.agent import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 
 
@@ -140,7 +140,9 @@ def run(player, agent, opponent, args):
 
         agent.log_to_tensorboard(
             total_nb_steps,
-            win_rates={opponent.current_agent.tag: total_win_rates[opponent.current_agent.tag]},
+            win_rates={
+                opponent.current_agent.tag: total_win_rates[opponent.current_agent.tag]
+            },
             reward=reward,
         )
 

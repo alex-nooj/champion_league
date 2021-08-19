@@ -1,8 +1,11 @@
 from collections import namedtuple
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Tuple
 
 import torch
 from adept.utils.util import DotDict
-from typing import Tuple, Dict, Any, List
 
 Readout = namedtuple(
     "Readout",
@@ -86,8 +89,12 @@ class Rollout:
 
     def read(self) -> Readout:
         return Readout(
-            states=torch.stack(self.states).view(self.rollout_len, self._batch_size, -1),
-            next_states=torch.stack(self.next_states).view(self.rollout_len, self._batch_size, -1),
+            states=torch.stack(self.states).view(
+                self.rollout_len, self._batch_size, -1
+            ),
+            next_states=torch.stack(self.next_states).view(
+                self.rollout_len, self._batch_size, -1
+            ),
             actions=torch.stack(self.actions).view(self.rollout_len, self._batch_size),
             values=torch.stack(self.values).view(self.rollout_len, self._batch_size),
             rewards=torch.tensor(
@@ -105,7 +112,9 @@ class Rollout:
             cx=torch.stack(self.cx).view(
                 [self.rollout_len, self._batch_size] + list(self.cx[0].shape)
             ),
-            step_id=torch.tensor(self.step_ids).view(self.rollout_len, self._batch_size),
+            step_id=torch.tensor(self.step_ids).view(
+                self.rollout_len, self._batch_size
+            ),
         )
 
     def __len__(self):

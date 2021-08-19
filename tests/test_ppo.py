@@ -1,15 +1,14 @@
 from collections import OrderedDict
-
 from typing import Dict
 
-from adept.utils.util import DotDict
 import gym
-
-from champion_league.agent.ppo.ppo_agent import PPOAgent
 import numpy as np
 import torch
 import torch.nn.functional as F
+from adept.utils.util import DotDict
 from torch import nn
+
+from champion_league.agent.ppo.ppo_agent import PPOAgent
 
 
 class SimpleEnv:
@@ -24,7 +23,12 @@ class SimpleEnv:
         self.goal = np.random.randint(low=0, high=self.map_size, size=2)
         self.curr_position = np.random.randint(low=0, high=self.map_size, size=2)
         self.timer = 0
-        state = [self.curr_position[0], self.curr_position[1], self.goal[0], self.goal[1]]
+        state = [
+            self.curr_position[0],
+            self.curr_position[1],
+            self.goal[0],
+            self.goal[1],
+        ]
         return torch.tensor([i / self.map_size for i in state])
 
     def step(self, action: int):
@@ -36,7 +40,10 @@ class SimpleEnv:
 
         self.timer += 1
 
-        if self.curr_position[0] == self.goal[0] and self.curr_position[1] == self.goal[1]:
+        if (
+            self.curr_position[0] == self.goal[0]
+            and self.curr_position[1] == self.goal[1]
+        ):
             is_done = True
             reward = 1
         elif self.timer == (self.map_size * self.map_size):
@@ -46,7 +53,12 @@ class SimpleEnv:
             is_done = False
             reward = 0
 
-        state = [self.curr_position[0], self.curr_position[1], self.goal[0], self.goal[1]]
+        state = [
+            self.curr_position[0],
+            self.curr_position[1],
+            self.goal[0],
+            self.goal[1],
+        ]
 
         return (
             torch.tensor([i / self.map_size for i in state]),
@@ -96,13 +108,17 @@ class LinearNetwork(nn.Module):
         }
 
 
-def train_loop(agent, env, nb_steps, network, device, learning_rate, rollout_len, batch_size):
+def train_loop(
+    agent, env, nb_steps, network, device, learning_rate, rollout_len, batch_size
+):
     agent.reset()
     state = env.reset()
 
     next_states = []
     learn_internals = {"hx": [], "cx": []}
-    internals = {k: r.view(1, -1).to(device) for k, r in network.new_internals().items()}
+    internals = {
+        k: r.view(1, -1).to(device) for k, r in network.new_internals().items()
+    }
 
     optimizer = torch.optim.Adam(network.parameters(), learning_rate)
     total_nb_steps = 0
@@ -173,7 +189,9 @@ def train_loop(agent, env, nb_steps, network, device, learning_rate, rollout_len
 
 def test_loop(network, env, device):
     state = env.reset()
-    internals = {k: r.view(1, -1).to(device) for k, r in network.new_internals().items()}
+    internals = {
+        k: r.view(1, -1).to(device) for k, r in network.new_internals().items()
+    }
 
     nb_games = 0
     rewards = 0
@@ -191,7 +209,11 @@ def test_loop(network, env, device):
 
 def test_ppo():
     args = DotDict(
-        {"logdir": "/home/alex/Desktop/tests/", "tag": "cartpole4", "agent_type": "challengers"}
+        {
+            "logdir": "/home/anewgent/Desktop/tests/",
+            "tag": "cartpole4",
+            "agent_type": "challengers",
+        }
     )
 
     rollout_len = 20
@@ -227,7 +249,9 @@ def test_ppo():
     network.eval()
     agent.save_model(network, 0)
 
-    train_loop(agent, env, nb_steps, network, device, learning_rate, rollout_len, batch_size)
+    train_loop(
+        agent, env, nb_steps, network, device, learning_rate, rollout_len, batch_size
+    )
     test_loop(network, env, device)
 
 

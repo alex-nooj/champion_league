@@ -11,14 +11,15 @@ General Options:
     --batch_size <int>              Batch size [default: 256]
     --tag <str>                     Name of the network [default: None]
     --device <int>                  GPU to train on [default: 0]
-    --logdir <str>                  Where to save the model [default: /home/alex/Documents/pokemon_agents/dqn_start/]
+    --logdir <str>                  Where to save the model [default: /home/anewgent/Documents/pokemon_agents/dqn_start/]
     --algorithm <str>               Which algorithm to use [default: DQN]
-    --opponent_logdir <str>         Where to load the opponenet from [default: /home/alex/Documents/pokemon_agents/dqn_start/]
+    --opponent_logdir <str>         Where to load the opponenet from [default: /home/anewgent/Documents/pokemon_agents/dqn_start/]
     --opponent_tag <str>            Name of the opponent [default: sampling_actions]
     --opponent_gpu <int>            GPU to load the opponent onto [default: 0]
 """
 import time
-from typing import Callable, Tuple
+from typing import Callable
+from typing import Tuple
 
 import numpy as np
 import torch
@@ -55,7 +56,11 @@ def parse_args() -> Tuple[DotDict, DotDict]:
     args.opponent_gpu = int(args.opponent_gpu)
 
     opponent_args = DotDict(
-        {"logdir": args.opponent_logdir, "tag": args.opponent_tag, "gpu_id": args.opponent_gpu,}
+        {
+            "logdir": args.opponent_logdir,
+            "tag": args.opponent_tag,
+            "gpu_id": args.opponent_gpu,
+        }
     )
     return args, opponent_args
 
@@ -69,25 +74,36 @@ class SimpleRLPlayer(Gen8EnvSinglePlayer):
         moves_base_power = -np.ones(4)
         moves_dmg_multiplier = np.ones(4)
         for i, move in enumerate(battle.available_moves):
-            moves_base_power[i] = move.base_power / 100  # Simple rescaling to facilitate learning
+            moves_base_power[i] = (
+                move.base_power / 100
+            )  # Simple rescaling to facilitate learning
             if move.type:
                 moves_dmg_multiplier[i] = move.type.damage_multiplier(
-                    battle.opponent_active_pokemon.type_1, battle.opponent_active_pokemon.type_2,
+                    battle.opponent_active_pokemon.type_1,
+                    battle.opponent_active_pokemon.type_2,
                 )
 
         # We count how many pokemons have not fainted in each team
-        remaining_mon_team = len([mon for mon in battle.team.values() if mon.fainted]) / 6
+        remaining_mon_team = (
+            len([mon for mon in battle.team.values() if mon.fainted]) / 6
+        )
         remaining_mon_opponent = (
             len([mon for mon in battle.opponent_team.values() if mon.fainted]) / 6
         )
 
         # Final vector with 10 components
         return np.concatenate(
-            [moves_base_power, moves_dmg_multiplier, [remaining_mon_team, remaining_mon_opponent],]
+            [
+                moves_base_power,
+                moves_dmg_multiplier,
+                [remaining_mon_team, remaining_mon_opponent],
+            ]
         )
 
     def compute_reward(self, battle) -> float:
-        return self.reward_computing_helper(battle, fainted_value=2, hp_value=1, victory_value=30)
+        return self.reward_computing_helper(
+            battle, fainted_value=2, hp_value=1, victory_value=30
+        )
 
 
 np.random.seed(0)
@@ -95,7 +111,11 @@ np.random.seed(0)
 
 # This is the function that will be used to train the dqn
 def dqn_training(
-    player, agent, args, opponent, selection_policy: Callable,
+    player,
+    agent,
+    args,
+    opponent,
+    selection_policy: Callable,
 ):
     print(opponent.name)
     for i_episode in range(args.nb_train_episodes):
@@ -142,7 +162,10 @@ def dqn_evaluation(player, policy_net, args, epoch, opponent):
             action = policy_net(state.float()).max(1)[1].view(1, 1)
             state, reward, done, info = player.step(action.item())
 
-    print("Epoch %d: %0.3f win rate" % (epoch, player.n_won_battles / args.nb_eval_episodes))
+    print(
+        "Epoch %d: %0.3f win rate"
+        % (epoch, player.n_won_battles / args.nb_eval_episodes)
+    )
 
 
 def main(args: DotDict, opponent_args: DotDict):

@@ -1,14 +1,7 @@
 from collections import OrderedDict
 
-import torch
 import torch.nn as nn
 from adept.utils.util import DotDict
-from poke_env.environment.battle import Battle
-from poke_env.environment.status import Status
-from torch.distributions import Categorical
-
-from champion_league.env.base.obs_idx import ObsIdx
-from champion_league.utils.abilities import ABILITIES
 
 
 class LinearThreeLayer(nn.Module):

@@ -1,8 +1,8 @@
 import sys
-from typing import Tuple
-from typing import List
 from typing import Dict
+from typing import List
 from typing import Optional
+from typing import Tuple
 
 import numpy as np
 import torch
@@ -41,7 +41,12 @@ class ImitationAgent(BaseAgent):
 
     def learn_step(self, data_loader: DataLoader) -> Dict[str, float]:
         self.network = self.network.train()
-        epoch_losses = {"Accuracy": [], "Action Loss": [], "Value Loss": [], "Total Loss": []}
+        epoch_losses = {
+            "Accuracy": [],
+            "Action Loss": [],
+            "Value Loss": [],
+            "Total Loss": [],
+        }
         for observations, actions, _, _, rewards_to_go in data_loader:
             actions = actions.long().to(self.device)
 
@@ -50,7 +55,10 @@ class ImitationAgent(BaseAgent):
             y = self.network(observations)
             action_loss = self.loss(y["rough_action"], actions)
             value_loss = (
-                0.5 * (y["critic"].squeeze(-1) - rewards_to_go.to(y["critic"].device)).pow(2).mean()
+                0.5
+                * (y["critic"].squeeze(-1) - rewards_to_go.to(y["critic"].device))
+                .pow(2)
+                .mean()
             )
 
             loss = action_loss + value_loss
@@ -58,7 +66,9 @@ class ImitationAgent(BaseAgent):
             loss.backward()
             self.optimizer.step()
             epoch_losses["Accuracy"].append(
-                torch.mean((torch.argmax(y["action"], dim=-1) == actions).float()).item()
+                torch.mean(
+                    (torch.argmax(y["action"], dim=-1) == actions).float()
+                ).item()
             )
             epoch_losses["Action Loss"].append(action_loss.item())
             epoch_losses["Value Loss"].append(value_loss.item())
@@ -70,17 +80,27 @@ class ImitationAgent(BaseAgent):
 
     @torch.no_grad()
     def validation_step(self, data_loader: DataLoader):
-        validation_losses = {"Accuracy": [], "Action Loss": [], "Value Loss": [], "Total Loss": []}
+        validation_losses = {
+            "Accuracy": [],
+            "Action Loss": [],
+            "Value Loss": [],
+            "Total Loss": [],
+        }
         for observations, actions, _, _, rewards_to_go in data_loader:
             actions = actions.long().to(self.device)
             y = self.network(observations)
             action_loss = self.loss(y["rough_action"], actions)
             value_loss = (
-                0.5 * (y["critic"].squeeze(-1) - rewards_to_go.to(y["critic"].device)).pow(2).mean()
+                0.5
+                * (y["critic"].squeeze(-1) - rewards_to_go.to(y["critic"].device))
+                .pow(2)
+                .mean()
             )
             total_loss = action_loss + value_loss
             validation_losses["Accuracy"].append(
-                torch.mean((torch.argmax(y["action"], dim=-1) == actions).float()).item()
+                torch.mean(
+                    (torch.argmax(y["action"], dim=-1) == actions).float()
+                ).item()
             )
             validation_losses["Action Loss"].append(action_loss)
             validation_losses["Value Loss"].append(value_loss)
@@ -104,7 +124,9 @@ class ImitationAgent(BaseAgent):
         train_step: bool,
     ):
         # Determine how long the progress bar should be
-        bar_length = round(self._max_bar_length * (batches_completed / batches_total)) + 1
+        bar_length = (
+            round(self._max_bar_length * (batches_completed / batches_total)) + 1
+        )
 
         # Ensure its not longer than the maximum length
         bar_length = min((self._max_bar_length, bar_length))
@@ -219,6 +241,12 @@ class ImitationAgent(BaseAgent):
                 + centered(f"{loss['Total Loss']}:0.3f", len(v_total_loss_section))
             )
 
-        output = "\r|" + centered(str(epoch), len(epoch_section)) + f"|{bar}|" + self._stdout + "|"
+        output = (
+            "\r|"
+            + centered(str(epoch), len(epoch_section))
+            + f"|{bar}|"
+            + self._stdout
+            + "|"
+        )
         sys.stdout.write(output + self._stdout + val_section)
         sys.stdout.flush()
