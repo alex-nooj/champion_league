@@ -382,7 +382,6 @@ def league_epoch(
                         agent.write_to_tboard(f"League Loss/{key}", val)
 
                 history.free_memory()
-                player.complete_current_battle()
 
             if step_counter.steps - start_step >= epoch_len:
                 break
@@ -392,6 +391,8 @@ def league_epoch(
                     skilltracker.skill_ratings,
                 )
                 _ = opponent.change_agent(opponent_name)
+                observation = player.reset()
+                episode = Episode()
 
 
 def league_play(

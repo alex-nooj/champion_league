@@ -3,8 +3,8 @@ battle_format: gen8randombattle
 device: 0
 sample_moves: True
 
-logdir: /home/anewgent/Documents/pokemon_trainers/
-tag: self_play_2
+logdir: None
+tag: None
 
 network: gated_encoder
 preprocessor: modular_processor

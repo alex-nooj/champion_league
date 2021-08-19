@@ -152,22 +152,10 @@ def main(args: DotDict):
 
     agent.save_args(args)
 
+    opponent.change_agent("self")
+
     for epoch in range(args.nb_steps // args.epoch_len):
         agent.save_model(agent.network, epoch, args)
-
-        env_player.play_against(
-            env_algorithm=league_check,
-            opponent=opponent,
-            env_algorithm_kwargs={
-                "agent": agent,
-                "opponent": opponent,
-                "logdir": args.logdir,
-                "epoch": epoch,
-                "args": args,
-            },
-        )
-
-        opponent.change_agent("self")
 
         env_player.play_against(
             env_algorithm=self_epoch,
