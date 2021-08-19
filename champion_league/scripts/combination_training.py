@@ -97,23 +97,10 @@ def main(multi_args: Dict[str, DotDict]):
     args = DotDict(multi_args["league"])
     network = network.eval()
 
-    opponent_network = build_network_from_args(multi_args["imitation"]).eval()
-
     args.in_shape = list(args.in_shape)
-    env_player = RLPlayer(
-        battle_format=args.battle_format,
-        embed_battle=preprocessor.embed_battle,
-    )
 
     matchmaker = MatchMaker(
         args.self_play_prob, args.league_play_prob, args.logdir, args.tag
-    )
-
-    opponent = LeaguePlayer(
-        device=args.device,
-        network=opponent_network,
-        preprocessor=preprocessor,
-        sample_moves=args.sample_moves,
     )
 
     agent = PPOAgent(
@@ -131,12 +118,11 @@ def main(multi_args: Dict[str, DotDict]):
 
     skilltracker = SkillTracker.from_args(args)
 
-    _ = opponent.change_agent(os.path.join(args.logdir, "league", "random_0"))
-
     league_play(
-        env_player,
+        args.battle_format,
+        preprocessor,
+        args.sample_moves,
         agent,
-        opponent,
         matchmaker,
         skilltracker,
         args.nb_steps,
@@ -146,6 +132,7 @@ def main(multi_args: Dict[str, DotDict]):
         args.logdir,
         args.rollout_len,
     )
+
     end_time = time.time()
     print(f"Training took {end_time - start_time} seconds!")
 

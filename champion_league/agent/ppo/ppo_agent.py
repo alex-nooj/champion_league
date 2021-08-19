@@ -91,6 +91,7 @@ class PPOAgent(Agent):
 
         self.mini_epochs = mini_epochs
         self.updates = 0
+        self.win_rates = {}
 
     def sample_action(self, state: torch.Tensor) -> Tuple[float, float, float]:
         """Samples an action from a distribution using the network that's training.
@@ -244,3 +245,10 @@ class PPOAgent(Agent):
 
         self.network = self.network.eval()
         return epoch_losses
+
+    def update_winrates(self, opponent: str, win: int):
+        if opponent not in self.win_rates:
+            self.win_rates[opponent] = [win, 1]
+        else:
+            self.win_rates[opponent][0] += win
+            self.win_rates[opponent][1] += 1

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -15,11 +16,29 @@ from champion_league.env.rl_player import RLPlayer
 from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.preprocessors import build_preprocessor_from_args, Preprocessor
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
 from champion_league.utils.replay import Episode
 from champion_league.utils.replay import History
+
+
+class StepCounter:
+    def __init__(self, reporting_freq: Optional[int] = 10_000):
+        self.steps = 0
+        self.starting_step = 0
+        self.starting_time = time.time()
+        self.reporting_freq = reporting_freq
+
+    def __call__(self):
+        self.steps += 1
+        if self.steps % self.reporting_freq == 0:
+            steps_per_sec = (self.steps - self.starting_step) / (
+                time.time() - self.starting_time
+            )
+            print(f"\nStep {self.steps}: {steps_per_sec} steps/sec")
+            self.starting_step = self.steps
+            self.starting_time = time.time()
 
 
 def print_table(entries: Dict[str, float], float_precision: Optional[int] = 1) -> None:
@@ -83,8 +102,6 @@ def league_check(
         The agent that handles acting and contains the learn step
     opponent: LeaguePlayer
         The opponent that the agent is playing against
-    skilltracker: SkillTracker
-        Tracks the true skill of the agent
     logdir: str
         Where the agent is stored
     epoch: int
@@ -92,10 +109,6 @@ def league_check(
     args: DotDict
         The arguments used to construct the agent
     """
-    import tracemalloc
-
-    tracemalloc.start()
-
     # Grab all of the league agents
     league_agents = os.listdir(os.path.join(logdir, "league"))
 
@@ -124,13 +137,6 @@ def league_check(
         move_to_league(logdir, agent.tag, epoch, args, agent.network)
     print_table(win_dict)
     player.complete_current_battle()
-
-    snapshot = tracemalloc.take_snapshot()
-    top_stats = snapshot.statistics("lineno")
-
-    print("[ Top 10 ]")
-    for stat in top_stats[:10]:
-        print(stat)
 
 
 def move_to_league(
@@ -161,28 +167,22 @@ def move_to_league(
     torch.save(network.state_dict(), os.path.join(save_dir, "network.pt"))
 
 
-def league_epoch(
+def collect_rollout(
     player: RLPlayer,
     agent: PPOAgent,
     opponent: LeaguePlayer,
     matchmaker: MatchMaker,
     skilltracker: SkillTracker,
-    epoch_len: int,
     batch_size: int,
     rollout_len: int,
+    step_counter: StepCounter,
 ):
     history = History()
-
-    epoch_loss_count = {}
-
     done = True
     observation = None
     episode = Episode()
-    win_rates = {}
 
-    start_time = time.time()
-    start_step = 0
-    for step in range(epoch_len):
+    while True:
         if done:
             observation = player.reset()
             episode = Episode()
@@ -191,6 +191,7 @@ def league_epoch(
         action, log_prob, value = agent.sample_action(observation)
 
         new_observation, reward, done, info = player.step(action)
+        step_counter()
 
         episode.append(
             observation=observation.squeeze(),
@@ -214,15 +215,13 @@ def league_epoch(
                 np.exp(np.mean(episode.log_probabilities)),
             )
 
-            if opponent.tag not in win_rates:
-                win_rates[opponent.tag] = [int(reward > 0), 1]
-            else:
-                win_rates[opponent.tag][0] += int(reward > 0)
-                win_rates[opponent.tag][1] += 1
+            agent.update_winrates(opponent.tag, int(reward > 0))
 
             agent.write_to_tboard(
                 f"League Training/{opponent.tag}",
-                float(win_rates[opponent.tag][0] / win_rates[opponent.tag][1]),
+                float(
+                    agent.win_rates[opponent.tag][0] / agent.win_rates[opponent.tag][1]
+                ),
             )
 
             if opponent.tag != "self":
@@ -233,39 +232,173 @@ def league_epoch(
             history.add_episode(episode)
 
             if len(history) > batch_size * rollout_len:
-                print(
-                    f"Step {step}: {(step - start_step) / (time.time() - start_time)}"
-                )
-                start_step = step
-                start_time = time.time()
                 history.build_dataset()
                 data_loader = DataLoader(
-                    history, batch_size=batch_size, shuffle=True, drop_last=True
+                    history,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    drop_last=True,
                 )
                 epoch_losses = agent.learn_step(data_loader)
                 opponent.update_network(agent.network)
 
                 for key in epoch_losses:
-                    if key not in epoch_loss_count:
-                        epoch_loss_count[key] = 0
                     for val in epoch_losses[key]:
                         agent.write_to_tboard(f"League Loss/{key}", val)
-                        epoch_loss_count[key] += 1
 
                 history.free_memory()
+                player.complete_current_battle()
+                break
+            else:
+                opponent_name = matchmaker.choose_match(
+                    skilltracker.agent_skill,
+                    skilltracker.skill_ratings,
+                )
+                _ = opponent.change_agent(opponent_name)
 
-            opponent_name = matchmaker.choose_match(
-                skilltracker.agent_skill, skilltracker.skill_ratings
-            )
-            _ = opponent.change_agent(opponent_name)
 
-    player.complete_current_battle()
+def training_epoch(
+    battle_format: str,
+    preprocessor: Preprocessor,
+    sample_moves: bool,
+    agent: PPOAgent,
+    matchmaker: MatchMaker,
+    skilltracker: SkillTracker,
+    batch_size: int,
+    rollout_len: int,
+    epoch_len: int,
+    step_counter: StepCounter,
+):
+    start_step = step_counter.steps
+    while step_counter.steps - start_step < epoch_len:
+        player = RLPlayer(
+            battle_format=battle_format,
+            embed_battle=preprocessor.embed_battle,
+        )
+
+        opponent = LeaguePlayer(
+            device=agent.device,
+            network=agent.network,
+            preprocessor=preprocessor,
+            sample_moves=sample_moves,
+        )
+
+        _ = opponent.change_agent("self")
+
+        player.play_against(
+            env_algorithm=collect_rollout,
+            opponent=opponent,
+            env_algorithm_kwargs={
+                "agent": agent,
+                "opponent": opponent,
+                "matchmaker": matchmaker,
+                "skilltracker": skilltracker,
+                "batch_size": batch_size,
+                "rollout_len": rollout_len,
+                "step_counter": step_counter,
+            },
+        )
+
+        # PokeEnv has a memory leak that we can solve by just deleting and recreating the players
+        # periodically.
+        del player
+        del opponent
 
 
-def league_play(
+def league_epoch(
     player: RLPlayer,
     agent: PPOAgent,
     opponent: LeaguePlayer,
+    matchmaker: MatchMaker,
+    skilltracker: SkillTracker,
+    batch_size: int,
+    rollout_len: int,
+    epoch_len: int,
+    step_counter: StepCounter,
+):
+    start_step = step_counter.steps
+    history = History()
+    observation = player.reset()
+    episode = Episode()
+    while True:
+        observation = observation.float().to(agent.device)
+
+        action, log_prob, value = agent.sample_action(observation)
+
+        new_observation, reward, done, info = player.step(action)
+        step_counter()
+
+        episode.append(
+            observation=observation.squeeze(),
+            action=action,
+            reward=reward,
+            value=value,
+            log_probability=log_prob,
+            reward_scale=6.0,
+        )
+
+        observation = new_observation
+
+        if done:
+            episode.end_episode(last_value=0)
+            agent.write_to_tboard(
+                "Agent Outputs/Average Episode Reward", float(np.sum(episode.rewards))
+            )
+
+            agent.write_to_tboard(
+                "Agent Outputs/Average Probabilities",
+                float(np.mean([np.exp(lp) for lp in episode.log_probabilities])),
+            )
+
+            agent.update_winrates(opponent.tag, int(reward > 0))
+
+            agent.write_to_tboard(
+                f"League Training/{opponent.tag}",
+                float(
+                    agent.win_rates[opponent.tag][0] / agent.win_rates[opponent.tag][1]
+                ),
+            )
+
+            if opponent.tag != "self":
+                skilltracker.update(reward > 0, opponent.tag)
+                for k, v in skilltracker.skill.items():
+                    agent.write_to_tboard(f"True Skill/{k}", v)
+
+            history.add_episode(episode)
+
+            if len(history) > batch_size * rollout_len:
+                history.build_dataset()
+                data_loader = DataLoader(
+                    history,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    drop_last=True,
+                )
+                epoch_losses = agent.learn_step(data_loader)
+                opponent.update_network(agent.network)
+
+                for key in epoch_losses:
+                    for val in epoch_losses[key]:
+                        agent.write_to_tboard(f"League Loss/{key}", val)
+
+                history.free_memory()
+                player.complete_current_battle()
+
+            if step_counter.steps - start_step >= epoch_len:
+                break
+            else:
+                opponent_name = matchmaker.choose_match(
+                    skilltracker.agent_skill,
+                    skilltracker.skill_ratings,
+                )
+                _ = opponent.change_agent(opponent_name)
+
+
+def league_play(
+    battle_format: str,
+    preprocessor: Preprocessor,
+    sample_moves: bool,
+    agent: PPOAgent,
     matchmaker: MatchMaker,
     skilltracker: SkillTracker,
     nb_steps: int,
@@ -276,10 +409,21 @@ def league_play(
     rollout_len: int,
 ):
     agent.save_args(args)
+    step_counter = StepCounter()
+    player = RLPlayer(
+        battle_format=battle_format,
+        embed_battle=preprocessor.embed_battle,
+    )
+
+    opponent = LeaguePlayer(
+        device=agent.device,
+        network=agent.network,
+        preprocessor=preprocessor,
+        sample_moves=False,
+    )
 
     for epoch in range(nb_steps // epoch_len):
-        agent.save_model(agent.network, epoch, args)
-
+        # Check to see if the agent is able to enter the league or not
         player.play_against(
             env_algorithm=league_check,
             opponent=opponent,
@@ -300,16 +444,15 @@ def league_play(
                 "opponent": opponent,
                 "matchmaker": matchmaker,
                 "skilltracker": skilltracker,
-                "epoch_len": epoch_len,
                 "batch_size": batch_size,
                 "rollout_len": rollout_len,
+                "epoch_len": epoch_len,
+                "step_counter": step_counter,
             },
         )
 
         skilltracker.save_skill_ratings(epoch)
-    agent.save_model(agent.network, nb_steps // epoch_len, args)
-    player.reset_battles()
-    opponent.reset_battles()
+        agent.save_model(agent.network, epoch, args)
 
 
 def main(args: DotDict):

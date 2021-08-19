@@ -1,14 +1,18 @@
+import asyncio
 import copy
 import json
 import os
-from typing import Any
+from threading import Thread
+from typing import Any, Callable
 from typing import Dict
 from typing import Optional
 
 import torch
 from adept.utils.util import DotDict
+from poke_env.data import to_id_str
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
+from poke_env.player.env_player import EnvPlayer
 from poke_env.player.player import Player
 from torch import nn
 
@@ -118,6 +122,7 @@ class LeaguePlayer(Player):
                 device=self.device,
                 sample_moves=self.sample_moves,
             )
+            self.mode = "self"
 
         else:
             # Otherwise, we're playing a league agent, so we have to build that network. So first we
