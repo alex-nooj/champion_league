@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-from adept.utils.util import DotDict
 from torch.utils.data import DataLoader
 
 from champion_league.agent.opponent.league_player import LeaguePlayer
@@ -9,7 +8,7 @@ from champion_league.agent.ppo import PPOAgent
 from champion_league.env.rl_player import RLPlayer
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
-from champion_league.scripts.league_play import league_check
+from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.replay import Episode
 from champion_league.utils.replay import History

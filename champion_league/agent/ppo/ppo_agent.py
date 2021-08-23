@@ -59,6 +59,7 @@ class PPOAgent(Agent):
         logdir: str,
         tag: str,
         mini_epochs: Optional[int] = 4,
+        resume: Optional[bool] = False,
     ):
         """This is the agent used to train a network using PPO. This class handles the sampling of
         moves, the acting when not sampling, and the learning. Built on the base Agent class.
@@ -81,8 +82,10 @@ class PPOAgent(Agent):
             The name of the agent.
         mini_epochs: Optional[int]
             How many mini-epochs to run during the update.
+        resume: Optional[bool]
+            Whether or not we're starting from a previously trained agent.
         """
-        super().__init__(logdir, tag)
+        super().__init__(logdir, tag, resume)
         self.device = device
         self.network = network
         self.optimizer = torch.optim.Adam(network.parameters(), lr=lr)
@@ -91,7 +94,6 @@ class PPOAgent(Agent):
 
         self.mini_epochs = mini_epochs
         self.updates = 0
-        self.win_rates = {}
 
     def sample_action(self, state: torch.Tensor) -> Tuple[float, float, float]:
         """Samples an action from a distribution using the network that's training.
@@ -245,10 +247,3 @@ class PPOAgent(Agent):
 
         self.network = self.network.eval()
         return epoch_losses
-
-    def update_winrates(self, opponent: str, win: int):
-        if opponent not in self.win_rates:
-            self.win_rates[opponent] = [win, 1]
-        else:
-            self.win_rates[opponent][0] += win
-            self.win_rates[opponent][1] += 1

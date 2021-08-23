@@ -5,9 +5,7 @@ from typing import List
 from typing import Tuple
 
 import torch
-from adept.utils.util import DotDict
-
-Readout = namedtuple(
+from champion_league.utils.directory_utils import DotDictReadout = namedtuple(
     "Readout",
     [
         "states",

@@ -8,7 +8,7 @@ from typing import Dict
 from typing import Optional
 
 import torch
-from adept.utils.util import DotDict
+from champion_league.utils.directory_utils import DotDict
 from poke_env.data import to_id_str
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
@@ -115,7 +115,6 @@ class LeaguePlayer(Player):
         if agent_path == "self":
             # If we're doing self-play, then this loads up an opponent that is a copy of the current
             # network.
-            self.tag = "self"
             self.opponent = LeagueOpponent(
                 network=self.network,
                 preprocessor=self.preprocessor,
@@ -123,7 +122,7 @@ class LeaguePlayer(Player):
                 sample_moves=self.sample_moves,
             )
             self.mode = "self"
-
+            self.tag = "self"
         else:
             # Otherwise, we're playing a league agent, so we have to build that network. So first we
             # load up the arguments, which will act as build instructions.
@@ -157,7 +156,7 @@ class LeaguePlayer(Player):
             if agent_path.rsplit("/")[-3] == "challengers":
                 self.tag = "self"
             else:
-                self.tag = args.tag
+                self.tag = agent_path.rsplit("/")[-1]
 
         return self.tag
 

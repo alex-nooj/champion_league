@@ -2,8 +2,7 @@ from typing import Tuple
 
 import numpy as np
 import torch
-from adept.utils.util import DotDict
-from poke_env.environment.battle import Battle
+from champion_league.utils.directory_utils import DotDictfrom poke_env.environment.battle import Battle
 
 from champion_league.preprocessors.base_preprocessor import Preprocessor
 

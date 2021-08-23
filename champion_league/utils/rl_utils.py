@@ -2,8 +2,7 @@ import json
 import os
 
 import torch
-from adept.utils.util import DotDict
-from poke_env.environment.battle import Battle
+from champion_league.utils.directory_utils import DotDictfrom poke_env.environment.battle import Battle
 from poke_env.environment.status import Status
 
 from champion_league.env.base.obs_idx import ObsIdx

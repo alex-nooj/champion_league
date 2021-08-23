@@ -5,7 +5,11 @@ from typing import Dict
 from typing import Optional
 
 import trueskill
-from adept.utils.util import DotDict
+from champion_league.utils.directory_utils import (
+    DotDict,
+    get_most_recent_epoch,
+    get_save_dir,
+)
 
 
 class SkillTracker:
@@ -25,24 +29,18 @@ class SkillTracker:
         agent_mu = None
         agent_sigma = None
         if resume:
-            agent_path = os.path.join(logdir, "challengers", tag)
-            epochs = [
-                e.rsplit("_")[-1]
-                for e in os.listdir(agent_path)
-                if os.path.isdir(os.path.join(agent_path, e)) and e != "sl"
-            ]
-            if len(epochs) != 0:
-                agent_path = os.path.join(
-                    logdir,
-                    "challengers",
-                    tag,
-                    f"{tag}_{max(epochs):05d}",
+            try:
+                epoch = get_most_recent_epoch(os.path.join(logdir, "challengers", tag))
+                skill_file = os.path.join(
+                    get_save_dir(os.path.join(logdir, "challengers"), tag, epoch),
                     "trueskill.json",
                 )
-                with open(agent_path, "r") as fp:
+                with open(skill_file, "r") as fp:
                     temp = json.load(fp)
                     agent_mu = temp["mu"]
                     agent_sigma = temp["sigma"]
+            except ValueError:
+                pass
 
         self.agent_skill = trueskill.Rating(
             mu=self.default_mu if agent_mu is None else agent_mu,
@@ -65,26 +63,24 @@ class SkillTracker:
         )
 
     def load_league_skill(self) -> Dict[str, trueskill.Rating]:
-        league_dir = os.path.join(self.logdir, "league")
-        league_agents = os.listdir(league_dir)
-        skill_dict = {}
-        for agent in league_agents:
-            trueskill_file = os.path.join(
-                self.logdir, "league", agent, "trueskill.json"
-            )
-            if os.path.exists(trueskill_file):
-                with open(trueskill_file, "r") as fp:
-                    agent_skill = json.load(fp)
-            else:
-                agent_skill = {"mu": self.default_mu, "sigma": self.default_sigma}
-                with open(trueskill_file, "w") as fp:
-                    json.dump(agent_skill, fp, indent=4)
+        return {
+            agent: self._load_agent_skill(agent)
+            for agent in os.listdir(os.path.join(self.logdir, "league"))
+        }
 
-            skill_dict[agent] = trueskill.Rating(
-                mu=agent_skill["mu"], sigma=agent_skill["sigma"]
-            )
+    def _load_agent_skill(self, tag: str) -> trueskill.Rating:
+        trueskill_file = os.path.join(
+            self.logdir, "league", tag, "trueskill.json"
+        )
+        if os.path.exists(trueskill_file):
+            with open(trueskill_file, "r") as fp:
+                agent_skill = json.load(fp)
+        else:
+            agent_skill = {"mu": self.default_mu, "sigma": self.default_sigma}
+            with open(trueskill_file, "w") as fp:
+                json.dump(agent_skill, fp, indent=4)
 
-        return skill_dict
+        return trueskill.Rating(**agent_skill)
 
     def _save_league_skill(self):
         league_dir = os.path.join(self.logdir, "league")
@@ -102,13 +98,17 @@ class SkillTracker:
             "challengers",
             self.tag,
             f"{self.tag}_{epoch:05d}",
-            "trueskill.json",
         )
+
+        if not os.path.isdir(agent_dir):
+            os.mkdir(agent_dir)
+
+        trueskill_file = os.path.join(agent_dir, "trueskill.json")
         agent_skill = {
             "mu": self.agent_skill.mu,
             "sigma": self.agent_skill.sigma,
         }
-        with open(agent_dir, "w") as fp:
+        with open(trueskill_file, "w") as fp:
             json.dump(agent_skill, fp, indent=4)
 
     def save_skill_ratings(self, epoch: int):
@@ -116,16 +116,21 @@ class SkillTracker:
         self._save_agent_skill(epoch)
 
     def update(self, agent_won: bool, opponent: str):
-        if agent_won:
-            self.agent_skill, self.skill_ratings[opponent] = trueskill.rate_1vs1(
-                self.agent_skill,
-                self.skill_ratings[opponent],
-            )
-        else:
-            self.skill_ratings[opponent], self.agent_skill = trueskill.rate_1vs1(
-                self.skill_ratings[opponent],
-                self.agent_skill,
-            )
+        try:
+            _ = self.skill_ratings[opponent]
+        except KeyError:
+            self.skill_ratings[opponent] = self._load_agent_skill(opponent)
+        finally:
+            if agent_won:
+                self.agent_skill, self.skill_ratings[opponent] = trueskill.rate_1vs1(
+                    self.agent_skill,
+                    self.skill_ratings[opponent],
+                )
+            else:
+                self.skill_ratings[opponent], self.agent_skill = trueskill.rate_1vs1(
+                    self.skill_ratings[opponent],
+                    self.agent_skill,
+                )
 
     @property
     def skill(self) -> Dict[str, float]:

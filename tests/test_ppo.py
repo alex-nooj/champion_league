@@ -5,8 +5,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from adept.utils.util import DotDict
-from torch import nn
+from champion_league.utils.directory_utils import DotDictfrom torch import nn
 
 from champion_league.agent.ppo.ppo_agent import PPOAgent
 

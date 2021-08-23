@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import torch
-from adept.utils.util import DotDict
+from champion_league.utils.directory_utils import DotDict
 from poke_env.environment.battle import Battle
 
 from champion_league.preprocessors import Preprocessor

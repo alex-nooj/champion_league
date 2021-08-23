@@ -16,25 +16,6 @@ def run_loop(player1, player2):
 
 
 if __name__ == "__main__":
-    import tracemalloc
-    import time
-    tracemalloc.start()
-    # We create two players.
-
-    for _ in range(1000):
-        start_time = time.time()
-        random_player = RandomPlayer(None)
-        max_damage_player = MaxDamagePlayer(None)
-        run_loop(max_damage_player, random_player)
-        max_damage_player.reset_battles()
-        random_player.reset_battles()
-
-        del max_damage_player
-        del random_player
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
-
-        print(time.time() - start_time)
-        print("[ Top 5 ]")
-        for stat in top_stats[:5]:
-            print(stat)
+    random_player = RandomPlayer(None)
+    max_damage_player = MaxDamagePlayer(None)
+    run_loop(max_damage_player, random_player)

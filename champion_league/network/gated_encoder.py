@@ -5,7 +5,7 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
-from adept.utils.util import DotDict
+from champion_league.utils.directory_utils import DotDict
 
 
 class Attn(nn.Module):

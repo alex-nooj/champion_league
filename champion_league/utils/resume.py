@@ -4,8 +4,9 @@ from typing import Optional
 from typing import Tuple
 
 import torch
-from adept.utils.util import DotDict
-from torch import nn
+
+from champion_league.matchmaking.skill_tracker import SkillTracker
+from champion_league.utils.directory_utils import DotDictfrom torch import nn
 
 from champion_league.agent.ppo import PPOAgent
 from champion_league.network import build_network_from_args
@@ -13,16 +14,15 @@ from champion_league.network import build_network_from_args
 
 def resume(args: DotDict) -> Tuple[DotDict, nn.Module, PPOAgent]:
     agent_dir = os.path.join(args.logdir, "challengers", args.tag)
-    if args.epoch is None:
-        args.epoch = max(
-            [
-                int(e.rsplit("_")[-1])
-                for e in os.listdir(agent_dir)
-                if e != "sl" and os.path.isdir(os.path.join(agent_dir, e))
-            ]
-        )
+    epoch = max(
+        [
+            int(e.rsplit("_")[-1])
+            for e in os.listdir(agent_dir)
+            if e != "sl" and os.path.isdir(os.path.join(agent_dir, e))
+        ]
+    )
 
-    old_args = reload_old_args(args.logdir, "challengers", args.tag, args.epoch)
+    old_args = reload_old_args(args.logdir, "challengers", args.tag, epoch)
 
     for arg in old_args:
         if arg not in args:
@@ -45,6 +45,7 @@ def resume(args: DotDict) -> Tuple[DotDict, nn.Module, PPOAgent]:
 
     agent.reload_tboard(args.epoch)
 
+    skill_tracker = SkillTracker.from_args(args)
     return args, network, agent
 
 

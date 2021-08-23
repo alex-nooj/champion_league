@@ -53,47 +53,60 @@ class MatchMaker:
         game_mode = np.random.choice(mode_options, p=mode_probs)
 
         if game_mode == "challengers":
-            # Self-play
-            if np.random.randint(low=0, high=100) < 90:
-                return "self"
-            else:
-                agents = os.listdir(os.path.join(self.logdir, "challengers", self.tag))
-                agents = [
-                    epoch
-                    for epoch in agents
-                    if os.path.isdir(
-                        os.path.join(self.logdir, "challengers", self.tag, epoch)
-                    )
-                    and epoch != "sl"
-                ]
+            return self._choose_self()
+        elif game_mode == "league":
+            return self._choose_league_agent(agent_skill, trueskills)
+        elif game_mode == "exploiters":
+            return self._choose_exploiter()
+
+    def _choose_self(self) -> str:
+        if np.random.randint(low=0, high=100) < 90:
+            return "self"
+        else:
+            agents = os.listdir(os.path.join(self.logdir, "challengers", self.tag))
+            agents = [
+                epoch
+                for epoch in agents
+                if os.path.isdir(
+                    os.path.join(self.logdir, "challengers", self.tag, epoch)
+                )
+                and epoch != "sl"
+            ]
+            try:
                 opponent = np.random.choice(agents)
                 return os.path.join(self.logdir, "challengers", self.tag, opponent)
-        elif game_mode == "league":
-            # League play
-            agents = os.listdir(os.path.join(self.logdir, "league"))
-            if any(agent not in trueskills for agent in agents):
-                unplayed_agents = [agent for agent in agents if agent not in trueskills]
-                opponent = np.random.choice(unplayed_agents)
+            except ValueError:
+                return "self"
+
+    def _choose_league_agent(
+        self, agent_skill: trueskill.Rating, trueskills: Dict[str, trueskill.Rating]
+    ) -> str:
+        agents = os.listdir(os.path.join(self.logdir, "league"))
+
+        if any(agent not in trueskills for agent in agents):
+            unplayed_agents = [agent for agent in agents if agent not in trueskills]
+            opponent = np.random.choice(unplayed_agents)
+        else:
+            if np.random.randint(low=0, high=100) < 90:
+                # The majority of the time, we want to choose an opponent on the same skill level as
+                # the training agent.
+                valid_agents = [
+                    k
+                    for k, v in trueskills.items()
+                    if trueskill.quality_1vs1(agent_skill, v) >= 0.50
+                ]
             else:
-                if np.random.randint(low=0, high=100) < 90:
-                    # The majority of the time, we want to choose an opponent that our agent is at a
-                    # similar skill to our agent
-                    valid_agents = [
-                        k
-                        for k, v in trueskills.items()
-                        if trueskill.quality_1vs1(agent_skill, v) >= 0.50
-                    ]
-                else:
-                    # Other times, we want an agent that ours is likely to either destroy, or get
-                    # destroyed by
-                    valid_agents = [
-                        k
-                        for k, v in trueskills.items()
-                        if trueskill.quality_1vs1(agent_skill, v) < 0.50
-                    ]
-                if len(valid_agents) == 0:
-                    valid_agents = [k for k in trueskills]
-                opponent = np.random.choice(valid_agents)
-            return os.path.join(self.logdir, "league", opponent)
-        elif game_mode == "exploiters":
-            raise NotImplementedError
+                # At other times, we would like an agent that ours is likely to either destroy or be
+                # destroyed by
+                valid_agents = [
+                    k
+                    for k, v in trueskills.items()
+                    if trueskill.quality_1vs1(agent_skill, v) < 0.50
+                ]
+            if len(valid_agents) == 0:
+                valid_agents = [k for k in trueskills]
+            opponent = np.random.choice(valid_agents)
+        return os.path.join(self.logdir, "league", opponent)
+
+    def _choose_exploiter(self):
+        raise NotImplementedError

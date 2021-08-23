@@ -13,14 +13,13 @@ def load_cfg(base_cfg_path: str, script_cfg_path: str) -> DictConfig:
         _conf_from_path(base_cfg_path), _conf_from_path(script_cfg_path)
     )
     cli_conf = OmegaConf.from_cli()
-    resume_conf = _get_special_conf(cli_conf, "resume")
     user_conf = _get_special_conf(cli_conf, "config")
 
     # Remove special fields
-    cli_conf = _rm_fields(cli_conf, ["resume", "config"])
+    cli_conf = _rm_fields(cli_conf, ["config"])
 
     # Merge first pass
-    return _merge_first(base_conf, cli_conf, resume_conf, user_conf)
+    return _merge_first(base_conf, cli_conf, user_conf)
 
 
 def _conf_from_path(script_cfg_path: str) -> DictConfig:
@@ -42,12 +41,9 @@ def _get_special_conf(conf: DictConfig, field_name: str) -> Optional[DictConfig]
 def _merge_first(
     base_conf: DictConfig,
     cli_conf: DictConfig,
-    resume_conf: Optional[DictConfig],
     user_conf: Optional[DictConfig],
 ) -> DictConfig:
-    if resume_conf:
-        conf = OmegaConf.merge(resume_conf, cli_conf)
-    elif user_conf:
+    if user_conf:
         conf = OmegaConf.merge(base_conf, user_conf, cli_conf)
     else:
         conf = OmegaConf.merge(base_conf, cli_conf)

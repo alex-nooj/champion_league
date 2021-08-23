@@ -1,7 +1,7 @@
 import random
 from typing import Union
 
-from adept.utils.util import DotDict
+from champion_league.utils.directory_utils import DotDict
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
 from poke_env.environment.double_battle import DoubleBattle

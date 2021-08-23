@@ -5,8 +5,7 @@ import os
 
 import numpy as np
 import torch
-from adept.utils.util import DotDict
-from poke_env.player.player import Player
+from champion_league.utils.directory_utils import DotDictfrom poke_env.player.player import Player
 from poke_env.player_configuration import PlayerConfiguration
 
 from champion_league.agent.opponent.rl_opponent import RLOpponent

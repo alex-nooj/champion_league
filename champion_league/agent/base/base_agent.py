@@ -5,13 +5,18 @@ from typing import Optional
 from typing import Tuple
 
 import torch
-from adept.utils.util import DotDict
+
+from champion_league.utils.directory_utils import check_and_make_dir
+from champion_league.utils.directory_utils import DotDict
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
+from champion_league.utils.directory_utils import get_most_recent_epoch
+from champion_league.utils.directory_utils import get_save_dir
+
 
 class Agent:
-    def __init__(self, logdir: str, tag: str):
+    def __init__(self, logdir: str, tag: str, resume: Optional[bool]):
         """The base class for an agent. Implements some methods that are just useful for all agents
         or more useful as a standard (like tensorboard logging) while leaving the sample action
         method unimplemented.
@@ -23,11 +28,20 @@ class Agent:
             agent
         tag: str
             The name of the agent
+        resume: Optional[bool]
+            Whether or not we're starting from a previously trained agent.
         """
         self.logdir = logdir
         self.tag = tag
         self.writer = SummaryWriter(log_dir=os.path.join(logdir, tag))
         self.index_dict = {}
+        self.win_rates = {}
+
+        if resume:
+            try:
+                self.reload_tboard(get_most_recent_epoch(os.path.join(logdir, tag)))
+            except ValueError:
+                pass
 
     def sample_action(self, state: torch.Tensor) -> Tuple[float, float, float]:
         """Abstract method for sampling an action from a distribution. This method should take in a
@@ -75,7 +89,7 @@ class Agent:
         with open(os.path.join(save_dir, "args.json"), "w") as fp:
             json.dump(args, fp, indent=2)
 
-        with open(os.path.join(save_dir, "tboad_info.json"), "w") as fp:
+        with open(os.path.join(save_dir, "tboard_info.json"), "w") as fp:
             json.dump(self.index_dict, fp, indent=2)
 
     def save_args(self, args: DotDict) -> None:
@@ -129,7 +143,7 @@ class Agent:
         str
             The full path with the proper naming convention.
         """
-        return os.path.join(self.logdir, self.tag, f"{self.tag}_{epoch:05d}")
+        return get_save_dir(self.logdir, self.tag, epoch)
 
     @staticmethod
     def _check_and_make_dir(path: str) -> None:
@@ -144,8 +158,7 @@ class Agent:
         -------
         None
         """
-        if not os.path.isdir(path):
-            os.mkdir(path)
+        check_and_make_dir(path)
 
     def write_to_tboard(self, label: str, value: float) -> None:
         """Writes a value to tensorboard, while keeping track of the tensorboard index.
@@ -188,3 +201,10 @@ class Agent:
                 self.index_dict = json.load(fp)
         except FileNotFoundError:
             pass
+
+    def update_winrates(self, opponent: str, win: int):
+        if opponent not in self.win_rates:
+            self.win_rates[opponent] = [win, 1]
+        else:
+            self.win_rates[opponent][0] += win
+            self.win_rates[opponent][1] += 1

@@ -9,25 +9,17 @@ from typing import Union
 
 import numpy as np
 import torch
-from adept.utils.util import DotDict
+
+from champion_league.utils.directory_utils import check_and_make_dir
+from champion_league.utils.directory_utils import DotDict
 from numpy.lib.npyio import NpzFile
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 from champion_league.network import build_network_from_args
+from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import ProgressBar
-
-
-def check_and_make_dir(path: str):
-    if not os.path.isdir(path):
-        os.mkdir(path)
-
-
-def parse_args() -> DotDict:
-    from champion_league.config import CFG
-
-    return DotDict({k: v for k, v in CFG.items()})
 
 
 def save_args(args: DotDict):
@@ -186,9 +178,6 @@ def imitation_learning(
             for k, v in validation_results.items():
                 writer.add_scalar(f"Imitation Validation/{k}", v, epoch)
 
-            save_model(
-                os.path.join(logdir, tag, "sl", f"network_{epoch:03d}.pt"), network
-            )
             if min_val_loss is None or validation_results["Total Loss"] < min_val_loss:
                 min_val_loss = validation_results["Total Loss"]
                 best_model = OrderedDict(
@@ -207,14 +196,14 @@ def imitation_learning(
     return network
 
 
-def main(args: DotDict):
+def main(args: DotDict) -> torch.nn.Module:
     dataset = np.load(args.dataset)
 
     args.in_shape = dataset["states"].shape[1:]
 
     network = build_network_from_args(args).to(f"cuda:{args.device}")
 
-    network = imitation_learning(
+    return imitation_learning(
         dataset=dataset,
         split_ratio=args.split_ratio,
         device=args.device,
@@ -229,4 +218,4 @@ def main(args: DotDict):
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    _ = main(parse_args())

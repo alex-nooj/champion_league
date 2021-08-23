@@ -1,6 +1,5 @@
 import torch
-from adept.utils.util import DotDict
-
+from champion_league.utils.directory_utils import DotDict
 from champion_league.agent.ppo.ppo_agent import PPOAgent
 
 

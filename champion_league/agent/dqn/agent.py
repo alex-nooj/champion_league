@@ -5,7 +5,7 @@ from typing import Union
 
 import torch
 import torch.nn.functional as F
-from adept.utils.util import DotDict
+from champion_league.utils.directory_utils import DotDict
 from torch import optim
 
 from champion_league.agent.base.base_agent import Agent

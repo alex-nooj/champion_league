@@ -1,5 +1,4 @@
 import numpy as np
-from adept.utils.util import DotDict
 from poke_env.environment.battle import Battle
 from poke_env.environment.move_category import MoveCategory
 from poke_env.environment.side_condition import SideCondition

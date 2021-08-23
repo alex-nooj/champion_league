@@ -23,46 +23,19 @@ from typing import Tuple
 
 import numpy as np
 import torch
-from adept.utils.util import DotDict
-from poke_env.player.env_player import Gen8EnvSinglePlayer
+from champion_league.utils.directory_utils import DotDictfrom poke_env.player.env_player import Gen8EnvSinglePlayer
 from poke_env.player_configuration import PlayerConfiguration
 
 from champion_league.agent.dqn.agent import DQNAgent
 from champion_league.agent.dqn.utils import sampling_policy
 from champion_league.agent.scripted.max_damage_player import MaxDamagePlayer
 from champion_league.env.rl_player import RLPlayer
+from champion_league.utils.parse_args import parse_args
 
 NB_TRAINING_STEPS = 10000
 NB_EVALUATION_EPISODES = 100
 TARGET_UPDATE = 10
 START_TIME = time.time()
-
-
-def parse_args() -> Tuple[DotDict, DotDict]:
-    from docopt import docopt
-
-    args = docopt(__doc__)
-    args = {k.strip("--").replace("-", "_"): v for k, v in args.items()}
-
-    args = DotDict(args)
-    args.nb_train_episodes = int(args.nb_train_episodes)
-    args.nb_eval_episodes = int(args.nb_eval_episodes)
-    args.nb_epochs = int(args.nb_epochs)
-    args.tag = str(args.tag)
-    args.device = int(args.device)
-    args.logdir = str(args.logdir)
-    args.algorithm = str(args.algorithm)
-    args.batch_size = int(args.batch_size)
-    args.opponent_gpu = int(args.opponent_gpu)
-
-    opponent_args = DotDict(
-        {
-            "logdir": args.opponent_logdir,
-            "tag": args.opponent_tag,
-            "gpu_id": args.opponent_gpu,
-        }
-    )
-    return args, opponent_args
 
 
 # We define our RL player

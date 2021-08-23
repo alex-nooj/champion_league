@@ -3,7 +3,7 @@ import json
 from typing import List
 import orjson
 
-from adept.utils.util import DotDict
+from champion_league.utils.directory_utils import DotDict
 from poke_env.player.player import Player
 
 

@@ -1,10 +1,7 @@
 from collections import OrderedDict
 
 import torch.nn as nn
-from adept.utils.util import DotDict
-
-
-class LinearThreeLayer(nn.Module):
+from champion_league.utils.directory_utils import DotDictclass LinearThreeLayer(nn.Module):
     def __init__(self, nb_actions, in_shape, device):
         super(LinearThreeLayer, self).__init__()
         self.device = device

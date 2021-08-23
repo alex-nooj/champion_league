@@ -1,20 +1,17 @@
-import asyncio
 import os
 import time
 from typing import Dict
 
-import torch
-from adept.utils.util import DotDict
+import numpy as np
 
-from champion_league.agent.opponent.league_player import LeaguePlayer
 from champion_league.agent.ppo import PPOAgent
-from champion_league.env.rl_player import RLPlayer
 from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
 from champion_league.scripts.league_play import league_play
+from champion_league.utils.directory_utils import DotDict, get_most_recent_epoch
 
 
 def parse_multi_args() -> Dict[str, DotDict]:
@@ -36,106 +33,90 @@ def parse_multi_args() -> Dict[str, DotDict]:
 
 
 def main(multi_args: Dict[str, DotDict]):
-    start_time = time.time()
-    preprocessor = build_preprocessor_from_args(multi_args["league"])
+    imitation_args = DotDict(multi_args["imitation"])
+    league_args = DotDict(multi_args["league"])
 
-    multi_args["imitation"].in_shape = preprocessor.output_shape
-    multi_args["league"].in_shape = preprocessor.output_shape
+    preprocessor = build_preprocessor_from_args(league_args)
 
-    network = build_network_from_args(multi_args["imitation"])
+    imitation_args.in_shape = list(preprocessor.output_shape)
+    league_args.in_shape = list(preprocessor.output_shape)
 
-    args = multi_args["imitation"]
-    if multi_args["imitate"]:
+    imitation_args.resume = multi_args["resume"]
+    league_args.resume = multi_args["resume"]
+
+    network = build_network_from_args(imitation_args)
+
+    if not multi_args["resume"] and multi_args["imitate"]:
+        dataset = np.load(imitation_args.dataset)
+        imitation_args.in_shape = dataset["states"].shape[1:]
+        network = build_network_from_args(imitation_args)
+
         network = imitation_learning(
-            dataset=args.dataset,
-            split_ratio=args.split_ratio,
-            device=args.device,
-            batch_size=args.batch_size,
-            nb_epochs=args.nb_epochs,
-            lr=args.lr,
+            dataset=imitation_args.dataset,
+            split_ratio=imitation_args.split_ratio,
+            device=imitation_args.device,
+            batch_size=imitation_args.batch_size,
+            nb_epochs=imitation_args.nb_epochs,
+            lr=imitation_args.lr,
             network=network,
-            logdir=os.path.join(args.logdir, "challengers"),
-            tag=args.tag,
-            patience=args.patience,
+            logdir=os.path.join(imitation_args.logdir, "challengers"),
+            tag=imitation_args.tag,
+            patience=imitation_args.patience,
         )
-    elif multi_args["resume"]:
-        epochs = [
-            epoch
-            for epoch in os.listdir(os.path.join(args.logdir, "challengers", args.tag))
-            if os.path.isdir(os.path.join(args.logdir, "challengers", args.tag, epoch))
-        ]
-        if len(epochs) > 0:
-            rl_epochs = [
-                int(epoch.rsplit("_")[-1]) for epoch in epochs if args.tag in epoch
-            ]
-            model_dir = (
-                f"{args.tag}_{max(rl_epochs):05d}" if len(rl_epochs) > 0 else "sl"
-            )
-            model_file = "network.pt" if len(rl_epochs) > 0 else "best_model.pt"
 
-            network.load_state_dict(
-                torch.load(
-                    os.path.join(
-                        args.logdir, "challengers", args.tag, model_dir, model_file
-                    ),
-                    map_location=lambda storage, loc: storage,
-                )
-            )
-    elif os.path.isdir(
-        os.path.join(args.logdir, "challengers", args.tag, "sl")
-    ) and "best_model.pt" in os.listdir(
-        os.path.join(args.logdir, "challengers", args.tag, "sl")
-    ):
-        network.load_state_dict(
-            torch.load(
-                os.path.join(
-                    args.logdir, "challengers", args.tag, "sl", "best_model.pt"
-                ),
-                map_location=lambda storage, loc: storage,
-            )
-        )
-    args = DotDict(multi_args["league"])
     network = network.eval()
 
-    args.in_shape = list(args.in_shape)
-
     matchmaker = MatchMaker(
-        args.self_play_prob, args.league_play_prob, args.logdir, args.tag
+        league_args.self_play_prob,
+        league_args.league_play_prob,
+        league_args.logdir,
+        league_args.tag,
     )
 
     agent = PPOAgent(
-        device=args.device,
+        device=league_args.device,
         network=network,
-        lr=args.lr,
-        entropy_weight=args.entropy_weight,
-        clip=args.clip,
-        logdir=os.path.join(args.logdir, "challengers"),
-        tag=args.tag,
+        lr=league_args.lr,
+        entropy_weight=league_args.entropy_weight,
+        clip=league_args.clip,
+        logdir=os.path.join(league_args.logdir, "challengers"),
+        tag=league_args.tag,
+        resume=league_args.resume,
     )
 
-    agent.save_args(args)
-    agent.save_model(agent.network, 0, args)
+    skilltracker = SkillTracker.from_args(league_args)
 
-    skilltracker = SkillTracker.from_args(args)
+    if multi_args["resume"]:
+        try:
+            starting_epoch = get_most_recent_epoch(
+                os.path.join(
+                    league_args.logdir, "challengers", league_args.tag
+                )
+            )
+        except ValueError:
+            starting_epoch = 0
+    else:
+        starting_epoch = 0
 
     league_play(
-        args.battle_format,
-        preprocessor,
-        args.sample_moves,
-        agent,
-        matchmaker,
-        skilltracker,
-        args.nb_steps,
-        args.epoch_len,
-        args.batch_size,
-        args,
-        args.logdir,
-        args.rollout_len,
+        battle_format=league_args.battle_format,
+        preprocessor=preprocessor,
+        sample_moves=league_args.sample_moves,
+        agent=agent,
+        matchmaker=matchmaker,
+        skilltracker=skilltracker,
+        nb_steps=league_args.nb_steps,
+        epoch_len=league_args.epoch_len,
+        batch_size=league_args.batch_size,
+        args=league_args,
+        logdir=league_args.logdir,
+        rollout_len=league_args.rollout_len,
+        starting_epoch=starting_epoch
     )
-
-    end_time = time.time()
-    print(f"Training took {end_time - start_time} seconds!")
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     main(parse_multi_args())
+    end_time = time.time()
+    print(f"Training took {end_time - start_time} seconds!")
