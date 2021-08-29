@@ -5,10 +5,11 @@ import os
 
 import numpy as np
 import torch
-from champion_league.utils.directory_utils import DotDictfrom poke_env.player.player import Player
+from champion_league.utils.directory_utils import DotDict
+from poke_env.player.player import Player
 from poke_env.player_configuration import PlayerConfiguration
 
-from champion_league.agent.opponent.rl_opponent import RLOpponent
+from champion_league.agent.opponent.opponent_player import OpponentPlayer
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 
@@ -96,7 +97,7 @@ async def main(args: DotDict):
 
     network = load_model(network, args.logdir, args.tag, args.epoch)
 
-    env_player = RLOpponent(
+    env_player = OpponentPlayer(
         network=network,
         preprocessor=preprocessor,
         sample_moves=False,
