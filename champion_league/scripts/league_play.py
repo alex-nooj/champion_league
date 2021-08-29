@@ -176,15 +176,18 @@ def move_to_league(
     network: torch.nn.Module
         The neural network being trained
     """
-    os.symlink(
-        src=get_save_dir(os.path.join(logdir, "challengers"), tag, epoch),
-        dst=os.path.join(
-            logdir,
-            "league",
-            f"{tag}_{epoch:05d}",
-        ),
-        target_is_directory=True,
-    )
+    try:
+        os.symlink(
+            src=get_save_dir(os.path.join(logdir, "challengers"), tag, epoch),
+            dst=os.path.join(
+                logdir,
+                "league",
+                f"{tag}_{epoch:05d}",
+            ),
+            target_is_directory=True,
+        )
+    except FileExistsError:
+        pass
 
 
 def league_epoch(
@@ -359,6 +362,7 @@ def league_play(
 
     for epoch in range(starting_epoch, nb_steps // epoch_len):
         agent.save_model(agent.network, epoch, args)
+        skilltracker.save_skill_ratings(epoch)
 
         player = RLPlayer(
             battle_format=battle_format,
@@ -405,8 +409,33 @@ def league_play(
 
         del player
         del opponent
+    agent.save_model(agent.network, nb_steps // epoch_len, args)
+    skilltracker.save_skill_ratings(nb_steps // epoch_len)
 
-        skilltracker.save_skill_ratings(epoch)
+    player = RLPlayer(
+        battle_format=battle_format,
+        embed_battle=preprocessor.embed_battle,
+    )
+
+    opponent = LeaguePlayer(
+        device=agent.device,
+        network=agent.network,
+        preprocessor=preprocessor,
+        sample_moves=sample_moves,
+    )
+
+    # Check to see if the agent is able to enter the league or not
+    player.play_against(
+        env_algorithm=league_check,
+        opponent=opponent,
+        env_algorithm_kwargs={
+            "agent": agent,
+            "opponent": opponent,
+            "logdir": logdir,
+            "epoch": epoch,
+            "args": args,
+        },
+    )
 
 
 def main(args: DotDict):

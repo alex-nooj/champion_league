@@ -1,26 +1,22 @@
-import asyncio
 import copy
 import json
 import os
-from threading import Thread
-from typing import Any, Callable
+from typing import Any
 from typing import Dict
 from typing import Optional
 
 import torch
-from champion_league.utils.directory_utils import DotDict
-from poke_env.data import to_id_str
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
-from poke_env.player.env_player import EnvPlayer
 from poke_env.player.player import Player
 from torch import nn
 
-from champion_league.agent.opponent.league_opponent import LeagueOpponent
+from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.scripted import SCRIPTED_AGENTS
 from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.preprocessors import Preprocessor
+from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.utils.directory_utils import DotDict
 
 
 class LeaguePlayer(Player):
@@ -115,7 +111,7 @@ class LeaguePlayer(Player):
         if agent_path == "self":
             # If we're doing self-play, then this loads up an opponent that is a copy of the current
             # network.
-            self.opponent = LeagueOpponent(
+            self.opponent = RLOpponent(
                 network=self.network,
                 preprocessor=self.preprocessor,
                 device=self.device,
@@ -139,12 +135,13 @@ class LeaguePlayer(Player):
                 # Otherwise, we have an ML agent, and have to build the LeagueOpponent class using
                 # this network as a selection strategy.
                 self.mode = "ml"
+                args.resume = False
                 network = build_network_from_args(args).eval()
                 network.load_state_dict(
                     torch.load(os.path.join(agent_path, "network.pt"))
                 )
                 preprocessor = build_preprocessor_from_args(args)
-                self.opponent = LeagueOpponent(
+                self.opponent = RLOpponent(
                     network=network,
                     preprocessor=preprocessor,
                     device=self.device,
