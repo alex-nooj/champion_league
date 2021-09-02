@@ -53,10 +53,8 @@ class RLOpponent:
             PokeEnv and Showdown.
         """
         state = self.preprocessor.embed_battle(battle)
-        if len(state.size()) == 2:
-            state = state.unsqueeze(0)
 
-        y = self.network(state.to(self.device))
+        y = self.network(state)
 
         if self.sample_moves:
             action = torch.multinomial(y["action"][0:], 1)

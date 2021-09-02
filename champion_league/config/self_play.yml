@@ -3,11 +3,11 @@ battle_format: gen8randombattle
 device: 0
 sample_moves: True
 
-logdir: None
-tag: None
+logdir: /home/anewgent/Documents/pokemon_trainers/
+tag: Test
 
-network: gated_encoder
-preprocessor: modular_processor
+network: AbilityNetwork
+preprocessor: ModularPreprocessor
 subprocessor: simple_preprocessor
 
 nb_steps: 1_000_000

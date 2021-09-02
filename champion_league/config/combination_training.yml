@@ -6,7 +6,7 @@ default:
   device: 0
   logdir: /home/anewgent/Documents/pokemon_trainers/
   tag: combo_training
-  network: gated_encoder
+  network: AbilityNetwork
   nb_encoders: 1
   nb_heads: 1
   scale: False
@@ -21,7 +21,7 @@ imitation:
 
 league:
   battle_format: gen8randombattle
-  preprocessor: modular_processor
+  preprocessor: ModularPreprocessor
   nb_steps: 100_000_000
   epoch_len: 1_000_000
   lr: 0.0002

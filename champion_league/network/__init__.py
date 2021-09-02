@@ -2,15 +2,19 @@ import torch
 from torch import nn
 import os
 
+from champion_league.network.ability_network import AbilityNetwork
+from champion_league.network.gated_encoder import GatedEncoder
 from champion_league.utils.directory_utils import DotDict, get_most_recent_epoch, get_save_dir
 
 
-def build_network_from_args(args: DotDict) -> nn.Module:
-    import importlib
+networks = {
+    "GatedEncoder": GatedEncoder,
+    "AbilityNetwork": AbilityNetwork,
+}
 
-    network_path = f"champion_league.network.{args.network}"
-    build_cls = getattr(importlib.import_module(network_path), "build_from_args")
-    network = build_cls(args).to(f"cuda:{args.device}")
+
+def build_network_from_args(args: DotDict) -> nn.Module:
+    network = networks[args.network].from_args(args).to(f"cuda:{args.device}")
 
     if args.resume:
         network = resume_network_from_args(args, network)
