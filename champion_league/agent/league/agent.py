@@ -9,7 +9,8 @@ from typing import Union
 import numpy as np
 import torch
 import torch.nn.functional as F
-from champion_league.utils.directory_utils import DotDictfrom poke_env.environment.abstract_battle import AbstractBattle
+from champion_league.utils.directory_utils import DotDict
+from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.player import Player
