@@ -202,7 +202,20 @@ class Agent:
         except FileNotFoundError:
             pass
 
-    def update_winrates(self, opponent: str, win: int):
+    def update_winrates(self, opponent: str, win: int) -> None:
+        """Function for tracking the win-rates of the agent.
+
+        Parameters
+        ----------
+        opponent: str
+            The name of the opponent (no path)
+        win: int
+            1 if the agent won, 0 if the agent lost
+
+        Returns
+        -------
+        None
+        """
         if opponent not in self.win_rates:
             self.win_rates[opponent] = [win, 1]
         else:

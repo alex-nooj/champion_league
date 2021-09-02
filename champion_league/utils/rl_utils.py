@@ -1,12 +1,12 @@
 import json
 import os
-
 import torch
-from champion_league.utils.directory_utils import DotDictfrom poke_env.environment.battle import Battle
+from poke_env.environment.battle import Battle
 from poke_env.environment.status import Status
 
 from champion_league.env.base.obs_idx import ObsIdx
 from champion_league.utils.abilities import ABILITIES
+from champion_league.utils.directory_utils import DotDict
 
 
 def save_args(args: DotDict):

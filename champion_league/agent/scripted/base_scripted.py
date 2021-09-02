@@ -70,19 +70,6 @@ class BaseScripted:
     ) -> BattleOrder:
         """Formats an move order corresponding to the provided pokemon or move.
 
-        :param order: Move to make or Pokemon to switch to.
-        :type order: Move or Pokemon
-        :param mega: Whether to mega evolve the pokemon, if a move is chosen.
-        :type mega: bool
-        :param z_move: Whether to make a zmove, if a move is chosen.
-        :type z_move: bool
-        :param dynamax: Whether to dynamax, if a move is chosen.
-        :type dynamax: bool
-        :param move_target: Target Pokemon slot of a given move
-        :type move_target: int
-        :return: Formatted move order
-        :rtype: str
-
         Parameters
         ----------
         order: Union[Move, Pokemon]

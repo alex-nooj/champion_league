@@ -1,10 +1,6 @@
-import gc
-import json
-from typing import List
-import orjson
+from poke_env.player.player import Player
 
 from champion_league.utils.directory_utils import DotDict
-from poke_env.player.player import Player
 
 
 class MaxDamagePlayer(Player):

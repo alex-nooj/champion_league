@@ -122,6 +122,20 @@ class RLPlayer(Gen8EnvSinglePlayer):
         return obs, reward, done, {"won": 1 if self._current_battle.won else 0}
 
     def _action_to_move(self, action: int, battle: Battle) -> BattleOrder:
+        """Converts the action index to the format readable by Showdown!
+
+        Parameters
+        ----------
+        action: int
+            The action that is to be performed
+        battle: Battle
+            The current gamestate
+
+        Returns
+        -------
+        BattleOrder
+            The action that is to be performed, in a format readable by Showdown!
+        """
         if (
             action < 4
             and action < len(battle.available_moves)

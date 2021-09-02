@@ -9,7 +9,7 @@ from champion_league.utils.directory_utils import DotDict
 from poke_env.player.player import Player
 from poke_env.player_configuration import PlayerConfiguration
 
-from champion_league.agent.opponent.opponent_player import OpponentPlayer
+from champion_league.env.opponent_player import OpponentPlayer
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 
