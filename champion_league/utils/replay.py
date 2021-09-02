@@ -21,7 +21,7 @@ def cumulative_sum(array: Union[List, np.ndarray], gamma: Optional[float] = 1.0)
 
 class Episode:
     def __init__(self, gamma: Optional[float] = 0.99, lambd: Optional[float] = 0.95):
-        self.observations = {}
+        self.observations = []
         self.actions = []
         self.advantages = []
         self.rewards = []
@@ -40,11 +40,7 @@ class Episode:
         log_probability: float,
         reward_scale: Optional[int] = 20,
     ):
-        for key in observation:
-            if key not in self.observations:
-                self.observations[key] = [observation[key]]
-            else:
-                self.observations[key].append(observation[key].squeeze(0))
+        self.observations.append(observation)
         self.actions.append(action)
         self.rewards.append(reward / reward_scale)
         self.values.append(value)
@@ -70,7 +66,7 @@ def normalize_list(array: List[float]) -> List[float]:
 class History(Dataset):
     def __init__(self):
         self.episodes = []
-        self.observations = {}
+        self.observations = []
         self.actions = []
         self.advantages = []
         self.rewards = []
@@ -80,8 +76,7 @@ class History(Dataset):
 
     def free_memory(self):
         del self.episodes[:]
-        for key in self.observations:
-            del self.observations[key][:]
+        del self.observations[:]
         del self.actions[:]
         del self.advantages[:]
         del self.rewards[:]
@@ -95,29 +90,12 @@ class History(Dataset):
 
     def build_dataset(self):
         for episode in self.episodes:
-            for key in episode.observations:
-                if key not in self.observations:
-                    self.observations[key] = []
-                self.observations[key] += episode.observations[key]
+            self.observations += episode.observations
             self.actions += episode.actions
             self.advantages += episode.advantages
             self.rewards += episode.rewards
             self.rewards_to_go += episode.rewards_to_go
             self.log_probabilities += episode.log_probabilities
-
-        assert (
-            len(
-                {
-                    len(self.observations),
-                    len(self.actions),
-                    len(self.advantages),
-                    len(self.rewards),
-                    len(self.rewards_to_go),
-                    len(self.log_probabilities),
-                }
-            )
-            == 1
-        )
 
         self.advantages = normalize_list(self.advantages)
 
@@ -127,10 +105,10 @@ class History(Dataset):
     def __getitem__(
         self, idx: int
     ) -> Tuple[
-        Dict[str, torch.Tensor], List[int], List[float], List[float], List[float]
+        List[Dict[str, torch.Tensor]], List[int], List[float], List[float], List[float]
     ]:
         return (
-            {k: v[idx].squeeze() for k, v in self.observations},
+            self.observations[idx],
             self.actions[idx],
             self.advantages[idx],
             self.log_probabilities[idx],
