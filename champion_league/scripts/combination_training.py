@@ -1,8 +1,7 @@
+import numpy as np
 import os
 import time
 from typing import Dict
-
-import numpy as np
 
 from champion_league.agent.ppo import PPOAgent
 from champion_league.matchmaking.matchmaker import MatchMaker
@@ -11,7 +10,8 @@ from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
 from champion_league.scripts.league_play import league_play
-from champion_league.utils.directory_utils import DotDict, get_most_recent_epoch
+from champion_league.utils.directory_utils import DotDict
+from champion_league.utils.directory_utils import get_most_recent_epoch
 
 
 def parse_multi_args() -> Dict[str, DotDict]:

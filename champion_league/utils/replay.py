@@ -1,8 +1,11 @@
-from typing import Optional, Dict, List, Tuple, Union
-
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 
 def cumulative_sum(array: Union[List, np.ndarray], gamma: Optional[float] = 1.0) -> List[float]:
@@ -116,7 +119,7 @@ class History(Dataset):
         self.advantages = normalize_list(self.advantages)
 
     def __len__(self) -> int:
-        return len(self.episodes)
+        return len(self.actions)
 
     def __getitem__(
         self, idx: int
