@@ -76,6 +76,7 @@ class History(Dataset):
         self.rewards = []
         self.rewards_to_go = []
         self.log_probabilities = []
+        self._length = 0
 
     def free_memory(self):
         del self.episodes[:]
@@ -86,8 +87,10 @@ class History(Dataset):
         del self.rewards[:]
         del self.rewards_to_go[:]
         del self.log_probabilities[:]
+        self._length = 0
 
     def add_episode(self, episode: Episode):
+        self._length += len(episode.rewards)
         self.episodes.append(episode)
 
     def build_dataset(self):
@@ -119,7 +122,7 @@ class History(Dataset):
         self.advantages = normalize_list(self.advantages)
 
     def __len__(self) -> int:
-        return len(self.actions)
+        return self._length
 
     def __getitem__(
         self, idx: int
