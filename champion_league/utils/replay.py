@@ -92,7 +92,7 @@ class History(Dataset):
             for key in episode.observations:
                 if key not in self.observations:
                     self.observations[key] = []
-                self.observations[key] += episode.observations[key].squeeze(0)
+                self.observations[key] += episode.observations[key]
             self.actions += episode.actions
             self.advantages += episode.advantages
             self.rewards += episode.rewards
