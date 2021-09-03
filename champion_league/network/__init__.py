@@ -1,8 +1,11 @@
-import torch
-from torch import nn
 import os
 
-from champion_league.utils.directory_utils import DotDict, get_most_recent_epoch, get_save_dir
+import torch
+from torch import nn
+
+from champion_league.utils.directory_utils import DotDict
+from champion_league.utils.directory_utils import get_most_recent_epoch
+from champion_league.utils.directory_utils import get_save_dir
 
 
 def build_network_from_args(args: DotDict) -> nn.Module:
@@ -26,9 +29,9 @@ def resume_network_from_args(args: DotDict, network: nn.Module) -> nn.Module:
                     get_save_dir(
                         logdir=os.path.join(args.logdir, "challengers"),
                         tag=args.tag,
-                        epoch=get_most_recent_epoch(agent_dir)
+                        epoch=get_most_recent_epoch(agent_dir),
                     ),
-                    "network.pt"
+                    "network.pt",
                 ),
                 map_location=lambda storage, loc: storage,
             )

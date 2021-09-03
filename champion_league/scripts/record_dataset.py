@@ -4,7 +4,6 @@ from typing import List
 
 import numpy as np
 import torch
-from champion_league.utils.directory_utils import DotDict
 from poke_env.environment.battle import Battle
 from poke_env.player.baselines import SimpleHeuristicsPlayer
 from tqdm import tqdm
@@ -13,6 +12,7 @@ from champion_league.agent.scripted import SimpleHeuristic
 from champion_league.env.rl_player import RLPlayer
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.preprocessors import Preprocessor
+from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.replay import cumulative_sum
 

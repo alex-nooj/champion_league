@@ -1,4 +1,3 @@
-# MIT License. 2020. Joe Tatusko.
 from os import path
 from typing import List
 from typing import Optional

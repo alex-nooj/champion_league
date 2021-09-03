@@ -1,13 +1,14 @@
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+
 import numpy as np
 import torch
 from torch import nn
 from torch.distributions import Categorical
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
 
 from champion_league.agent.base.base_agent import Agent
 

@@ -1,5 +1,9 @@
 from asyncio import Queue
+from typing import Callable
 from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import torch
 from poke_env.environment.battle import Battle
@@ -8,10 +12,6 @@ from poke_env.player.env_player import Gen8EnvSinglePlayer
 from poke_env.player_configuration import PlayerConfiguration
 from poke_env.server_configuration import ServerConfiguration
 from poke_env.teambuilder.teambuilder import Teambuilder
-from typing import Callable
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 
 class RLPlayer(Gen8EnvSinglePlayer):

@@ -7,15 +7,16 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from champion_league.env.league_player import LeaguePlayer
 from champion_league.agent.ppo import PPOAgent
+from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
-from champion_league.preprocessors import Preprocessor
 from champion_league.preprocessors import build_preprocessor_from_args
-from champion_league.utils.directory_utils import DotDict, get_save_dir
+from champion_league.preprocessors import Preprocessor
+from champion_league.utils.directory_utils import DotDict
+from champion_league.utils.directory_utils import get_save_dir
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
 from champion_league.utils.replay import Episode
@@ -31,9 +32,7 @@ class StepCounter:
     def __call__(self):
         self.steps += 1
         if self.steps % self.reporting_freq == 0:
-            steps_per_sec = self.reporting_freq / (
-                time.time() - self.starting_time
-            )
+            steps_per_sec = self.reporting_freq / (time.time() - self.starting_time)
             print(f"\nStep {self.steps}: {steps_per_sec} steps/sec")
             self.starting_time = time.time()
 
@@ -87,7 +86,7 @@ def league_check(
     logdir: str,
     epoch: int,
     args: DotDict,
-    nb_games: Optional[int] = 100
+    nb_games: Optional[int] = 100,
 ) -> None:
     """Function for determining if an agent has met the minimum requirements needed to be admitted
     into the league

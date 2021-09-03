@@ -1,7 +1,6 @@
 import random
 from typing import Union
 
-from champion_league.utils.directory_utils import DotDict
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
 from poke_env.environment.double_battle import DoubleBattle
@@ -9,6 +8,8 @@ from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.battle_order import DefaultBattleOrder
+
+from champion_league.utils.directory_utils import DotDict
 
 
 class BaseScripted:

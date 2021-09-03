@@ -66,6 +66,18 @@ class EnemyPokemonIdx(IntEnum):
 
 
 def embed_enemy_pokemon(pokemon: Pokemon) -> torch.Tensor:
+    """Function for converting an enemy's pokemon into a tensor
+
+    Parameters
+    ----------
+    pokemon: Pokemon
+        The Showdown! styled pokemon to be converted.
+
+    Returns
+    -------
+    torch.Tensor
+        The pokemon as a tensor.
+    """
     embedded_pokemon = torch.zeros(EnemyPokemonIdx.toxicked + 1)
 
     if pokemon.ability is not None:

@@ -1,21 +1,21 @@
 import copy
-
 import json
 import os
+from typing import Any
+from typing import Dict
+from typing import Optional
+
 import torch
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.player import Player
 from torch import nn
-from typing import Any
-from typing import Dict
-from typing import Optional
 
 from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.scripted import SCRIPTED_AGENTS
 from champion_league.network import build_network_from_args
-from champion_league.preprocessors import Preprocessor
 from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.preprocessors import Preprocessor
 from champion_league.utils.directory_utils import DotDict
 
 

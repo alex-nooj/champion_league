@@ -1,15 +1,15 @@
 from typing import Dict
+from typing import List
+from typing import Optional
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from typing import List
-from typing import Optional
 
 
 def cumulative_sum(rewards: np.ndarray, gamma: Optional[float] = 0.99) -> List[float]:
     """Function for calculating the n-step returns
-    
+
     Parameters
     ----------
     rewards: np.ndarray
@@ -54,7 +54,13 @@ class Episode:
         self.lambd = lambd
 
     def append(
-        self, observation: Dict[str, torch.Tensor], action: int, reward: float, value: float, log_probability: float, reward_scale: int=20
+        self,
+        observation: Dict[str, torch.Tensor],
+        action: int,
+        reward: float,
+        value: float,
+        log_probability: float,
+        reward_scale: int = 20,
     ):
         self.observations.append(observation)
         self.actions.append(action)

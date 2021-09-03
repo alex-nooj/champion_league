@@ -1,10 +1,10 @@
 import asyncio
-import os
 import json
-from typing import List, Optional
+import os
+from typing import List
+from typing import Optional
 
 import trueskill
-
 from poke_env.player_configuration import PlayerConfiguration
 
 from champion_league.env.opponent_player import OpponentPlayer

@@ -1,5 +1,4 @@
 import numpy as np
-from champion_league.utils.directory_utils import DotDict
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -8,6 +7,7 @@ from champion_league.agent.scripted.max_damage_player import MaxDamagePlayer
 from champion_league.env.rl_player import RLPlayer
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.replay import Episode
 from champion_league.utils.replay import History

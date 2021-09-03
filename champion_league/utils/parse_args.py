@@ -1,5 +1,5 @@
-from champion_league.utils.directory_utils import DotDict
 from champion_league.config import CFG
+from champion_league.utils.directory_utils import DotDict
 
 
 def parse_args() -> DotDict:
