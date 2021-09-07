@@ -252,29 +252,20 @@ class GatedEncoder(nn.Module):
     ):
         """The Multi-head, Multi-Encoder, Order-Invariant Gated Encoder module.
 
-                Parameters
-                ----------
-                nb_actions: int
-                    The size of the action space.
-                in_shape: Tuple[int, int]
-                    The input shape of the data. This should not include batch size.
-        <<<<<<< HEAD
-                nb_encoders
-                nb_heads
-                nb_layers
-                scale
-        =======
-                nb_encoders: Optional[int]
-                    How many encoders to use sequentially.
-                nb_heads: Optional[int]
-                    How many heads to use in every multi-head attention layer.
-                nb_layers: Optional[int]
-                    How many linear layers to include after the average pooling layer.
-                scale: Optional[bool]
-                    Whether to scale the input to the encoders.
-                dropout: Optional[float]
-                    The percentage of the network to dropout. Unused.
-        >>>>>>> main
+        Parameters
+        ----------
+        nb_actions: int
+            The size of the action space.
+        in_shape: Tuple[int, int]
+            The input shape of the data. This should not include batch size.
+        nb_encoders: Optional[int]
+            How many encoders to use sequentially.
+        nb_heads: Optional[int]
+            How many heads to use in every multi-head attention layer.
+        nb_layers: Optional[int]
+            How many linear layers to include after the average pooling layer.
+        scale: Optional[bool]
+            Whether to scale the input to the encoders.
         """
         super().__init__()
 
@@ -331,13 +322,13 @@ class GatedEncoder(nn.Module):
 
         self.softmax_layer = nn.Softmax(dim=-1)
 
-    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """The forward function for the Gated Encoder.
 
         Parameters
         ----------
-        x: torch.Tensor
-            The input state to the network.
+        x: x: Dict[str, torch.Tensor]
+            The input state to the network. Must contain the key '2D'
 
         Returns
         -------
@@ -346,7 +337,7 @@ class GatedEncoder(nn.Module):
             ('critic'), the softmaxed action distribution ('action'), and the non-softmaxed output
             for the action distribution ('rough_action').
         """
-        encoder_out = self.encoders(x)
+        encoder_out = self.encoders(x["2D"])
         rough_action = self.output_layers["action"](encoder_out)
         critic = self.output_layers["critic"](encoder_out)
         soft_action = self.softmax_layer(rough_action)
