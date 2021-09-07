@@ -22,7 +22,7 @@ imitation:
 league:
   battle_format: gen8randombattle
   preprocessor: ModularPreprocessor
-  nb_steps: 100_000_000
+  nb_steps: 10_000_000
   epoch_len: 1_000_000
   lr: 0.0002
   entropy_weight: 0

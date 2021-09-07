@@ -1,4 +1,4 @@
-logdir: /home/anewgent/Documents/pokemon_trainers/
-tag: self_play
-epoch: 100
+league_dir: /home/anewgent/Documents/pokemon_trainers/challengers/
+tag: Misty
+epoch: 12
 gpu_id: 0

@@ -5,6 +5,7 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
+
 from champion_league.utils.directory_utils import DotDict
 
 
@@ -155,11 +156,21 @@ class LNorm(nn.Module):
 class Projection(nn.Module):
     def __init__(self, in_shape: Tuple[int, int]):
         super().__init__()
-        self.proj_layer = nn.Linear(in_shape[1], in_shape[1], bias=False)
+        self.projection_layer = nn.Sequential(
+            OrderedDict(
+                [
+                    (
+                        "projection_layer",
+                        nn.Linear(in_shape[1], in_shape[1], bias=False),
+                    ),
+                    ("projection_relu", nn.ReLU()),
+                ]
+            )
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         b, s, f = x.shape
-        proj_x = self.proj_layer(x.view(b * s, f))
+        proj_x = self.projection_layer(x.view(b * s, f))
         return proj_x.view(b, s, f)
 
 
@@ -267,9 +278,7 @@ class GatedEncoder(nn.Module):
             linears.append(
                 (
                     f"linear_{i}",
-                    nn.Linear(
-                        in_shape["2D"][1], in_shape["2D"][1], bias=False
-                    ),
+                    nn.Linear(in_shape["2D"][1], in_shape["2D"][1], bias=False),
                 )
             )
             linears.append((f"norm_{i}", nn.BatchNorm1d(in_shape["2D"][1])))
@@ -284,9 +293,7 @@ class GatedEncoder(nn.Module):
                         [
                             (
                                 "action_1",
-                                nn.Linear(
-                                    in_shape["2D"][1], nb_actions, bias=True
-                                ),
+                                nn.Linear(in_shape["2D"][1], nb_actions, bias=True),
                             ),
                         ]
                     )
