@@ -59,14 +59,12 @@ def self_epoch(
             observation = player.reset()
             episode = Episode()
 
-        observation = observation.float().to(agent.device)
-
         action, log_prob, value = agent.sample_action(observation)
 
         new_observation, reward, done, info = player.step(int(action))
 
         episode.append(
-            observation.squeeze(),
+            observation=observation,
             action=action,
             reward=reward,
             value=value,

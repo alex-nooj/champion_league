@@ -39,8 +39,8 @@ def main(multi_args: Dict[str, DotDict]):
 
     preprocessor = build_preprocessor_from_args(league_args)
 
-    imitation_args.in_shape = list(preprocessor.output_shape)
-    league_args.in_shape = list(preprocessor.output_shape)
+    imitation_args.in_shape = preprocessor.output_shape
+    league_args.in_shape = preprocessor.output_shape
 
     imitation_args.resume = multi_args["resume"]
     league_args.resume = multi_args["resume"]

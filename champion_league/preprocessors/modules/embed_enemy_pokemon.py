@@ -40,15 +40,6 @@ class EnemyPokemonIdx(IntEnum):
     spa_boost = auto()
     spd_boost = auto()
     spe_boost = auto()
-    ability_bit0 = auto()
-    ability_bit1 = auto()
-    ability_bit2 = auto()
-    ability_bit3 = auto()
-    ability_bit4 = auto()
-    ability_bit5 = auto()
-    ability_bit6 = auto()
-    ability_bit7 = auto()
-    ability_bit8 = auto()
     active = auto()
     female = auto()
     male = auto()
@@ -79,24 +70,6 @@ def embed_enemy_pokemon(pokemon: Pokemon) -> torch.Tensor:
         The pokemon as a tensor.
     """
     embedded_pokemon = torch.zeros(EnemyPokemonIdx.toxicked + 1)
-
-    if pokemon.ability is not None:
-        embedded_pokemon[
-            EnemyPokemonIdx.ability_bit0 : EnemyPokemonIdx.ability_bit8 + 1
-        ] = torch.tensor(
-            ABILITIES[
-                pokemon.ability.lower()
-                .replace(" ", "")
-                .replace("-", "")
-                .replace("(", "")
-                .replace(")", "")
-                .replace("'", "")
-            ]
-        )
-    else:
-        embedded_pokemon[
-            EnemyPokemonIdx.ability_bit0 : EnemyPokemonIdx.ability_bit8 + 1
-        ] = -1
 
     embedded_pokemon[EnemyPokemonIdx.health_ratio] = pokemon.current_hp_fraction
     embedded_pokemon[EnemyPokemonIdx.atk_base] = (

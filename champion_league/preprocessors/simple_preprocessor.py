@@ -1,14 +1,15 @@
 from typing import Tuple
-
+from typing import Dict
 import numpy as np
 import torch
-from champion_league.utils.directory_utils import DotDictfrom poke_env.environment.battle import Battle
+from champion_league.utils.directory_utils import DotDict
+from poke_env.environment.battle import Battle
 
 from champion_league.preprocessors.base_preprocessor import Preprocessor
 
 
 class SimplePreprocessor(Preprocessor):
-    def embed_battle(self, battle: Battle) -> torch.Tensor:
+    def embed_battle(self, battle: Battle) -> Dict[str, torch.Tensor]:
         # -1 indicates that the move does not have a base power
         # or is not available
         moves_base_power = -np.ones(4)
@@ -34,7 +35,7 @@ class SimplePreprocessor(Preprocessor):
             print(len(battle.team.values()), len(battle.opponent_team.values()))
 
         # Final vector with 10 components
-        return torch.from_numpy(
+        return {"1D": torch.from_numpy(
             np.concatenate(
                 [
                     moves_base_power,
@@ -42,12 +43,12 @@ class SimplePreprocessor(Preprocessor):
                     [remaining_mon_team, remaining_mon_opponent],
                 ]
             )
-        ).view(1, -1)
+        ).flatten()}
 
     @property
-    def output_shape(self) -> Tuple[int, int]:
-        return 1, 10
+    def output_shape(self) -> Tuple[int]:
+        return 10,
 
-
-def build_from_args(args: DotDict) -> SimplePreprocessor:
-    return SimplePreprocessor()
+    @classmethod
+    def build_from_args(cls, args: DotDict) -> "SimplePreprocessor":
+        return SimplePreprocessor()

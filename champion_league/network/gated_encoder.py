@@ -158,6 +158,27 @@ class LNorm(nn.Module):
         return self.layer_norm(torch.reshape(x, (b * s, f))).view(b, s, f)
 
 
+class Projection(nn.Module):
+    def __init__(self, in_shape: Tuple[int, int]):
+        super().__init__()
+        self.projection_layer = nn.Sequential(
+            OrderedDict(
+                [
+                    (
+                        "projection_layer",
+                        nn.Linear(in_shape[1], in_shape[1], bias=False),
+                    ),
+                    ("projection_relu", nn.ReLU()),
+                ]
+            )
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        b, s, f = x.shape
+        proj_x = self.projection_layer(x.view(b * s, f))
+        return proj_x.view(b, s, f)
+
+
 class Encoder(nn.Module):
     def __init__(
         self, in_shape: Tuple[int, int], nb_heads: int, scale: Optional[bool] = True
@@ -179,7 +200,7 @@ class Encoder(nn.Module):
         self.first_block = nn.Sequential(
             OrderedDict(
                 [
-                    ("first_norm", nn.LayerNorm(in_shape[1])),
+                    ("first_norm", LNorm(in_shape)),
                     ("attn_layer", Attn(in_shape, nb_heads, scale)),
                 ]
             )
@@ -188,10 +209,10 @@ class Encoder(nn.Module):
         self.second_block = nn.Sequential(
             OrderedDict(
                 [
-                    ("second_norm", nn.LayerNorm(in_shape[1])),
+                    ("second_norm", LNorm(in_shape)),
                     (
                         "projection_layer",
-                        nn.Linear(in_shape[1], in_shape[1], bias=False),
+                        Projection(in_shape),
                     ),
                     ("projection_relu", nn.ReLU()),
                 ]
@@ -223,31 +244,37 @@ class GatedEncoder(nn.Module):
     def __init__(
         self,
         nb_actions: int,
-        in_shape: Tuple[int, int],
+        in_shape: Dict[str, Tuple[int, int]],
         nb_encoders: Optional[int],
         nb_heads: Optional[int],
         nb_layers: Optional[int],
         scale: Optional[bool],
-        dropout: Optional[float],
     ):
         """The Multi-head, Multi-Encoder, Order-Invariant Gated Encoder module.
 
-        Parameters
-        ----------
-        nb_actions: int
-            The size of the action space.
-        in_shape: Tuple[int, int]
-            The input shape of the data. This should not include batch size.
-        nb_encoders: Optional[int]
-            How many encoders to use sequentially.
-        nb_heads: Optional[int]
-            How many heads to use in every multi-head attention layer.
-        nb_layers: Optional[int]
-            How many linear layers to include after the average pooling layer.
-        scale: Optional[bool]
-            Whether to scale the input to the encoders.
-        dropout: Optional[float]
-            The percentage of the network to dropout. Unused.
+                Parameters
+                ----------
+                nb_actions: int
+                    The size of the action space.
+                in_shape: Tuple[int, int]
+                    The input shape of the data. This should not include batch size.
+        <<<<<<< HEAD
+                nb_encoders
+                nb_heads
+                nb_layers
+                scale
+        =======
+                nb_encoders: Optional[int]
+                    How many encoders to use sequentially.
+                nb_heads: Optional[int]
+                    How many heads to use in every multi-head attention layer.
+                nb_layers: Optional[int]
+                    How many linear layers to include after the average pooling layer.
+                scale: Optional[bool]
+                    Whether to scale the input to the encoders.
+                dropout: Optional[float]
+                    The percentage of the network to dropout. Unused.
+        >>>>>>> main
         """
         super().__init__()
 
@@ -261,20 +288,23 @@ class GatedEncoder(nn.Module):
             scale = False
 
         encoders = [
-            (f"encoder_{i}", Encoder(in_shape, nb_heads, scale=scale))
+            (f"encoder_{i}", Encoder(in_shape["2D"], nb_heads, scale=scale))
             for i in range(nb_encoders)
         ]
         avg_pooling = [
-            ("avg_pooling", nn.AvgPool2d((in_shape[0], 1))),
+            ("avg_pooling", nn.AvgPool2d((in_shape["2D"][0], 1))),
             ("flatten", nn.Flatten()),
         ]
 
         linears = []
         for i in range(nb_layers):
             linears.append(
-                (f"linear_{i}", nn.Linear(in_shape[1], in_shape[1], bias=False))
+                (
+                    f"linear_{i}",
+                    nn.Linear(in_shape["2D"][1], in_shape["2D"][1], bias=False),
+                )
             )
-            linears.append((f"norm_{i}", nn.BatchNorm1d(in_shape[1])))
+            linears.append((f"norm_{i}", nn.BatchNorm1d(in_shape["2D"][1])))
             linears.append((f"relu_{i}", nn.ReLU()))
 
         self.encoders = nn.Sequential(OrderedDict(encoders + avg_pooling + linears))
@@ -284,12 +314,17 @@ class GatedEncoder(nn.Module):
                 "action": nn.Sequential(
                     OrderedDict(
                         [
-                            ("action_1", nn.Linear(in_shape[1], nb_actions, bias=True)),
+                            (
+                                "action_1",
+                                nn.Linear(in_shape["2D"][1], nb_actions, bias=True),
+                            ),
                         ]
                     )
                 ),
                 "critic": nn.Sequential(
-                    OrderedDict([("critic_1", nn.Linear(in_shape[1], 1, bias=True))])
+                    OrderedDict(
+                        [("critic_1", nn.Linear(in_shape["2D"][1], 1, bias=True))]
+                    )
                 ),
             }
         )
@@ -321,26 +356,13 @@ class GatedEncoder(nn.Module):
             "rough_action": rough_action,
         }
 
-
-def build_from_args(args: DotDict) -> GatedEncoder:
-    """Builds the GatedEncoder from arguments
-
-    Parameters
-    ----------
-    args: DotDict
-        The arguments used to described the desired GatedEncoder.
-
-    Returns
-    -------
-    GatedEncoder
-        The Order-Invariant Gated Encoder as described by the given arguments.
-    """
-    return GatedEncoder(
-        args.nb_actions,
-        args.in_shape,
-        args.nb_encoders,
-        args.nb_heads,
-        args.nb_layers,
-        args.scale,
-        args.dropout,
-    )
+    @classmethod
+    def from_args(cls, args: DotDict) -> "GatedEncoder":
+        return GatedEncoder(
+            args.nb_actions,
+            args.in_shape,
+            args.nb_encoders,
+            args.nb_heads,
+            args.nb_layers,
+            args.scale,
+        )

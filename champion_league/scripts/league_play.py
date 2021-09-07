@@ -4,7 +4,6 @@ from typing import Dict
 from typing import Optional
 
 import numpy as np
-import torch
 from torch.utils.data import DataLoader
 
 from champion_league.agent.ppo import PPOAgent
@@ -85,7 +84,6 @@ def league_check(
     opponent: LeaguePlayer,
     logdir: str,
     epoch: int,
-    args: DotDict,
     nb_games: Optional[int] = 100,
 ) -> None:
     """Function for determining if an agent has met the minimum requirements needed to be admitted
@@ -103,8 +101,6 @@ def league_check(
         Where the agent is stored
     epoch: int
         Which epoch this is
-    args: DotDict
-        The arguments used to construct the agent
     nb_games: Optional[int]
         How many games to play against each agent. Default: 100
     """
@@ -131,9 +127,7 @@ def league_check(
             reward = 0
             observation = player.reset()
             while not done:
-                observation = observation.float().to(agent.device)
-
-                action, log_prob, value = agent.sample_action(observation)
+                action = agent.act(observation)
 
                 observation, reward, done, info = player.step(action)
             # Check if the agent won
@@ -148,7 +142,7 @@ def league_check(
     # If the agent has a win rate over 50% for 75% of the league agents, it is then added to the
     # league.
     if overall_wins / len(league_agents) >= 0.75:
-        move_to_league(logdir, agent.tag, epoch, args, agent.network)
+        move_to_league(logdir, agent.tag, epoch)
 
     # Print the table with all the win rates, complete the battle, and reset the opponent
     print_table(win_dict)
@@ -156,9 +150,7 @@ def league_check(
     opponent.sample_moves = sample_moves
 
 
-def move_to_league(
-    logdir: str, tag: str, epoch: int, args: DotDict, network: torch.nn.Module
-) -> None:
+def move_to_league(logdir: str, tag: str, epoch: int) -> None:
     """Adds the files necessary to build an agent into the league directory
 
     Parameters
@@ -169,10 +161,6 @@ def move_to_league(
         The name of the agent
     epoch: int
         The epoch of training
-    args: DotDict
-        The arguments used to construct the agent
-    network: torch.nn.Module
-        The neural network being trained
     """
     try:
         os.symlink(
@@ -236,20 +224,18 @@ def league_epoch(
     observation = player.reset()
     episode = Episode()
     while True:
-        observation = observation.float().to(agent.device)
-
         action, log_prob, value = agent.sample_action(observation)
 
         new_observation, reward, done, info = player.step(action)
         step_counter()
 
         episode.append(
-            observation=observation.squeeze(),
+            observation=observation,
             action=action,
             reward=reward,
             value=value,
             log_probability=log_prob,
-            reward_scale=6.0,
+            reward_scale=6,
         )
 
         observation = new_observation
@@ -374,22 +360,6 @@ def league_play(
             sample_moves=sample_moves,
         )
 
-        # Check to see if the agent is able to enter the league or not
-        player.play_against(
-            env_algorithm=league_check,
-            opponent=opponent,
-            env_algorithm_kwargs={
-                "agent": agent,
-                "opponent": opponent,
-                "logdir": logdir,
-                "epoch": epoch,
-                "args": args,
-            },
-        )
-
-        player.reset_battles()
-        opponent.reset_battles()
-
         player.play_against(
             env_algorithm=league_epoch,
             opponent=opponent,
@@ -405,8 +375,24 @@ def league_play(
             },
         )
 
+        player.reset_battles()
+        opponent.reset_battles()
+
+        # Check to see if the agent is able to enter the league or not
+        player.play_against(
+            env_algorithm=league_check,
+            opponent=opponent,
+            env_algorithm_kwargs={
+                "agent": agent,
+                "opponent": opponent,
+                "logdir": logdir,
+                "epoch": epoch,
+            },
+        )
+
         del player
         del opponent
+
     agent.save_model(agent.network, nb_steps // epoch_len, args)
     skilltracker.save_skill_ratings(nb_steps // epoch_len)
 
@@ -430,8 +416,7 @@ def league_play(
             "agent": agent,
             "opponent": opponent,
             "logdir": logdir,
-            "epoch": epoch,
-            "args": args,
+            "epoch": nb_steps // epoch_len,
         },
     )
 

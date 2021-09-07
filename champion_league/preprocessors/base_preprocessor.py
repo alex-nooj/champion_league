@@ -1,3 +1,4 @@
+from typing import Dict
 from typing import Tuple
 
 import torch
@@ -9,5 +10,5 @@ class Preprocessor:
         raise NotImplementedError
 
     @property
-    def output_shape(self) -> Tuple[int, ...]:
+    def output_shape(self) -> Dict[str, Tuple[int, ...]]:
         raise NotImplementedError

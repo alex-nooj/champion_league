@@ -95,7 +95,7 @@ class PPOAgent(Agent):
         self.mini_epochs = mini_epochs
         self.updates = 0
 
-    def sample_action(self, state: torch.Tensor) -> Tuple[float, float, float]:
+    def sample_action(self, state: Dict[str, torch.Tensor]) -> Tuple[float, float, float]:
         """Samples an action from a distribution using the network that's training.
 
         Parameters
@@ -108,9 +108,6 @@ class PPOAgent(Agent):
         Tuple[float, float, float]
             The action, log_probability, and value in that order
         """
-        if len(state.size()) == 2:
-            state = state.unsqueeze(0)
-
         y = self.network(state)
 
         dist = Categorical(y["action"])
@@ -135,22 +132,19 @@ class PPOAgent(Agent):
         int
             The action chosen by the network.
         """
-        if len(state.size()) == 2:
-            state = state.unsqueeze(0)
-
         y = self.network(state)
 
         return torch.argmax(y["action"], -1).item()
 
     def evaluate_actions(
-        self, states: torch.Tensor, actions: torch.Tensor
+        self, states: Dict[str, torch.Tensor], actions: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """This function calculates the log probabilities and entropy of the current distribution,
         as well as the critic's output.
 
         Parameters
         ----------
-        states: torch.Tensor
+        states: Dict[str, torch.Tensor]
             The preprocessed state of the pokemon battle.
         actions: torch.Tensor
             The actions that were selected by the agent when gathering the rollout.
@@ -160,7 +154,7 @@ class PPOAgent(Agent):
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
             The log probs, entropy, and critic values.
         """
-        y = self.network(states.squeeze(1))
+        y = self.network(states)
 
         dist = Categorical(y["action"])
         entropy = dist.entropy()
@@ -207,6 +201,7 @@ class PPOAgent(Agent):
             ) in data_loader:
                 actions = actions.long().to(self.device)
                 advantages = advantages.float().to(self.device)
+                observations = {k: v.squeeze(1) for k, v in observations.items()}
                 old_log_probabilities = log_probabilities.float().to(self.device)
 
                 self.optimizer.zero_grad()
