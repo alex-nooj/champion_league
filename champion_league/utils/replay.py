@@ -1,18 +1,32 @@
-import numpy as np
-import torch
-from torch.utils.data import Dataset
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
-from typing import Union
+
+import numpy as np
+import torch
+from torch.utils.data import Dataset
 
 
-def cumulative_sum(array: Union[List, np.ndarray], gamma: Optional[float] = 1.0) -> List[float]:
+def cumulative_sum(rewards: np.ndarray, gamma: Optional[float] = 0.99) -> List[float]:
+    """Function for calculating the n-step returns
+
+    Parameters
+    ----------
+    rewards: np.ndarray
+        The rewards from an episode
+    gamma: Optional[float]
+        The discount for the n-step returns
+
+    Returns
+    -------
+    List[float]
+        The n-step returns of an episode
+    """
     curr = 0
     cumulative_array = []
 
-    for a in array[::-1]:
+    for a in rewards[::-1]:
         curr = a + gamma * curr
         cumulative_array.append(curr)
 
@@ -21,6 +35,15 @@ def cumulative_sum(array: Union[List, np.ndarray], gamma: Optional[float] = 1.0)
 
 class Episode:
     def __init__(self, gamma: Optional[float] = 0.99, lambd: Optional[float] = 0.95):
+        """Class for storing the important parts of an episode
+
+        Parameters
+        ----------
+        gamma: Optional[float]
+            The discount rate for the n-step returns
+        lambd: Optional[float]
+            The discount for the advantages
+        """
         self.observations = []
         self.actions = []
         self.advantages = []

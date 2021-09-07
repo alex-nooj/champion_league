@@ -57,6 +57,18 @@ class AlliedPokemonIdx(IntEnum):
 
 
 def embed_allied_pokemon(pokemon: Pokemon) -> torch.Tensor:
+    """Converts a friendly pokemon from the Showdown! format into a tensor.
+
+    Parameters
+    ----------
+    pokemon: Pokemon
+        The Showdown! styled pokemon to be converted.
+
+    Returns
+    -------
+    torch.Tensor
+        The pokemon as a tensor.
+    """
     embedded_pokemon = torch.zeros(AlliedPokemonIdx.toxicked + 1)
 
     embedded_pokemon[AlliedPokemonIdx.health_ratio] = pokemon.current_hp_fraction

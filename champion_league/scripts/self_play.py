@@ -3,8 +3,8 @@ import os
 import numpy as np
 from torch.utils.data import DataLoader
 
-from champion_league.agent.opponent.league_player import LeaguePlayer
 from champion_league.agent.ppo import PPOAgent
+from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args

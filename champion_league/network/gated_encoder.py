@@ -102,16 +102,19 @@ class Gate(nn.Module):
         # self.gru = nn.GRU(input_size=in_shape[1], hidden_size=in_shape[1])
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """
+        """Forward function for the Gate module.
 
         Parameters
         ----------
-        x
-        y
+        x: torch.Tensor
+            The output from the previous layer.
+        y: torch.Tensor
+            The tensor from the skip connection.
 
         Returns
         -------
-
+        torch.Tensor
+            The output of the gate.
         """
         b, s, f = x.shape
 
@@ -126,7 +129,7 @@ class Gate(nn.Module):
 
 class LNorm(nn.Module):
     def __init__(self, in_shape: Tuple[int, int]):
-        """
+        """Layer norm module for the Encoder.
 
         Parameters
         ----------
@@ -138,15 +141,17 @@ class LNorm(nn.Module):
         self.layer_norm = nn.LayerNorm(in_shape[1])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
+        """Forward function for the layernorm module.
 
         Parameters
         ----------
-        x
+        x: torch.Tensor
+            Input tensor with shape [*, *in_shape].
 
         Returns
         -------
-
+        torch.Tensor
+            The normalized output.
         """
         b, s, f = x.shape
 
@@ -178,15 +183,17 @@ class Encoder(nn.Module):
     def __init__(
         self, in_shape: Tuple[int, int], nb_heads: int, scale: Optional[bool] = True
     ):
-        """
+        """A gated encoder, as described in the Stablizing the Transformer for RL paper.
 
         Parameters
         ----------
         in_shape: Tuple[int, int]
             The input shape of the data. This should not include batch size and should be the same
             shape as the input to the overall encoder.
-        nb_heads
-        scale
+        nb_heads: int
+            How many heads to use for the multi-head attention layer.
+        scale: Optional[bool]
+            Whether to scale the input down.
         """
 
         super().__init__()
@@ -214,15 +221,17 @@ class Encoder(nn.Module):
         self.second_gate = Gate(in_shape)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
+        """The forward function for the gated encoder.
 
         Parameters
         ----------
-        x
+        x: torch.Tensor
+            The input to the gated encoder, with shape [batch_size, *in_shape]
 
         Returns
         -------
-
+        torch.Tensor
+            The output of the gated encoder.
         """
 
         attn_out = self.first_block(x)
@@ -241,17 +250,31 @@ class GatedEncoder(nn.Module):
         nb_layers: Optional[int],
         scale: Optional[bool],
     ):
-        """
+        """The Multi-head, Multi-Encoder, Order-Invariant Gated Encoder module.
 
-        Parameters
-        ----------
-        nb_actions
-        in_shape: Tuple[int, int]
-            The input shape of the data. This should not include batch size.
-        nb_encoders
-        nb_heads
-        nb_layers
-        scale
+                Parameters
+                ----------
+                nb_actions: int
+                    The size of the action space.
+                in_shape: Tuple[int, int]
+                    The input shape of the data. This should not include batch size.
+        <<<<<<< HEAD
+                nb_encoders
+                nb_heads
+                nb_layers
+                scale
+        =======
+                nb_encoders: Optional[int]
+                    How many encoders to use sequentially.
+                nb_heads: Optional[int]
+                    How many heads to use in every multi-head attention layer.
+                nb_layers: Optional[int]
+                    How many linear layers to include after the average pooling layer.
+                scale: Optional[bool]
+                    Whether to scale the input to the encoders.
+                dropout: Optional[float]
+                    The percentage of the network to dropout. Unused.
+        >>>>>>> main
         """
         super().__init__()
 
@@ -308,8 +331,22 @@ class GatedEncoder(nn.Module):
 
         self.softmax_layer = nn.Softmax(dim=-1)
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        encoder_out = self.encoders(x["2D"])
+    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """The forward function for the Gated Encoder.
+
+        Parameters
+        ----------
+        x: torch.Tensor
+            The input state to the network.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            The output predictions of the network. These predictions include the critic value
+            ('critic'), the softmaxed action distribution ('action'), and the non-softmaxed output
+            for the action distribution ('rough_action').
+        """
+        encoder_out = self.encoders(x)
         rough_action = self.output_layers["action"](encoder_out)
         critic = self.output_layers["critic"](encoder_out)
         soft_action = self.softmax_layer(rough_action)

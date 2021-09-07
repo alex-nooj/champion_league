@@ -17,10 +17,14 @@ class MatchMaker:
 
         Parameters
         ----------
-        self_play_prob
-        league_play_prob
-        logdir
-        tag
+        self_play_prob: float
+            The desired probability of choosing the training agent as the opponent.
+        league_play_prob: float
+            The desired probability of choosing a league agent as the opponent.
+        logdir: str
+            The path to all of the agents.
+        tag: str
+            The name of the training agent.
         """
         if 1 - self_play_prob - league_play_prob < 0:
             raise RuntimeError("Self Play and League Play Probs are too high!")
@@ -39,6 +43,20 @@ class MatchMaker:
     def choose_match(
         self, agent_skill: trueskill.Rating, trueskills: Dict[str, trueskill.Rating]
     ) -> str:
+        """Function for choosing the opponent.
+
+        Parameters
+        ----------
+        agent_skill: trueskill.Rating
+            The trueskill rating of the training agent.
+        trueskills: Dict[str, trueskill.Rating]
+            The trueskill ratings of all of the league agents.
+
+        Returns
+        -------
+        str
+            The path to the opponent, or 'self' for self-play.
+        """
         mode_probs = []
         mode_options = []
         for agent_type in ["challengers", "league", "exploiters"]:
@@ -60,6 +78,14 @@ class MatchMaker:
             return self._choose_exploiter()
 
     def _choose_self(self) -> str:
+        """Function for choosing a version of the training agent for self-play.
+
+        Returns
+        -------
+        str
+            Either the path to a previous version of the agent, or 'self', to use just the current
+            agent.
+        """
         if np.random.randint(low=0, high=100) < 90:
             return "self"
         else:
@@ -81,6 +107,20 @@ class MatchMaker:
     def _choose_league_agent(
         self, agent_skill: trueskill.Rating, trueskills: Dict[str, trueskill.Rating]
     ) -> str:
+        """Function for selecting an agent from the league to serve as the opponent.
+
+        Parameters
+        ----------
+        agent_skill: trueskill.Rating
+            The trueskill rating of the training agent.
+        trueskills: Dict[str, trueskill.Rating]
+            The trueskill ratings of all of the league agents.
+
+        Returns
+        -------
+        str
+            The path to a league agent.
+        """
         agents = os.listdir(os.path.join(self.logdir, "league"))
 
         if any(agent not in trueskills for agent in agents):
@@ -109,4 +149,14 @@ class MatchMaker:
         return os.path.join(self.logdir, "league", opponent)
 
     def _choose_exploiter(self):
+        """Function for selecting an exploiter for the training agent. Not Implemented.
+
+        Raises
+        ------
+        NotImplementedError
+
+        Returns
+        -------
+        None
+        """
         raise NotImplementedError

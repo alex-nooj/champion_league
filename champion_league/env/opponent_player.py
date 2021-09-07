@@ -1,6 +1,8 @@
 import json
 import os
-from typing import Optional, Union, List
+from typing import List
+from typing import Optional
+from typing import Union
 
 import torch
 from poke_env.environment.battle import Battle
@@ -30,6 +32,22 @@ class OpponentPlayer(Player):
     def from_path(
         cls, path: str, device: Optional[int] = None, **kwargs
     ) -> "OpponentPlayer":
+        """Creates the player from a given path
+
+        Parameters
+        ----------
+        path: str
+            The path to the desired agents directory
+        device: Optional[int]
+            The GPU to load the agent on. If None, defaults to 0
+        kwargs: Dict[Any]
+            Keyword arguments to be passed to the Player class
+
+        Returns
+        -------
+        "OpponentPlayer"
+            Player that can connect to the server and play against a human or another agent.
+        """
         if device is None:
             device = 0
 
@@ -60,8 +78,27 @@ class OpponentPlayer(Player):
         return cls(opponent, **kwargs)
 
     def choose_move(self, battle: Battle) -> BattleOrder:
+        """Function that allows the agent to select a move.
+
+        Parameters
+        ----------
+        battle: Battle
+            The current game state.
+
+        Returns
+        -------
+        BattleOrder
+            The action the agent would like to take, in a format readable by Showdown!
+        """
         return self.opponent.choose_move(battle)
 
     @property
     def battle_history(self) -> List[bool]:
+        """Returns a list containing the win/loss results of the agent.
+
+        Returns
+        -------
+        List[bool]
+            Contains the win/loss history of the agent.
+        """
         return [b.won for b in self._battles.values()]

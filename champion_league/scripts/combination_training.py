@@ -1,7 +1,8 @@
-import numpy as np
 import os
 import time
 from typing import Dict
+
+import numpy as np
 
 from champion_league.agent.ppo import PPOAgent
 from champion_league.matchmaking.matchmaker import MatchMaker
@@ -89,9 +90,7 @@ def main(multi_args: Dict[str, DotDict]):
     if multi_args["resume"]:
         try:
             starting_epoch = get_most_recent_epoch(
-                os.path.join(
-                    league_args.logdir, "challengers", league_args.tag
-                )
+                os.path.join(league_args.logdir, "challengers", league_args.tag)
             )
         except ValueError:
             starting_epoch = 0
@@ -111,7 +110,7 @@ def main(multi_args: Dict[str, DotDict]):
         args=league_args,
         logdir=league_args.logdir,
         rollout_len=league_args.rollout_len,
-        starting_epoch=starting_epoch
+        starting_epoch=starting_epoch,
     )
 
 

@@ -1,7 +1,6 @@
 import random
 from typing import Union
 
-from champion_league.utils.directory_utils import DotDict
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
 from poke_env.environment.double_battle import DoubleBattle
@@ -9,6 +8,8 @@ from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.battle_order import DefaultBattleOrder
+
+from champion_league.utils.directory_utils import DotDict
 
 
 class BaseScripted:
@@ -69,19 +70,6 @@ class BaseScripted:
         move_target: int = DoubleBattle.EMPTY_TARGET_POSITION,
     ) -> BattleOrder:
         """Formats an move order corresponding to the provided pokemon or move.
-
-        :param order: Move to make or Pokemon to switch to.
-        :type order: Move or Pokemon
-        :param mega: Whether to mega evolve the pokemon, if a move is chosen.
-        :type mega: bool
-        :param z_move: Whether to make a zmove, if a move is chosen.
-        :type z_move: bool
-        :param dynamax: Whether to dynamax, if a move is chosen.
-        :type dynamax: bool
-        :param move_target: Target Pokemon slot of a given move
-        :type move_target: int
-        :return: Formatted move order
-        :rtype: str
 
         Parameters
         ----------

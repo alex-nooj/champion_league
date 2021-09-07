@@ -1,6 +1,6 @@
 import asyncio
 
-from champion_league.agent.opponent.opponent_player import OpponentPlayer
+from champion_league.env import OpponentPlayer
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_save_dir
 from champion_league.utils.parse_args import parse_args

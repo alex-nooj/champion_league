@@ -14,8 +14,8 @@ from torch import nn
 from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.scripted import SCRIPTED_AGENTS
 from champion_league.network import build_network_from_args
-from champion_league.preprocessors import Preprocessor
 from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.preprocessors import Preprocessor
 from champion_league.utils.directory_utils import DotDict
 
 

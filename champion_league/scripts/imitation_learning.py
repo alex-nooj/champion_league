@@ -9,15 +9,14 @@ from typing import Union
 
 import numpy as np
 import torch
-
-from champion_league.utils.directory_utils import check_and_make_dir
-from champion_league.utils.directory_utils import DotDict
 from numpy.lib.npyio import NpzFile
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 from champion_league.network import build_network_from_args
+from champion_league.utils.directory_utils import check_and_make_dir
+from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import ProgressBar
 
