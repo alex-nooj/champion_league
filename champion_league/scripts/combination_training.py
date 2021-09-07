@@ -11,7 +11,8 @@ from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
 from champion_league.scripts.league_play import league_play
-from champion_league.utils.directory_utils import DotDict, get_most_recent_epoch
+from champion_league.utils.directory_utils import DotDict
+from champion_league.utils.directory_utils import get_most_recent_epoch
 
 
 def parse_multi_args() -> Dict[str, DotDict]:
@@ -89,9 +90,7 @@ def main(multi_args: Dict[str, DotDict]):
     if multi_args["resume"]:
         try:
             starting_epoch = get_most_recent_epoch(
-                os.path.join(
-                    league_args.logdir, "challengers", league_args.tag
-                )
+                os.path.join(league_args.logdir, "challengers", league_args.tag)
             )
         except ValueError:
             starting_epoch = 0
@@ -111,7 +110,7 @@ def main(multi_args: Dict[str, DotDict]):
         args=league_args,
         logdir=league_args.logdir,
         rollout_len=league_args.rollout_len,
-        starting_epoch=starting_epoch
+        starting_epoch=starting_epoch,
     )
 
 

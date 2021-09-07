@@ -1,18 +1,14 @@
-import asyncio
-import json
-from asyncio import Queue, ensure_future, CancelledError
-from threading import Thread
-from typing import Callable, List
+from asyncio import Queue
+from typing import Callable
+from typing import Dict
 from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import websockets
-from poke_env.data import to_id_str
+import torch
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
-from poke_env.player.env_player import Gen8EnvSinglePlayer, EnvPlayer
-from poke_env.player.player import Player
+from poke_env.player.env_player import Gen8EnvSinglePlayer
 from poke_env.player_configuration import PlayerConfiguration
 from poke_env.server_configuration import ServerConfiguration
 from poke_env.teambuilder.teambuilder import Teambuilder
@@ -77,19 +73,69 @@ class RLPlayer(Gen8EnvSinglePlayer):
         self._battle_count_queue = Queue(2)
         self.embed_battle_cls = embed_battle
 
-    def embed_battle(self, battle):
+    def embed_battle(self, battle: Battle) -> torch.Tensor:
+        """Abstract function for embedding a battle using the chosen preprocessor
+
+        Parameters
+        ----------
+        battle: Battle
+            The raw battle data returned from Showdown!
+
+        Returns
+        -------
+        torch.Tensor
+            The battle converted into something readable by the network.
+        """
         return self.embed_battle_cls(battle=battle)
 
-    def compute_reward(self, battle) -> float:
+    def compute_reward(self, battle: Battle) -> float:
+        """Function for determining the reward from the current gamestate
+
+        Parameters
+        ----------
+        battle: Battle
+            The current state of the game
+
+        Returns
+        -------
+        float
+            The reward, determined by the state
+        """
         return self.reward_computing_helper(
             battle, fainted_value=1, hp_value=0, victory_value=0
         )
 
-    def step(self, action: int) -> Tuple:
+    def step(self, action: int) -> Tuple[Battle, float, bool, Dict[str, int]]:
+        """Function for stepping the environment
+
+        Parameters
+        ----------
+        action: int
+
+        Returns
+        -------
+        Tuple[Battle, float, bool, Dict[str, int]]
+            A tuple containing the state, reward, whether or not the game is done, and who won the
+            game for the current engagment
+        """
         obs, reward, done, _ = super().step(action)
         return obs, reward, done, {"won": 1 if self._current_battle.won else 0}
 
     def _action_to_move(self, action: int, battle: Battle) -> BattleOrder:
+        """Converts the action index to the format readable by Showdown!
+
+        Parameters
+        ----------
+        action: int
+            The action that is to be performed
+        battle: Battle
+            The current gamestate
+
+        Returns
+        -------
+        BattleOrder
+            The action that is to be performed, in a format readable by Showdown!
+        """
         if (
             action < 4
             and action < len(battle.available_moves)

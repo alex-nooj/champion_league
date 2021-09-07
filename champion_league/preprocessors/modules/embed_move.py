@@ -38,6 +38,20 @@ class MoveIdx(IntEnum):
 
 
 def embed_move(battle: Battle, move: Move) -> torch.Tensor:
+    """Converts a pokemon's move from Showdown! into a tensor
+
+    Parameters
+    ----------
+    battle: Battle
+        The current gamestate.
+    move: Move
+        The move to be converted.
+
+    Returns
+    -------
+    torch.Tensor
+        The converted move.
+    """
     embedded_move = torch.zeros(MoveIdx.recoil + 1)
     embedded_move[move.type.value - 1] = 1.0
     embedded_move[MoveIdx.accuracy] = move.accuracy

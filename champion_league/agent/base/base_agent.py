@@ -5,12 +5,11 @@ from typing import Optional
 from typing import Tuple
 
 import torch
-
-from champion_league.utils.directory_utils import check_and_make_dir
-from champion_league.utils.directory_utils import DotDict
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
+from champion_league.utils.directory_utils import check_and_make_dir
+from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
 
@@ -202,7 +201,20 @@ class Agent:
         except FileNotFoundError:
             pass
 
-    def update_winrates(self, opponent: str, win: int):
+    def update_winrates(self, opponent: str, win: int) -> None:
+        """Function for tracking the win-rates of the agent.
+
+        Parameters
+        ----------
+        opponent: str
+            The name of the opponent (no path)
+        win: int
+            1 if the agent won, 0 if the agent lost
+
+        Returns
+        -------
+        None
+        """
         if opponent not in self.win_rates:
             self.win_rates[opponent] = [win, 1]
         else:
