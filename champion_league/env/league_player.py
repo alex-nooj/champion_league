@@ -28,7 +28,7 @@ class LeaguePlayer(Player):
         network: nn.Module,
         preprocessor: Preprocessor,
         sample_moves: Optional[bool] = True,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ):
         """This is the player for the league. It acts as the opponent for the training agent and
         handles all server communications.
@@ -43,7 +43,7 @@ class LeaguePlayer(Player):
             The preprocessor that the agent is using.
         sample_moves: Optional[bool]
             Whether to sample the output distribution of the network.
-        kwargs: Dict[str, Any]
+        kwargs: Any
             Additional keyword arguments. Any of those used by PokeEnv would be placed here, such as
             player configurations, server configurations, or player avatar.
         """

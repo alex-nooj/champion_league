@@ -103,7 +103,7 @@ def main(multi_args: Dict[str, DotDict]):
         sample_moves=league_args.sample_moves,
         agent=agent,
         matchmaker=matchmaker,
-        skilltracker=skilltracker,
+        skill_tracker=skilltracker,
         nb_steps=league_args.nb_steps,
         epoch_len=league_args.epoch_len,
         batch_size=league_args.batch_size,

@@ -11,7 +11,10 @@ from champion_league.utils.directory_utils import DotDict
 
 class Attn(nn.Module):
     def __init__(
-        self, in_shape: Tuple[int, int], nb_heads: int, scale: Optional[bool] = True
+        self,
+        in_shape: Tuple[int, int],
+        nb_heads: int,
+        scale: Optional[bool] = True,
     ):
         """The attention layer of the transformer encoder.
 
@@ -181,7 +184,10 @@ class Projection(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(
-        self, in_shape: Tuple[int, int], nb_heads: int, scale: Optional[bool] = True
+        self,
+        in_shape: Tuple[int, int],
+        nb_heads: int,
+        scale: Optional[bool] = True,
     ):
         """A gated encoder, as described in the Stablizing the Transformer for RL paper.
 
@@ -314,7 +320,12 @@ class GatedEncoder(nn.Module):
                 ),
                 "critic": nn.Sequential(
                     OrderedDict(
-                        [("critic_1", nn.Linear(in_shape["2D"][1], 1, bias=True))]
+                        [
+                            (
+                                "critic_1",
+                                nn.Linear(in_shape["2D"][1], 1, bias=True),
+                            )
+                        ]
                     )
                 ),
             }
