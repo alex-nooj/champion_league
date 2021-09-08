@@ -29,11 +29,21 @@ from champion_league.utils.replay import History
 
 class StepCounter:
     def __init__(self, reporting_freq: Optional[int] = 10_000):
+        """Helper class for counting the number of steps. Prints out the step number and the steps
+        per second at each interval, decided by `reporting_freq`.
+
+        Parameters
+        ----------
+        reporting_freq: Optional[int]
+            How often to report the number of steps and the steps per second. Default: 10,000
+        """
         self.steps = 0
         self.starting_time = time.time()
         self.reporting_freq = reporting_freq
 
     def __call__(self):
+        """Call method for the StepCounter. Increases the step count and reports it if we've hit
+        the reporting frequency."""
         self.steps += 1
         if self.steps % self.reporting_freq == 0:
             steps_per_sec = self.reporting_freq / (time.time() - self.starting_time)
@@ -86,6 +96,21 @@ def print_table(entries: Dict[str, float], float_precision: Optional[int] = 1) -
 async def league_match(
     challenger: OpponentPlayer, opponent: LeaguePlayer, nb_battles: Optional[int] = 100
 ) -> None:
+    """Asynchronous function for handling one player battling another.
+
+    Parameters
+    ----------
+    challenger: OpponentPlayer
+        The training agent.
+    opponent: LeaguePlayer
+        The player used to load in all of the League schemes.
+    nb_battles: Optional[int]
+        How many battles to perform.
+
+    Returns
+    -------
+    None
+    """
     await challenger.battle_against(opponent, n_battles=nb_battles)
 
 
@@ -97,6 +122,29 @@ def league_score(
     skill_tracker: SkillTracker,
     nb_battles: Optional[int] = 100,
 ) -> float:
+    """Function for determining how many of the league agents are considered 'beaten'.
+
+    Parameters
+    ----------
+    agent: PPOAgent
+        The currently training agent.
+    preprocessor: Preprocessor
+        The preprocessing scheme for the current agent.
+    opponent: LeaguePlayer
+        The player for handling all of the league logic.
+    league_dir: str
+        The path to the league agents.
+    skill_tracker: SkillTracker
+        Helper class for handling the trueskill of all of the agents.
+    nb_battles: Optional[int]
+        The number of battles used to determine the agent's win rates. Default: 100
+
+    Returns
+    -------
+    float
+        Percentage of the league that the agent has over a 50% win rate against, normalized between
+        0 and 1.
+    """
     challenger = OpponentPlayer(
         opponent=RLOpponent(
             network=agent.network,
