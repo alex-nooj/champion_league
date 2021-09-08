@@ -65,7 +65,7 @@ class SkillTracker:
 
     @classmethod
     def from_args(
-        cls: ABCMeta,
+        cls,
         args: DotDict,
     ) -> "SkillTracker":
         """Builds the class from arguments
