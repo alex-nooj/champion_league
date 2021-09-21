@@ -3,6 +3,7 @@ import time
 from typing import Dict
 
 import numpy as np
+from omegaconf import DictConfig
 
 from champion_league.agent.ppo import PPOAgent
 from champion_league.matchmaking.matchmaker import MatchMaker
@@ -18,16 +19,14 @@ from champion_league.utils.directory_utils import get_most_recent_epoch
 def parse_multi_args() -> Dict[str, DotDict]:
     from champion_league.config import CFG
 
-    default_args = CFG.default
     multi_args = {}
-    for dict_name, arg_dict in CFG.items():
-        if dict_name == "default" or dict_name == "imitate" or dict_name == "resume":
-            continue
+    arg_dicts = {"imitation": CFG.imitation, "league": CFG.league}
+    for arg_dict in arg_dicts:
+        multi_args[arg_dict] = {**CFG.default, **arg_dicts[arg_dict]}
+        for arg_name, arg_value in multi_args[arg_dict].items():
+            if type(arg_value) == DictConfig:
+                multi_args[arg_dict][arg_name] = DotDict(multi_args[arg_dict][arg_name])
 
-        for arg_name, arg in default_args.items():
-            if arg_name not in dict(arg_dict):
-                arg_dict[arg_name] = arg
-        multi_args[dict_name] = arg_dict
     multi_args["imitate"] = CFG.imitate
     multi_args["resume"] = CFG.resume
     return multi_args
