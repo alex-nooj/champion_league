@@ -14,8 +14,8 @@ from champion_league.agent.ppo import PPOAgent
 from champion_league.env import OpponentPlayer
 from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
+from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
-from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.preprocessors import Preprocessor
@@ -119,7 +119,7 @@ def league_score(
     preprocessor: Preprocessor,
     opponent: LeaguePlayer,
     league_dir: str,
-    skill_tracker: SkillTracker,
+    skill_tracker: LeagueSkillTracker,
     nb_battles: Optional[int] = 100,
 ) -> float:
     """Function for determining how many of the league agents are considered 'beaten'.
@@ -134,7 +134,7 @@ def league_score(
         The player for handling all of the league logic.
     league_dir: str
         The path to the league agents.
-    skill_tracker: SkillTracker
+    skill_tracker: LeagueSkillTracker
         Helper class for handling the trueskill of all of the agents.
     nb_battles: Optional[int]
         The number of battles used to determine the agent's win rates. Default: 100
@@ -217,7 +217,7 @@ def league_epoch(
     agent: PPOAgent,
     opponent: LeaguePlayer,
     matchmaker: MatchMaker,
-    skill_tracker: SkillTracker,
+    skill_tracker: LeagueSkillTracker,
     batch_size: int,
     rollout_len: int,
     epoch_len: int,
@@ -338,7 +338,7 @@ def league_play(
     sample_moves: bool,
     agent: PPOAgent,
     matchmaker: MatchMaker,
-    skill_tracker: SkillTracker,
+    skill_tracker: LeagueSkillTracker,
     nb_steps: int,
     epoch_len: int,
     batch_size: int,
@@ -453,7 +453,7 @@ def main(args: DotDict):
 
     agent.save_args(args)
 
-    skill_tracker = SkillTracker.from_args(args)
+    skill_tracker = LeagueSkillTracker.from_args(args)
 
     league_play(
         args.battle_format,

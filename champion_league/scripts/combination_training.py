@@ -5,8 +5,8 @@ from typing import Dict
 import numpy as np
 
 from champion_league.agent.ppo import PPOAgent
+from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
-from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
@@ -85,7 +85,7 @@ def main(multi_args: Dict[str, DotDict]):
         resume=league_args.resume,
     )
 
-    skilltracker = SkillTracker.from_args(league_args)
+    skilltracker = LeagueSkillTracker.from_args(league_args)
 
     if multi_args["resume"]:
         try:

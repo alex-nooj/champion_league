@@ -45,8 +45,6 @@ class OpponentPlayer(Player):
 
         Returns
         -------
-        "OpponentPlayer"
-            Player that can connect to the server and play against a human or another agent.
         """
         if device is None:
             device = 0

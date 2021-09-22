@@ -3,7 +3,7 @@ from typing import Dict
 import numpy as np
 import pytest
 
-from champion_league.matchmaking.skill_tracker import SkillTracker
+from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 
 
 @pytest.mark.parametrize(
@@ -29,7 +29,7 @@ def test_update(
     new_agent_skill: Dict[str, float],
     new_opponent_skill: Dict[str, float],
 ):
-    skill_tracker = SkillTracker(
+    skill_tracker = LeagueSkillTracker(
         tag="test_skill_tracker",
         logdir="./data",
         default_mu=25,
