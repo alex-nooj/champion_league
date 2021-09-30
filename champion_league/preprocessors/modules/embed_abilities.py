@@ -1,9 +1,10 @@
-from typing import Optional
-import torch
 from typing import Tuple
 
+import torch
+
 from champion_league.preprocessors.modules.basemodule import BaseModule
-from champion_league.preprocessors.modules.battle_to_tensor import BattleIdx, NB_POKEMON
+from champion_league.preprocessors.modules.battle_to_tensor import BattleIdx
+from champion_league.preprocessors.modules.battle_to_tensor import NB_POKEMON
 
 
 class EmbedAbilities(BaseModule):

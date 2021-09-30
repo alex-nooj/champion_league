@@ -1,11 +1,9 @@
-import multiprocessing
+from enum import auto
+from enum import IntEnum
 from typing import Optional
 
 import torch
 from poke_env.environment.battle import Battle
-from enum import auto
-from enum import IntEnum
-
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
 

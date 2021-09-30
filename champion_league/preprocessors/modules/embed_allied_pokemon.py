@@ -5,8 +5,6 @@ import torch
 from poke_env.environment.pokemon import Pokemon
 from poke_env.environment.status import Status
 
-from champion_league.utils.abilities import ABILITIES
-
 
 class AlliedPokemonIdx(IntEnum):
     bug_type = 0

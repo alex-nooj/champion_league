@@ -1,16 +1,15 @@
-from enum import auto
 from enum import IntEnum
-from typing import Optional, Tuple
+from typing import Optional
+from typing import Tuple
 
 import torch
-from poke_env.environment.battle import Battle
-from poke_env.environment.move import Move
 from poke_env.environment.move_category import MoveCategory
 from poke_env.environment.pokemon_type import PokemonType
 from torch.nn import functional
 
 from champion_league.preprocessors.modules.basemodule import BaseModule
-from champion_league.preprocessors.modules.battle_to_tensor import BattleIdx, NB_POKEMON
+from champion_league.preprocessors.modules.battle_to_tensor import BattleIdx
+from champion_league.preprocessors.modules.battle_to_tensor import NB_POKEMON
 
 
 class MoveIdx(IntEnum):
