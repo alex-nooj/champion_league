@@ -1,9 +1,7 @@
-from typing import Tuple, Dict
+from typing import Dict
+from typing import Tuple
 
 import torch
-
-from champion_league.utils.abilities import ABILITIES
-from champion_league.utils.directory_utils import DotDict
 from poke_env.environment.battle import Battle
 
 from champion_league.preprocessors import Preprocessor
@@ -16,6 +14,8 @@ from champion_league.preprocessors.modules.embed_enemy_pokemon import (
 )
 from champion_league.preprocessors.modules.embed_move import embed_move
 from champion_league.preprocessors.modules.embed_move import MoveIdx
+from champion_league.utils.abilities import ABILITIES
+from champion_league.utils.directory_utils import DotDict
 
 
 NB_POKEMON = 12
@@ -94,7 +94,7 @@ class ModularPreprocessor(Preprocessor):
                 ]
         return {
             "2D": embedded_battle.to(self.device).float().unsqueeze(0),
-            "1D": abilities.to(self.device).long().unsqueeze(0)
+            "1D": abilities.to(self.device).long().unsqueeze(0),
         }
 
     @property

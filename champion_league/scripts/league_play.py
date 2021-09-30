@@ -347,7 +347,7 @@ def league_play(
     rollout_len: int,
     starting_epoch: Optional[int] = 0,
 ):
-    """The main loop for running the league.
+    """The measure_league_diversity loop for running the league.
 
     Parameters
     ----------

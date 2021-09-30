@@ -1,7 +1,3 @@
-# Step 1: Load all of the trueskills
-# Step 2: Have each agent play against all of the other agents
-# Step 3: Save the new trueskills
-# Step 4: Print the new trueskills
 import asyncio
 import os
 from typing import List
@@ -16,13 +12,43 @@ from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
 
 
-async def match(player1: Player, player2: Player, nb_battles: int):
+async def match(player1: Player, player2: Player, nb_battles: int) -> None:
+    """Asynchronous function for having two players battle each other.
+
+    Parameters
+    ----------
+    player1: Player
+        The player that hosts the battles.
+    player2: Player
+        The player that accepts the battles.
+    nb_battles: int
+        The number of battles to be played.
+
+    Returns
+    -------
+    None
+    """
     await player1.battle_against(player2, n_battles=nb_battles)
 
 
-def print_trueskills(
+def print_agent_stats(
     agent_names: List[str], agent_skills: List[float], agent_wins: List[int]
-):
+) -> None:
+    """Prints out the Trueskill values for the agent, as well as the win rate.
+
+    Parameters
+    ----------
+    agent_names: List[str]
+        The list of agent names.
+    agent_skills: List[float]
+        The list of agent Trueskill values.
+    agent_wins: List[int]
+        The list of agent win rates.
+
+    Returns
+    -------
+    None
+    """
     name_column_size = max([len(name) for name in agent_names]) + 2
     skill_column_size = len(
         max([centered(f"{skills:0.3f}") for skills in agent_skills])
@@ -61,7 +87,26 @@ def print_trueskills(
     print(divider)
 
 
-def main(league_dir: str, games_per_agent: int, p1_device: int, p2_device: int):
+def league_competition(
+    league_dir: str, games_per_agent: int, p1_device: int, p2_device: int
+) -> None:
+    """
+
+    Parameters
+    ----------
+    league_dir: str
+        The path to the league.
+    games_per_agent: int
+        The number of games each agent will play against another agent.
+    p1_device: int
+        The GPU ID of player 1.
+    p2_device: int
+        The GPU ID of player 2.
+
+    Returns
+    -------
+    None
+    """
     usernames = {}
     agent_tags = os.listdir(league_dir)
     agent_tags.sort()
@@ -115,7 +160,7 @@ def main(league_dir: str, games_per_agent: int, p1_device: int, p2_device: int):
             agent_wins[opponent] += current_player.n_lost_battles
             current_player.reset_battles()
 
-    print_trueskills(
+    print_agent_stats(
         agent_names=agent_tags,
         agent_skills=[
             skill_tracker.agent_trueskill(v)["trueskill"] for v in agent_tags
@@ -127,4 +172,4 @@ def main(league_dir: str, games_per_agent: int, p1_device: int, p2_device: int):
 
 
 if __name__ == "__main__":
-    main(**parse_args())
+    league_competition(**parse_args())
