@@ -61,7 +61,7 @@ class Episode:
         reward: float,
         value: float,
         log_probability: float,
-        reward_scale: Optional[int] = 20,
+        reward_scale: Optional[float] = 1.0,
     ):
         self.observations.append(observation)
         self.actions.append(action)

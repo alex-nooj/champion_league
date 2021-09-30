@@ -19,6 +19,7 @@ from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.preprocessors import Preprocessor
+from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_save_dir
 from champion_league.utils.parse_args import parse_args
@@ -271,7 +272,7 @@ def league_epoch(
             reward=reward,
             value=value,
             log_probability=log_prob,
-            reward_scale=6,
+            reward_scale=player.reward_scheme.max,
         )
 
         observation = new_observation
@@ -379,6 +380,7 @@ def league_play(
     """
     agent.save_args(args)
     step_counter = StepCounter()
+    reward_scheme = RewardScheme(rules=args.rewards)
 
     for epoch in range(starting_epoch, nb_steps // epoch_len):
         agent.save_model(agent.network, epoch, args)
@@ -387,6 +389,7 @@ def league_play(
         player = RLPlayer(
             battle_format=battle_format,
             embed_battle=preprocessor.embed_battle,
+            reward_scheme=reward_scheme,
         )
 
         opponent = LeaguePlayer(

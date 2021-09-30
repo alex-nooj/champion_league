@@ -31,3 +31,14 @@ league:
   league_play_prob: 0.2
   sample_moves: True
   rollout_len: 60
+  rewards:
+    OpponentBinaryFaints: 3.0
+    AlliedBinaryFaints: 3.0
+    OpponentScalarFaints: 0
+    AlliedScalarFaints: 0
+    OpponentStatusRule: 0
+    AlliedStatusRule: 0
+    OpponentHPDiff: 1.0
+    AlliedHPDiff: 1.0
+    VictoryRule: 10.0
+    LossRule: 10.0

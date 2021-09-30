@@ -13,6 +13,8 @@ from poke_env.player_configuration import PlayerConfiguration
 from poke_env.server_configuration import ServerConfiguration
 from poke_env.teambuilder.teambuilder import Teambuilder
 
+from champion_league.reward.reward_scheme import RewardScheme
+
 
 class RLPlayer(Gen8EnvSinglePlayer):
     _ACTION_SPACE = list(range(4 * 2 + 6))
@@ -20,6 +22,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
     def __init__(
         self,
         embed_battle: Callable,
+        reward_scheme: RewardScheme,
         player_configuration: Optional[PlayerConfiguration] = None,
         *,
         avatar: Optional[int] = None,
@@ -69,6 +72,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
             start_listening=start_listening,
             team=team,
         )
+        self.reward_scheme = reward_scheme
         self._max_concurrent_battles = 2
         self._battle_count_queue = Queue(2)
         self.embed_battle_cls = embed_battle
@@ -101,9 +105,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
         float
             The reward, determined by the state
         """
-        return self.reward_computing_helper(
-            battle, fainted_value=1, hp_value=0, victory_value=0
-        )
+        return self.reward_scheme.compute(battle)
 
     def step(self, action: int) -> Tuple[Battle, float, bool, Dict[str, int]]:
         """Function for stepping the environment
@@ -146,3 +148,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
             return self.create_order(battle.available_switches[action - 4])
         else:
             return self.choose_random_move(battle)
+
+    def reset(self) -> Battle:
+        self.reward_scheme.reset()
+        return super().reset()
