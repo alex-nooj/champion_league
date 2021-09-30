@@ -1,16 +1,21 @@
+import asyncio
 import os
 import time
 from typing import Dict
 from typing import Optional
 
 import numpy as np
+from torch import nn
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
+from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.ppo import PPOAgent
+from champion_league.env import OpponentPlayer
 from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
+from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
-from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.preprocessors import Preprocessor
@@ -25,11 +30,21 @@ from champion_league.utils.replay import History
 
 class StepCounter:
     def __init__(self, reporting_freq: Optional[int] = 10_000):
+        """Helper class for counting the number of steps. Prints out the step number and the steps
+        per second at each interval, decided by `reporting_freq`.
+
+        Parameters
+        ----------
+        reporting_freq: Optional[int]
+            How often to report the number of steps and the steps per second. Default: 10,000
+        """
         self.steps = 0
         self.starting_time = time.time()
         self.reporting_freq = reporting_freq
 
     def __call__(self):
+        """Call method for the StepCounter. Increases the step count and reports it if we've hit
+        the reporting frequency."""
         self.steps += 1
         if self.steps % self.reporting_freq == 0:
             steps_per_sec = self.reporting_freq / (time.time() - self.starting_time)
@@ -79,85 +94,107 @@ def print_table(entries: Dict[str, float], float_precision: Optional[int] = 1) -
     print(divider)
 
 
-def league_check(
-    player: RLPlayer,
-    agent: PPOAgent,
-    opponent: LeaguePlayer,
-    logdir: str,
-    epoch: int,
-    nb_games: Optional[int] = 100,
+async def league_match(
+    challenger: OpponentPlayer, opponent: LeaguePlayer, nb_battles: Optional[int] = 100
 ) -> None:
-    """Function for determining if an agent has met the minimum requirements needed to be admitted
-    into the league
+    """Asynchronous function for handling one player battling another.
 
     Parameters
     ----------
-    player: RLPlayer
-        The player, used for communicating with the server
-    agent: PPOAgent
-        The agent that handles acting and contains the learn step
+    challenger: OpponentPlayer
+        The training agent.
     opponent: LeaguePlayer
-        The opponent that the agent is playing against
-    logdir: str
-        Where the agent is stored
-    epoch: int
-        Which epoch this is
-    nb_games: Optional[int]
-        How many games to play against each agent. Default: 100
-    """
+        The player used to load in all of the League schemes.
+    nb_battles: Optional[int]
+        How many battles to perform.
 
-    # We want this to be an evaluation battle, so we temporarily ensure that the opponent is not
-    # sampling its moves.
+    Returns
+    -------
+    None
+    """
+    await challenger.battle_against(opponent, n_battles=nb_battles)
+
+
+def league_score(
+    agent: PPOAgent,
+    preprocessor: Preprocessor,
+    opponent: LeaguePlayer,
+    league_dir: str,
+    skill_tracker: LeagueSkillTracker,
+    nb_battles: Optional[int] = 100,
+) -> float:
+    """Function for determining how many of the league agents are considered 'beaten'.
+
+    Parameters
+    ----------
+    agent: PPOAgent
+        The currently training agent.
+    preprocessor: Preprocessor
+        The preprocessing scheme for the current agent.
+    opponent: LeaguePlayer
+        The player for handling all of the league logic.
+    league_dir: str
+        The path to the league agents.
+    skill_tracker: LeagueSkillTracker
+        Helper class for handling the trueskill of all of the agents.
+    nb_battles: Optional[int]
+        The number of battles used to determine the agent's win rates. Default: 100
+
+    Returns
+    -------
+    float
+        Percentage of the league that the agent has over a 50% win rate against, normalized between
+        0 and 1.
+    """
+    challenger = OpponentPlayer(
+        opponent=RLOpponent(
+            network=agent.network,
+            preprocessor=preprocessor,
+            device=f"cuda:{agent.device}",
+            sample_moves=False,
+        ),
+        max_concurrent_battles=100,
+    )
+
     sample_moves = opponent.sample_moves
     opponent.sample_moves = False
 
-    # Grab all of the league agents
-    league_agents = os.listdir(os.path.join(logdir, "league"))
+    league_agents = os.listdir(league_dir)
 
     overall_wins = 0
     win_dict = {}
-    for league_agent in league_agents:
+    for league_agent in tqdm(league_agents):
         # To eval, we play 100 games against each agent in the league. If the agent wins over 50
         # games against 75% of the opponents, it is added to the league as a league agent.
-        _ = opponent.change_agent(os.path.join(logdir, "league", league_agent))
+        _ = opponent.change_agent(os.path.join(league_dir, league_agent))
 
-        # The battle loop
-        win_rate = 0
-        for episode in range(nb_games):
-            done = False
-            reward = 0
-            observation = player.reset()
-            while not done:
-                action = agent.act(observation)
+        asyncio.get_event_loop().run_until_complete(
+            league_match(challenger, opponent, nb_battles=nb_battles)
+        )
 
-                observation, reward, done, info = player.step(action)
-            # Check if the agent won
-            win_rate += int(reward > 0)
+        for result in challenger.battle_history:
+            skill_tracker.update(result, league_agent)
+        agent.write_to_tboard(
+            f"League Validation/{league_agent}", challenger.win_rate * nb_battles
+        )
+        win_dict[league_agent] = challenger.win_rate
 
-        agent.write_to_tboard(f"League Validation/{league_agent}", win_rate)
-        win_dict[league_agent] = win_rate / nb_games
-
-        # Check if the agent has won at least 50% of the games against this agent.
-        overall_wins += int(win_rate >= (nb_games / 2))
-
-    # If the agent has a win rate over 50% for 75% of the league agents, it is then added to the
-    # league.
-    if overall_wins / len(league_agents) >= 0.75:
-        move_to_league(logdir, agent.tag, epoch)
-
-    # Print the table with all the win rates, complete the battle, and reset the opponent
+        overall_wins += int(challenger.win_rate >= 0.5)
+        challenger.reset_battles()
     print_table(win_dict)
-    player.complete_current_battle()
     opponent.sample_moves = sample_moves
+    return overall_wins / len(league_agents)
 
 
-def move_to_league(logdir: str, tag: str, epoch: int) -> None:
+def move_to_league(challengers_dir: str, league_dir: str, tag: str, epoch: int) -> None:
     """Adds the files necessary to build an agent into the league directory
 
     Parameters
     ----------
-    logdir: str
+    challengers_dir: str
         The path to the agent
+    league_dir: str
+        The path to the league
     tag: str
         The name of the agent
     epoch: int
@@ -165,10 +202,9 @@ def move_to_league(logdir: str, tag: str, epoch: int) -> None:
     """
     try:
         os.symlink(
-            src=get_save_dir(os.path.join(logdir, "challengers"), tag, epoch),
+            src=get_save_dir(challengers_dir, tag, epoch),
             dst=os.path.join(
-                logdir,
-                "league",
+                league_dir,
                 f"{tag}_{epoch:05d}",
             ),
             target_is_directory=True,
@@ -182,7 +218,7 @@ def league_epoch(
     agent: PPOAgent,
     opponent: LeaguePlayer,
     matchmaker: MatchMaker,
-    skilltracker: SkillTracker,
+    skill_tracker: LeagueSkillTracker,
     batch_size: int,
     rollout_len: int,
     epoch_len: int,
@@ -205,7 +241,7 @@ def league_epoch(
     matchmaker: MatchMaker
         This handles the matchmaking process for the agent. It will take in the Trueskill values for
         all of the agents to determine a match-up where each agent has an even chance at winning.
-    skilltracker: SkillTracker
+    skill_tracker: skill_tracker
         This object tracks the trueskill of the agent, as well as all of the agents in the league.
     batch_size: int
         The batch size for backprop.
@@ -262,8 +298,8 @@ def league_epoch(
             )
 
             if opponent.tag != "self":
-                skilltracker.update(reward > 0, opponent.tag)
-                for k, v in skilltracker.skill.items():
+                skill_tracker.update(reward > 0, opponent.tag)
+                for k, v in skill_tracker.skill.items():
                     agent.write_to_tboard(f"True Skill/{k}", v)
 
             history.add_episode(episode)
@@ -289,8 +325,8 @@ def league_epoch(
                 break
             else:
                 opponent_name = matchmaker.choose_match(
-                    skilltracker.agent_skill,
-                    skilltracker.skill_ratings,
+                    skill_tracker.agent_skill,
+                    skill_tracker.skill_ratings,
                 )
                 _ = opponent.change_agent(opponent_name)
                 observation = player.reset()
@@ -303,7 +339,7 @@ def league_play(
     sample_moves: bool,
     agent: PPOAgent,
     matchmaker: MatchMaker,
-    skilltracker: SkillTracker,
+    skill_tracker: LeagueSkillTracker,
     nb_steps: int,
     epoch_len: int,
     batch_size: int,
@@ -312,7 +348,7 @@ def league_play(
     rollout_len: int,
     starting_epoch: Optional[int] = 0,
 ):
-    """The main loop for running the league.
+    """The measure_league_diversity loop for running the league.
 
     Parameters
     ----------
@@ -325,7 +361,7 @@ def league_play(
     matchmaker: MatchMaker
         This handles the matchmaking process for the agent. It will take in the Trueskill values for
         all of the agents to determine a match-up where each agent has an even chance at winning.
-    skilltracker: SkillTracker
+    skill_tracker: skill_tracker
         This object tracks the trueskill of the agent, as well as all of the agents in the league.
     nb_steps: int
         The total number of steps to train the agent.
@@ -348,7 +384,7 @@ def league_play(
 
     for epoch in range(starting_epoch, nb_steps // epoch_len):
         agent.save_model(agent.network, epoch, args)
-        skilltracker.save_skill_ratings(epoch)
+        skill_tracker.save_skill_ratings(epoch)
 
         player = RLPlayer(
             battle_format=battle_format,
@@ -361,6 +397,7 @@ def league_play(
             network=agent.network,
             preprocessor=preprocessor,
             sample_moves=sample_moves,
+            max_concurrent_battles=10,
         )
 
         player.play_against(
@@ -370,7 +407,7 @@ def league_play(
                 "agent": agent,
                 "opponent": opponent,
                 "matchmaker": matchmaker,
-                "skilltracker": skilltracker,
+                "skill_tracker": skill_tracker,
                 "batch_size": batch_size,
                 "rollout_len": rollout_len,
                 "epoch_len": epoch_len,
@@ -378,26 +415,23 @@ def league_play(
             },
         )
 
-        # player.reset_battles()
-        # opponent.reset_battles()
-        #
-        # # Check to see if the agent is able to enter the league or not
-        # player.play_against(
-        #     env_algorithm=league_check,
-        #     opponent=opponent,
-        #     env_algorithm_kwargs={
-        #         "agent": agent,
-        #         "opponent": opponent,
-        #         "logdir": logdir,
-        #         "epoch": epoch,
-        #     },
-        # )
+        league_win_rate = league_score(
+            agent, preprocessor, opponent, os.path.join(logdir, "league"), skill_tracker
+        )
+
+        if league_win_rate > 0.75:
+            move_to_league(
+                challengers_dir=os.path.join(logdir, "challengers"),
+                league_dir=os.path.join(logdir, "league"),
+                tag=agent.tag,
+                epoch=epoch,
+            )
 
         del player
         del opponent
 
     agent.save_model(agent.network, nb_steps // epoch_len, args)
-    skilltracker.save_skill_ratings(nb_steps // epoch_len)
+    skill_tracker.save_skill_ratings(nb_steps // epoch_len)
 
 
 def main(args: DotDict):
@@ -422,7 +456,7 @@ def main(args: DotDict):
 
     agent.save_args(args)
 
-    skilltracker = SkillTracker.from_args(args)
+    skill_tracker = LeagueSkillTracker.from_args(args)
 
     league_play(
         args.battle_format,
@@ -430,7 +464,7 @@ def main(args: DotDict):
         args.sample_moves,
         agent,
         matchmaker,
-        skilltracker,
+        skill_tracker,
         args.nb_steps,
         args.epoch_len,
         args.batch_size,

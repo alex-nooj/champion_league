@@ -6,8 +6,8 @@ import numpy as np
 from omegaconf import DictConfig
 
 from champion_league.agent.ppo import PPOAgent
+from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
-from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
@@ -84,7 +84,7 @@ def main(multi_args: Dict[str, DotDict]):
         resume=league_args.resume,
     )
 
-    skilltracker = SkillTracker.from_args(league_args)
+    skilltracker = LeagueSkillTracker.from_args(league_args)
 
     if multi_args["resume"]:
         try:
@@ -102,7 +102,7 @@ def main(multi_args: Dict[str, DotDict]):
         sample_moves=league_args.sample_moves,
         agent=agent,
         matchmaker=matchmaker,
-        skilltracker=skilltracker,
+        skill_tracker=skilltracker,
         nb_steps=league_args.nb_steps,
         epoch_len=league_args.epoch_len,
         batch_size=league_args.batch_size,
