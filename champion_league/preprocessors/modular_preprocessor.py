@@ -5,18 +5,13 @@ import torch
 from poke_env.environment.battle import Battle
 
 from champion_league.preprocessors import Preprocessor
-from champion_league.preprocessors.modules.embed_allied_pokemon import AlliedPokemonIdx
-from champion_league.preprocessors.modules.embed_allied_pokemon import (
-    embed_allied_pokemon,
-)
-from champion_league.preprocessors.modules.embed_enemy_pokemon import (
-    embed_enemy_pokemon,
-)
-from champion_league.preprocessors.modules.embed_move import embed_move
-from champion_league.preprocessors.modules.embed_move import MoveIdx
+from champion_league.preprocessors.modules import AlliedPokemonIdx
+from champion_league.preprocessors.modules import embed_allied_pokemon
+from champion_league.preprocessors.modules import embed_enemy_pokemon
+from champion_league.preprocessors.modules import embed_move
+from champion_league.preprocessors.modules import MoveIdx
 from champion_league.utils.abilities import ABILITIES
 from champion_league.utils.directory_utils import DotDict
-
 
 NB_POKEMON = 12
 NB_MOVES = 4

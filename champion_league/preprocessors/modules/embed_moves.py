@@ -1,16 +1,15 @@
-from enum import auto
 from enum import IntEnum
-from typing import Optional, Tuple
+from typing import Optional
+from typing import Tuple
 
 import torch
-from poke_env.environment.battle import Battle
-from poke_env.environment.move import Move
 from poke_env.environment.move_category import MoveCategory
 from poke_env.environment.pokemon_type import PokemonType
 from torch.nn import functional
 
 from champion_league.preprocessors.modules.basemodule import BaseModule
-from champion_league.preprocessors.modules.battle_to_tensor import BattleIdx, NB_POKEMON
+from champion_league.preprocessors.modules.battle_to_tensor import BattleIdx
+from champion_league.preprocessors.modules.battle_to_tensor import NB_POKEMON
 
 
 class MoveIdx(IntEnum):
@@ -51,6 +50,14 @@ NB_MOVES = 4
 
 class EmbedMoves(BaseModule):
     def __init__(self, device: Optional[int] = 0):
+        """Embeds each of the moves of a battle into tensors.
+
+        Parameters
+        ----------
+        device: Optional[int]
+            The GPU ID to put the tensors on. Default: 0.
+
+        """
         self._norm_tensor = torch.tensor([v for _, v in MOVE_MAX.items()]).to(
             f"cuda:{device}"
         )
@@ -64,6 +71,18 @@ class EmbedMoves(BaseModule):
         )
 
     def embed(self, state: torch.Tensor) -> torch.Tensor:
+        """Embeds the state's moves into a torch Tensor.
+
+        Parameters
+        ----------
+        state: torch.Tensor
+            The current state of the game.
+
+        Returns
+        -------
+        torch.Tensor
+            The tensor containing all of the preprocessed moves.
+        """
         b, _, f = state.shape
         moves = torch.reshape(
             state[:, :, BattleIdx.move_1_type :], (b, NB_POKEMON * NB_MOVES, -1)

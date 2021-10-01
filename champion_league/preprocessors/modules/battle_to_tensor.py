@@ -1,11 +1,9 @@
-import multiprocessing
+from enum import auto
+from enum import IntEnum
 from typing import Optional
 
 import torch
 from poke_env.environment.battle import Battle
-from enum import auto
-from enum import IntEnum
-
 from poke_env.environment.move import Move
 from poke_env.environment.pokemon import Pokemon
 
@@ -77,12 +75,31 @@ class BattleIdx(IntEnum):
 
 
 class BattleToTensor:
-    def __init__(self, device: Optional[int]):
+    def __init__(self, device: Optional[int] = None):
+        """Converts the Battle object from PokeEnv into a tensor.
+
+        Parameters
+        ----------
+        device: Optional[int]
+            The GPU ID to put the tensors on. If `None`, defaults to CPU.
+        """
         self._pokemon_length = BattleIdx.owner + 1
         self._move_length = BattleIdx.move_1_recoil - BattleIdx.move_1_type + 1
         self.device = device
 
     def copy_move_to_tensor(self, move: Move) -> torch.Tensor:
+        """Copies a Move object into a tensor.
+
+        Parameters
+        ----------
+        move: Move
+            The move to be converted into a tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The tensor representing the move.
+        """
         move_tensor = torch.zeros(self._move_length)
 
         move_tensor[BattleIdx.move_1_type - BattleIdx.move_1_type] = move.type.value
@@ -103,6 +120,20 @@ class BattleToTensor:
         return move_tensor
 
     def copy_pokemon_to_tensor(self, pokemon: Pokemon, owner: int) -> torch.Tensor:
+        """Copies a Pokemon object into a torch Tensor.
+
+        Parameters
+        ----------
+        pokemon: Pokemon
+            The PokeEnv Pokemon object to be converted into a tensor.
+        owner: int
+            The owner of the pokemon. 0 implies friendly, 1 implies foe.
+
+        Returns
+        -------
+        torch.Tensor
+            The pokemon in tensor form.
+        """
         pokemon_tensor = torch.zeros(self._pokemon_length)
         if owner == ALLY or pokemon.ability is not None:
             pokemon_tensor[BattleIdx.ability] = ABILITIES_IX[
@@ -159,6 +190,18 @@ class BattleToTensor:
         return pokemon_tensor
 
     def embed(self, battle: Battle) -> torch.Tensor:
+        """Embeds the Battle object into a torch Tensor.
+
+        Parameters
+        ----------
+        battle: Battle
+            The Battle object to be converted into a tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The tensor containing all of the relevant information stored in the Battle.
+        """
         battle_tensor = torch.zeros(NB_POKEMON, len(BattleIdx))
 
         for poke_ix, (_, pokemon) in enumerate(battle.team.items()):
