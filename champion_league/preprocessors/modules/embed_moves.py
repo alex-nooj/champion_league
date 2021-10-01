@@ -50,6 +50,14 @@ NB_MOVES = 4
 
 class EmbedMoves(BaseModule):
     def __init__(self, device: Optional[int] = 0):
+        """Embeds each of the moves of a battle into tensors.
+
+        Parameters
+        ----------
+        device: Optional[int]
+            The GPU ID to put the tensors on. Default: 0.
+
+        """
         self._norm_tensor = torch.tensor([v for _, v in MOVE_MAX.items()]).to(
             f"cuda:{device}"
         )
@@ -63,6 +71,18 @@ class EmbedMoves(BaseModule):
         )
 
     def embed(self, state: torch.Tensor) -> torch.Tensor:
+        """Embeds the state's moves into a torch Tensor.
+
+        Parameters
+        ----------
+        state: torch.Tensor
+            The current state of the game.
+
+        Returns
+        -------
+        torch.Tensor
+            The tensor containing all of the preprocessed moves.
+        """
         b, _, f = state.shape
         moves = torch.reshape(
             state[:, :, BattleIdx.move_1_type :], (b, NB_POKEMON * NB_MOVES, -1)
