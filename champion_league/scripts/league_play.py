@@ -26,6 +26,7 @@ from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
 from champion_league.utils.replay import Episode
 from champion_league.utils.replay import History
+from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
 class StepCounter:
@@ -390,6 +391,7 @@ def league_play(
             battle_format=battle_format,
             embed_battle=preprocessor.embed_battle,
             reward_scheme=reward_scheme,
+            server_configuration=DockerServerConfiguration,
         )
 
         opponent = LeaguePlayer(
@@ -398,6 +400,7 @@ def league_play(
             preprocessor=preprocessor,
             sample_moves=sample_moves,
             max_concurrent_battles=10,
+            server_configuration=DockerServerConfiguration,
         )
 
         player.play_against(

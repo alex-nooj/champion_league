@@ -10,7 +10,7 @@ import torch
 from poke_env.environment.battle import Battle
 from poke_env.player.player import Player
 
-from champion_league.agent.scripted.max_damage_player import MaxDamagePlayer
+from champion_league.env.max_damage_player import MaxDamagePlayer
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.utils.directory_utils import DotDict

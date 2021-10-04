@@ -22,16 +22,29 @@ pip install -e .[all]
 
 ### 3. Setup Champion League
 
+1. First, clone the repo:
+`git clone --recurse-submodules git@github.com:alex-nooj/champion_league.git`
+2. Second, install dependencies:
 `pip install -r requirements.txt`
 
-### 4. Scripted Agent vs. Scripted Agent
+### 4. Start the Showdown! Server
+
+1. First, install docker, if you have not done so already.
+2. From the `PATH/champion_league/` directory, run:
+`docker build ./ -t showdown`. This builds an image that is used to run the Pokemon Showdown! server
+and names it `showdown`.
+3. Run `docker run -p 8000:8000 showdown`. This will run the docker container, exposing port 8000 of
+your local machine to port 8000 of the docker container, and run the server.
+4. To test your server, go to `0.0.0.0:8000`. If you see the server and it says `You joined Lobby`,
+you're ready to start training!
+### 5. Scripted Agent vs. Scripted Agent
 
 The following command will generate two scripted agents (no GPU), connect them to the Showdown
 server, and have them battle continuously.
 
 `python -m champion_league.scripts.max_damage_battle`
 
-### 5. Train An Agent
+### 6. Train An Agent
 The following command will start a training script using PPO and self-play:
 
 `python -m champion_league.scripts.self_play logdir={PATH} tag={NAME}`
