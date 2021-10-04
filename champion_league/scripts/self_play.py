@@ -8,10 +8,12 @@ from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.replay import Episode
 from champion_league.utils.replay import History
+from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
 def self_epoch(
@@ -128,6 +130,8 @@ def main(args: DotDict):
     env_player = RLPlayer(
         battle_format=args.battle_format,
         embed_battle=preprocessor.embed_battle,
+        reward_scheme=RewardScheme(rules=args.rewards),
+        server_configuration=DockerServerConfiguration,
     )
 
     opponent = LeaguePlayer(
@@ -135,6 +139,7 @@ def main(args: DotDict):
         network=network,
         preprocessor=preprocessor,
         sample_moves=args.sample_moves or True,
+        server_configuration=DockerServerConfiguration,
     )
 
     agent = PPOAgent(

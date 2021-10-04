@@ -10,6 +10,7 @@ from champion_league.env import OpponentPlayer
 from champion_league.matchmaking.skill_tracker import MultiSkillTracker
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
+from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
 async def match(player1: Player, player2: Player, nb_battles: int) -> None:
@@ -130,6 +131,7 @@ def league_competition(
             device=p1_device,
             max_concurrent_battles=games_per_agent,
             player_configuration=PlayerConfiguration(username, "none"),
+            server_configuration=DockerServerConfiguration,
         )
 
         for opponent in tqdm(agent_tags[ix + 1 :]):
@@ -145,6 +147,7 @@ def league_competition(
                 device=p2_device,
                 max_concurrent_battles=games_per_agent,
                 player_configuration=PlayerConfiguration(username, "none"),
+                server_configuration=DockerServerConfiguration,
             )
 
             asyncio.get_event_loop().run_until_complete(

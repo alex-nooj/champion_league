@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import asyncio
 
-from champion_league.agent.scripted.max_damage_player import MaxDamagePlayer
-from champion_league.agent.scripted.random_player import RandomPlayer
+from champion_league.env.max_damage_player import MaxDamagePlayer
+from champion_league.env.random_player import RandomPlayer
 
 
 async def main(player1, player2):
