@@ -9,11 +9,12 @@ from champion_league.env.rl_player import RLPlayer
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.reward.reward_scheme import RewardScheme
+from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
-from champion_league.utils.replay import Episode
 from champion_league.utils.replay import History
 from champion_league.utils.server_configuration import DockerServerConfiguration
+from champion_league.utils.step_counter import StepCounter
 
 
 def self_epoch(
@@ -23,6 +24,7 @@ def self_epoch(
     epoch_len: int,
     batch_size: int,
     rollout_len: int,
+    step_counter: StepCounter,
 ):
     """This function runs through a single epoch of self-play training. This is performed using the
     league code, where the league opponent is simply always restricted to chosing 'self' as the
@@ -42,81 +44,61 @@ def self_epoch(
         The size of the batch during training.
     rollout_len: int
         Length of a rollout.
+    step_counter: StepCounter
+        Tracks the total number of steps across each epoch.
 
     Returns
     -------
     None
     """
+    start_step = step_counter.steps
     history = History()
-
     epoch_loss_count = {}
-
-    done = True
-    observation = None
-    episode = Episode()
     win_rates = {}
 
-    for step in range(epoch_len):
-        if done:
-            observation = player.reset()
-            episode = Episode()
+    while True:
+        episode = collect_episode(player=player, agent=agent, step_counter=step_counter)
 
-        action, log_prob, value = agent.sample_action(observation)
-
-        new_observation, reward, done, info = player.step(int(action))
-
-        episode.append(
-            observation=observation,
-            action=action,
-            reward=reward,
-            value=value,
-            log_probability=log_prob,
-            reward_scale=6.0,
+        agent.write_to_tboard(
+            "Agent Outputs/Average Episode Reward",
+            float(np.sum(episode.rewards)),
         )
 
-        observation = new_observation
+        agent.write_to_tboard(
+            "Agent Outputs/Average Probabilities",
+            np.exp(np.mean(episode.log_probabilities)),
+        )
 
-        if done:
-            episode.end_episode(last_value=0)
-            agent.write_to_tboard(
-                "League Agent Outputs/Average Episode Reward",
-                float(np.sum(episode.rewards)),
-            )
+        if opponent.tag not in win_rates:
+            win_rates[opponent.tag] = [int(episode.rewards[-1] > 0), 1]
+        else:
+            win_rates[opponent.tag][0] += int(episode.rewards[-1] > 0)
+            win_rates[opponent.tag][1] += 1
 
-            agent.write_to_tboard(
-                "League Agent Outputs/Average Probabilities",
-                np.exp(np.mean(episode.log_probabilities)),
-            )
+        agent.write_to_tboard(
+            f"League Training/{opponent.tag}",
+            float(win_rates[opponent.tag][0] / win_rates[opponent.tag][1]),
+        )
 
-            if opponent.tag not in win_rates:
-                win_rates[opponent.tag] = [int(reward > 0), 1]
-            else:
-                win_rates[opponent.tag][0] += int(reward > 0)
-                win_rates[opponent.tag][1] += 1
+        history.add_episode(episode)
 
-            agent.write_to_tboard(
-                f"League Training/{opponent.tag}",
-                float(win_rates[opponent.tag][0] / win_rates[opponent.tag][1]),
-            )
+        if len(history) > batch_size * rollout_len:
+            history.build_dataset()
+            data_loader = DataLoader(history, batch_size, shuffle=True, drop_last=True)
+            epoch_losses = agent.learn_step(data_loader)
+            opponent.update_network(agent.network)
 
-            history.add_episode(episode)
+            for key in epoch_losses:
+                if key not in epoch_loss_count:
+                    epoch_loss_count[key] = 0
+                for val in epoch_losses[key]:
+                    agent.write_to_tboard(f"League Loss/{key}", val)
+                    epoch_loss_count[key] += 1
 
-            if len(history) > batch_size * rollout_len:
-                history.build_dataset()
-                data_loader = DataLoader(
-                    history, batch_size, shuffle=True, drop_last=True
-                )
-                epoch_losses = agent.learn_step(data_loader)
-                opponent.update_network(agent.network)
+            if step_counter.steps - start_step >= epoch_len:
+                break
 
-                for key in epoch_losses:
-                    if key not in epoch_loss_count:
-                        epoch_loss_count[key] = 0
-                    for val in epoch_losses[key]:
-                        agent.write_to_tboard(f"League Loss/{key}", val)
-                        epoch_loss_count[key] += 1
-
-                history.free_memory()
+            history.free_memory()
 
     player.complete_current_battle()
 
@@ -153,7 +135,7 @@ def main(args: DotDict):
     )
 
     agent.save_args(args)
-
+    step_counter = StepCounter()
     opponent.change_agent("self")
 
     for epoch in range(args.nb_steps // args.epoch_len):
@@ -168,6 +150,7 @@ def main(args: DotDict):
                 "epoch_len": args.epoch_len,
                 "batch_size": args.batch_size,
                 "rollout_len": args.rollout_len,
+                "step_counter": step_counter,
             },
         )
 

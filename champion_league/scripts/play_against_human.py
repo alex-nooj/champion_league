@@ -14,7 +14,7 @@ async def main(args: DotDict):
         server_configuration=DockerServerConfiguration,
     )
 
-    await env_player.send_challenges("anewgent", 1)
+    await env_player.send_challenges(args.challenger, 1)
 
 
 if __name__ == "__main__":

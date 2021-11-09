@@ -86,7 +86,7 @@ class MatchMaker:
             Either the path to a previous version of the agent, or 'self', to use just the current
             agent.
         """
-        if np.random.randint(low=0, high=100) < 90:
+        if np.random.randint(low=0, high=100) < 99:
             return "self"
         else:
             agents = os.listdir(os.path.join(self.logdir, "challengers", self.tag))
@@ -148,7 +148,7 @@ class MatchMaker:
             opponent = np.random.choice(valid_agents)
         return os.path.join(self.logdir, "league", opponent)
 
-    def _choose_exploiter(self):
+    def _choose_exploiter(self) -> str:
         """Function for selecting an exploiter for the training agent. Not Implemented.
 
         Raises
@@ -157,6 +157,6 @@ class MatchMaker:
 
         Returns
         -------
-        None
+        str
         """
         raise NotImplementedError

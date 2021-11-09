@@ -1,4 +1,5 @@
-league_dir: /home/anewgent/Documents/pokemon_trainers/challengers/
-tag: Misty
-epoch: 12
+league_dir: /share/users/anewgent/Projects/pokemon_trainers/challengers/
+tag: Koga
+epoch: 43
 gpu_id: 0
+challenger: anewgent

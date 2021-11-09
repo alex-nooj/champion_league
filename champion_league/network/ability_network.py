@@ -1,16 +1,17 @@
 from typing import Dict
-from typing import Tuple
 from typing import Optional
+from typing import Tuple
 
 import torch
 from torch import nn
 
+from champion_league.network.base_network import BaseNetwork
 from champion_league.network.gated_encoder import GatedEncoder
 from champion_league.utils.abilities import ABILITIES
 from champion_league.utils.directory_utils import DotDict
 
 
-class AbilityNetwork(nn.Module):
+class AbilityNetwork(BaseNetwork):
     def __init__(
         self,
         nb_actions: int,
@@ -42,14 +43,20 @@ class AbilityNetwork(nn.Module):
             scale=scale,
         )
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.tensor]:
+    def forward(
+        self, x_internals: Dict[str, Dict[str, torch.Tensor]]
+    ) -> Tuple[Dict[str, torch.tensor], Dict[str, torch.Tensor]]:
+        x = x_internals["x"]
+
         abilities = self.abilities_embedding(x["1D"])
         return self.gated_encoder(
-            x={
-                "2D": torch.cat(
-                    (x["2D"], abilities),
-                    dim=-1,
-                )
+            x_internals={
+                "x": {
+                    "2D": torch.cat(
+                        (x["2D"], abilities),
+                        dim=-1,
+                    )
+                }
             }
         )
 

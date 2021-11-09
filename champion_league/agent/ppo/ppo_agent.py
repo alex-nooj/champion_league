@@ -95,20 +95,25 @@ class PPOAgent(Agent):
         self.mini_epochs = mini_epochs
         self.updates = 0
 
-    def sample_action(self, state: Dict[str, torch.Tensor]) -> Tuple[float, float, float]:
+    def sample_action(
+        self, state: Dict[str, torch.Tensor], internals: Dict[str, torch.Tensor]
+    ) -> Tuple[float, float, float, Dict[str, torch.Tensor]]:
         """Samples an action from a distribution using the network that's training.
 
         Parameters
         ----------
+        internals
         state: torch.Tensor
             The current, preprocessed state
 
         Returns
         -------
-        Tuple[float, float, float]
-            The action, log_probability, and value in that order
+        Tuple[float, float, float, Dict[str, torch.Tensor]]
+            The action, log_probability, value, and internals in that order
         """
-        y = self.network(state)
+        y, next_internals = self.network.forward(
+            x_internals={"x": state, "internals": internals}
+        )
 
         dist = Categorical(y["action"])
 
@@ -116,9 +121,11 @@ class PPOAgent(Agent):
 
         log_probability = dist.log_prob(action)
 
-        return action.item(), log_probability.item(), y["critic"].item()
+        return action.item(), log_probability.item(), y["critic"].item(), next_internals
 
-    def act(self, state: torch.Tensor) -> int:
+    def act(
+        self, state: Dict[str, torch.Tensor], internals: Dict[str, torch.Tensor]
+    ) -> Tuple[int, Dict[str, torch.Tensor]]:
         """Rather than sample the output distribution for an action, this function takes the acton
         the network believes is best.
 
@@ -132,18 +139,24 @@ class PPOAgent(Agent):
         int
             The action chosen by the network.
         """
-        y = self.network(state)
+        y, next_internals = self.network.forward(
+            x_internals={"x": state, "internals": internals}
+        )
 
-        return torch.argmax(y["action"], -1).item()
+        return torch.argmax(y["action"], -1).item(), next_internals
 
     def evaluate_actions(
-        self, states: Dict[str, torch.Tensor], actions: torch.Tensor
+        self,
+        states: Dict[str, torch.Tensor],
+        internals: Dict[str, torch.Tensor],
+        actions: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """This function calculates the log probabilities and entropy of the current distribution,
         as well as the critic's output.
 
         Parameters
         ----------
+        internals
         states: Dict[str, torch.Tensor]
             The preprocessed state of the pokemon battle.
         actions: torch.Tensor
@@ -154,7 +167,7 @@ class PPOAgent(Agent):
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
             The log probs, entropy, and critic values.
         """
-        y = self.network(states)
+        y, _ = self.network(x_internals={"x": states, "internals": internals})
 
         dist = Categorical(y["action"])
         entropy = dist.entropy()
@@ -194,6 +207,7 @@ class PPOAgent(Agent):
             }
             for (
                 observations,
+                internals,
                 actions,
                 advantages,
                 log_probabilities,
@@ -202,12 +216,13 @@ class PPOAgent(Agent):
                 actions = actions.long().to(self.device)
                 advantages = advantages.float().to(self.device)
                 observations = {k: v.squeeze(1) for k, v in observations.items()}
+                internals = {k: v.squeeze(1) for k, v in internals.items()}
                 old_log_probabilities = log_probabilities.float().to(self.device)
 
                 self.optimizer.zero_grad()
 
                 new_log_probabilities, entropy, values = self.evaluate_actions(
-                    observations, actions
+                    observations, internals, actions
                 )
 
                 policy_loss = ac_loss(

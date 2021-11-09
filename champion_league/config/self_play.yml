@@ -24,3 +24,15 @@ sequence_len: 5
 nb_encoders: 1
 nb_heads: 1
 scale: False
+
+rewards:
+  OpponentBinaryFaints: 1.0
+  AlliedBinaryFaints: 1.0
+  OpponentScalarFaints: 0
+  AlliedScalarFaints: 0
+  OpponentStatusRule: 0
+  AlliedStatusRule: 0
+  OpponentHPDiff: 0.5
+  AlliedHPDiff: 0.5
+  VictoryRule: 10.0
+  LossRule: 10.0
