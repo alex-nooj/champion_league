@@ -6,6 +6,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
+from champion_league.network.base_network import BaseNetwork
 from champion_league.utils.directory_utils import DotDict
 
 
@@ -130,6 +131,15 @@ class Gate(nn.Module):
         return x + y
 
 
+class Squeeze(nn.Module):
+    def __init__(self, dim: int):
+        super().__init__()
+        self._dim = dim
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x.squeeze(self._dim)
+
+
 class LNorm(nn.Module):
     def __init__(self, in_shape: Tuple[int, int]):
         """Layer norm module for the Encoder.
@@ -220,7 +230,6 @@ class Encoder(nn.Module):
                         "projection_layer",
                         Projection(in_shape),
                     ),
-                    ("projection_relu", nn.ReLU()),
                 ]
             )
         )
@@ -246,7 +255,7 @@ class Encoder(nn.Module):
         return self.second_gate(gate_out, norm_out)
 
 
-class GatedEncoder(nn.Module):
+class GatedEncoder(BaseNetwork):
     def __init__(
         self,
         nb_actions: int,
@@ -333,12 +342,14 @@ class GatedEncoder(nn.Module):
 
         self.softmax_layer = nn.Softmax(dim=-1)
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, x_internals: Dict[str, Dict[str, torch.Tensor]]
+    ) -> Tuple[Dict[str, torch.Tensor], Dict]:
         """The forward function for the Gated Encoder.
 
         Parameters
         ----------
-        x: x: Dict[str, torch.Tensor]
+        x_internals: Dict[str, Dict[str, torch.Tensor]]
             The input state to the network. Must contain the key '2D'
 
         Returns
@@ -348,19 +359,24 @@ class GatedEncoder(nn.Module):
             ('critic'), the softmaxed action distribution ('action'), and the non-softmaxed output
             for the action distribution ('rough_action').
         """
+        x = x_internals["x"]
+
         encoder_out = self.encoders(x["2D"])
         rough_action = self.output_layers["action"](encoder_out)
         critic = self.output_layers["critic"](encoder_out)
         soft_action = self.softmax_layer(rough_action)
-        return {
-            "action": soft_action,
-            "critic": critic,
-            "rough_action": rough_action,
-        }
+        return (
+            {
+                "action": soft_action,
+                "critic": critic,
+                "rough_action": rough_action,
+            },
+            {},
+        )
 
     @classmethod
     def from_args(cls, args: DotDict) -> "GatedEncoder":
-        return GatedEncoder(
+        return cls(
             args.nb_actions,
             args.in_shape,
             args.nb_encoders,

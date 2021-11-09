@@ -96,7 +96,7 @@ def eval_over_dataset(
     epoch_action_loss = 0
     epoch_total_loss = 0
     for batch_idx, (state, action, reward) in enumerate(dataset):
-        preds = network(state)
+        preds, _ = network(state)
         action_acc += torch.sum(torch.argmax(preds["rough_action"], dim=-1) == action)
 
         sample_count += dataset.batch_size

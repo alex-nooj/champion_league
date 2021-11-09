@@ -4,20 +4,22 @@ import torch
 from torch import nn
 
 from champion_league.network.ability_network import AbilityNetwork
+from champion_league.network.encoder_lstm import EncoderLSTM
 from champion_league.network.gated_encoder import GatedEncoder
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
 
 
-networks = {
+NETWORKS = {
     "GatedEncoder": GatedEncoder,
     "AbilityNetwork": AbilityNetwork,
+    "EncoderLSTM": EncoderLSTM,
 }
 
 
 def build_network_from_args(args: DotDict) -> nn.Module:
-    network = networks[args.network].from_args(args).to(f"cuda:{args.device}")
+    network = NETWORKS[args.network].from_args(args).to(args.device)
 
     if args.resume:
         network = resume_network_from_args(args, network)

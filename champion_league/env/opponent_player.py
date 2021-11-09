@@ -69,7 +69,7 @@ class OpponentPlayer(Player):
             opponent = RLOpponent(
                 network=network,
                 preprocessor=preprocessor,
-                device=f"cuda:{device}",
+                device=device,
                 sample_moves=False,
             )
 

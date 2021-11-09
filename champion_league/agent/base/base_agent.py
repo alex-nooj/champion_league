@@ -42,14 +42,18 @@ class Agent:
             except ValueError:
                 pass
 
-    def sample_action(self, state: torch.Tensor) -> Tuple[float, float, float]:
+    def sample_action(
+        self, state: Dict[str, torch.Tensor], internals: Dict[str, torch.Tensor]
+    ) -> Tuple[float, float, float]:
         """Abstract method for sampling an action from a distribution. This method should take in a
         state and return an action, log_probability, and the value of the current state.
 
         Parameters
         ----------
-        state: torch.Tensor
+        state: Dict[str, torch.Tensor]
             The current, preprocessed state
+        internals: Dict[str, torch.Tensor]
+            The previous internals of the network.
 
         Returns
         -------

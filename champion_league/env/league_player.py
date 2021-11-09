@@ -51,7 +51,7 @@ class LeaguePlayer(Player):
 
         self.opponent = None
         self.mode = None
-        self.device = f"cuda:{device}"
+        self.device = device
         self.network = None
         self.update_network(network)
         self.preprocessor = preprocessor
@@ -169,3 +169,7 @@ class LeaguePlayer(Player):
         None
         """
         self.network = copy.deepcopy(network).eval()
+
+    def reset(self):
+        if isinstance(self.opponent, RLOpponent):
+            self.opponent.reset()

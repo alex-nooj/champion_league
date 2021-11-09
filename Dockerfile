@@ -10,4 +10,4 @@ RUN mkdir -p /showdown/pokemon-showdown/logs/repl && \
     npm install --global n && \
     n latest
 
-CMD [ "node", "pokemon-showdown", "8000", "start", "--no-security" ]
+CMD [ "node", "pokemon-showdown", "start", "--no-security" ]

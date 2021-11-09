@@ -1,11 +1,9 @@
 import asyncio
 import os
-import time
 from typing import Dict
 from typing import Optional
 
 import numpy as np
-from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -20,37 +18,14 @@ from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.preprocessors import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
+from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_save_dir
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
-from champion_league.utils.replay import Episode
 from champion_league.utils.replay import History
 from champion_league.utils.server_configuration import DockerServerConfiguration
-
-
-class StepCounter:
-    def __init__(self, reporting_freq: Optional[int] = 10_000):
-        """Helper class for counting the number of steps. Prints out the step number and the steps
-        per second at each interval, decided by `reporting_freq`.
-
-        Parameters
-        ----------
-        reporting_freq: Optional[int]
-            How often to report the number of steps and the steps per second. Default: 10,000
-        """
-        self.steps = 0
-        self.starting_time = time.time()
-        self.reporting_freq = reporting_freq
-
-    def __call__(self):
-        """Call method for the StepCounter. Increases the step count and reports it if we've hit
-        the reporting frequency."""
-        self.steps += 1
-        if self.steps % self.reporting_freq == 0:
-            steps_per_sec = self.reporting_freq / (time.time() - self.starting_time)
-            print(f"\nStep {self.steps}: {steps_per_sec} steps/sec")
-            self.starting_time = time.time()
+from champion_league.utils.step_counter import StepCounter
 
 
 def print_table(entries: Dict[str, float], float_precision: Optional[int] = 1) -> None:
@@ -151,7 +126,7 @@ def league_score(
         opponent=RLOpponent(
             network=agent.network,
             preprocessor=preprocessor,
-            device=f"cuda:{agent.device}",
+            device=agent.device,
             sample_moves=False,
         ),
         max_concurrent_battles=100,
@@ -259,79 +234,58 @@ def league_epoch(
     """
     start_step = step_counter.steps
     history = History()
-    observation = player.reset()
-    episode = Episode()
+
     while True:
-        action, log_prob, value = agent.sample_action(observation)
+        episode = collect_episode(player=player, agent=agent, step_counter=step_counter)
 
-        new_observation, reward, done, info = player.step(action)
-        step_counter()
-
-        episode.append(
-            observation=observation,
-            action=action,
-            reward=reward,
-            value=value,
-            log_probability=log_prob,
-            reward_scale=player.reward_scheme.max,
+        agent.write_to_tboard(
+            "Agent Outputs/Average Episode Reward", float(np.sum(episode.rewards))
         )
 
-        observation = new_observation
+        agent.write_to_tboard(
+            "Agent Outputs/Average Probabilities",
+            float(np.mean([np.exp(lp) for lp in episode.log_probabilities])),
+        )
 
-        if done:
-            episode.end_episode(last_value=0)
-            agent.write_to_tboard(
-                "Agent Outputs/Average Episode Reward", float(np.sum(episode.rewards))
+        agent.update_winrates(opponent.tag, int(episode.rewards[-1] > 0))
+
+        agent.write_to_tboard(
+            f"League Training/{opponent.tag}",
+            float(agent.win_rates[opponent.tag][0] / agent.win_rates[opponent.tag][1]),
+        )
+
+        if opponent.tag != "self":
+            skill_tracker.update(episode.rewards[-1] > 0, opponent.tag)
+            for k, v in skill_tracker.skill.items():
+                agent.write_to_tboard(f"True Skill/{k}", v)
+
+        opponent_name = matchmaker.choose_match(
+            skill_tracker.agent_skill,
+            skill_tracker.skill_ratings,
+        )
+        _ = opponent.change_agent(opponent_name)
+
+        history.add_episode(episode)
+
+        if len(history) > batch_size * rollout_len:
+            history.build_dataset()
+            data_loader = DataLoader(
+                history,
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=True,
             )
+            epoch_losses = agent.learn_step(data_loader)
+            opponent.update_network(agent.network)
 
-            agent.write_to_tboard(
-                "Agent Outputs/Average Probabilities",
-                float(np.mean([np.exp(lp) for lp in episode.log_probabilities])),
-            )
+            for key in epoch_losses:
+                for val in epoch_losses[key]:
+                    agent.write_to_tboard(f"League Loss/{key}", val)
 
-            agent.update_winrates(opponent.tag, int(reward > 0))
-
-            agent.write_to_tboard(
-                f"League Training/{opponent.tag}",
-                float(
-                    agent.win_rates[opponent.tag][0] / agent.win_rates[opponent.tag][1]
-                ),
-            )
-
-            if opponent.tag != "self":
-                skill_tracker.update(reward > 0, opponent.tag)
-                for k, v in skill_tracker.skill.items():
-                    agent.write_to_tboard(f"True Skill/{k}", v)
-
-            history.add_episode(episode)
-
-            if len(history) > batch_size * rollout_len:
-                history.build_dataset()
-                data_loader = DataLoader(
-                    history,
-                    batch_size=batch_size,
-                    shuffle=True,
-                    drop_last=True,
-                )
-                epoch_losses = agent.learn_step(data_loader)
-                opponent.update_network(agent.network)
-
-                for key in epoch_losses:
-                    for val in epoch_losses[key]:
-                        agent.write_to_tboard(f"League Loss/{key}", val)
-
-                history.free_memory()
+            history.free_memory()
 
             if step_counter.steps - start_step >= epoch_len:
                 break
-            else:
-                opponent_name = matchmaker.choose_match(
-                    skill_tracker.agent_skill,
-                    skill_tracker.skill_ratings,
-                )
-                _ = opponent.change_agent(opponent_name)
-                observation = player.reset()
-                episode = Episode()
 
 
 def league_play(

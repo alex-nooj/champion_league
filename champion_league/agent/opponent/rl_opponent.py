@@ -15,7 +15,7 @@ class RLOpponent:
         self,
         network: nn.Module,
         preprocessor: Preprocessor,
-        device: str,
+        device: int,
         sample_moves: Optional[bool] = True,
     ):
         """The league opponent handles all of the move selection logic for the league and none of
@@ -37,6 +37,7 @@ class RLOpponent:
         self.preprocessor = preprocessor
         self.sample_moves = sample_moves
         self.device = device
+        self._prev_internals = {}
 
     def choose_move(self, battle: Battle) -> BattleOrder:
         """The function used to pass the current state into the network and receive a battle order.
@@ -54,7 +55,15 @@ class RLOpponent:
         """
         state = self.preprocessor.embed_battle(battle)
 
-        y = self.network(state)
+        if battle.battle_tag not in self._prev_internals:
+            self._prev_internals[battle.battle_tag] = self.network.reset(self.device)
+
+        y, self._prev_internals[battle.battle_tag] = self.network(
+            x_internals={
+                "x": state,
+                "internals": self._prev_internals[battle.battle_tag],
+            }
+        )
 
         if self.sample_moves:
             action = torch.multinomial(y["action"][0:], 1)
@@ -116,3 +125,6 @@ class RLOpponent:
             return available_orders[int(random.random() * len(available_orders))]
         else:
             return DefaultBattleOrder()
+
+    def reset(self):
+        self._prev_internals = {}

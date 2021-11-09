@@ -77,7 +77,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
         self._battle_count_queue = Queue(2)
         self.embed_battle_cls = embed_battle
 
-    def embed_battle(self, battle: Battle) -> torch.Tensor:
+    def embed_battle(self, battle: Battle) -> Dict[str, torch.Tensor]:
         """Abstract function for embedding a battle using the chosen preprocessor
 
         Parameters
@@ -149,6 +149,6 @@ class RLPlayer(Gen8EnvSinglePlayer):
         else:
             return self.choose_random_move(battle)
 
-    def reset(self) -> Battle:
+    def reset(self) -> Dict[str, torch.Tensor]:
         self.reward_scheme.reset()
         return super().reset()
