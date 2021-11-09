@@ -10,7 +10,7 @@ from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.replay import Episode
-from champion_league.utils.replay import History
+from champion_league.utils.replay import Rollout
 
 
 def train_loop(
@@ -21,7 +21,7 @@ def train_loop(
     batch_size: int,
     save_after: int,
 ):
-    history = History()
+    history = Rollout()
 
     epoch_loss_count = {}
     episode_ite = 0

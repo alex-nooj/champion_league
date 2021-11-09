@@ -89,7 +89,7 @@ def normalize_list(array: List[float]) -> List[float]:
     return array.tolist()
 
 
-class History(Dataset):
+class Rollout(Dataset):
     def __init__(self):
         self.episodes = []
         self.observations = []

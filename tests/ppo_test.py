@@ -10,7 +10,7 @@ from champion_league.network import build_network_from_args
 from champion_league.network import NETWORKS
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.replay import Episode
-from champion_league.utils.replay import History
+from champion_league.utils.replay import Rollout
 
 resize = T.Compose(
     [T.ToPILImage(), T.Resize(40, interpolation=Image.CUBIC), T.ToTensor()]
@@ -87,7 +87,7 @@ def test_networks(network_type: str, env: str, expected_return: int):
         logdir="/tmp/",
         tag=f"test_{network_type}",
     )
-    history = History()
+    history = Rollout()
     done = False
     internals = agent.network.reset(device)
     episode = Episode()

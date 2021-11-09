@@ -12,7 +12,7 @@ from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
-from champion_league.utils.replay import History
+from champion_league.utils.replay import Rollout
 from champion_league.utils.server_configuration import DockerServerConfiguration
 from champion_league.utils.step_counter import StepCounter
 
@@ -52,7 +52,7 @@ def self_epoch(
     None
     """
     start_step = step_counter.steps
-    history = History()
+    history = Rollout()
     epoch_loss_count = {}
     win_rates = {}
 
