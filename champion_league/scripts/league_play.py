@@ -233,25 +233,16 @@ def league_epoch(
     None
     """
     start_step = step_counter.steps
-    history = Rollout()
+    rollout = Rollout()
 
     while True:
         episode = collect_episode(player=player, agent=agent, step_counter=step_counter)
-
-        agent.write_to_tboard(
-            "Agent Outputs/Average Episode Reward", float(np.sum(episode.rewards))
-        )
-
-        agent.write_to_tboard(
-            "Agent Outputs/Average Probabilities",
-            float(np.mean([np.exp(lp) for lp in episode.log_probabilities])),
-        )
 
         agent.update_winrates(opponent.tag, int(episode.rewards[-1] > 0))
 
         agent.write_to_tboard(
             f"League Training/{opponent.tag}",
-            float(agent.win_rates[opponent.tag][0] / agent.win_rates[opponent.tag][1]),
+            float(np.mean(agent.win_rates[opponent.tag])),
         )
 
         if opponent.tag != "self":
@@ -265,12 +256,12 @@ def league_epoch(
         )
         _ = opponent.change_agent(opponent_name)
 
-        history.add_episode(episode)
+        rollout.add_episode(episode)
 
-        if len(history) > batch_size * rollout_len:
-            history.build_dataset()
+        if len(rollout) > batch_size * rollout_len:
+            rollout.build_dataset()
             data_loader = DataLoader(
-                history,
+                rollout,
                 batch_size=batch_size,
                 shuffle=True,
                 drop_last=True,
@@ -282,7 +273,7 @@ def league_epoch(
                 for val in epoch_losses[key]:
                     agent.write_to_tboard(f"League Loss/{key}", val)
 
-            history.free_memory()
+            rollout.free_memory()
 
             if step_counter.steps - start_step >= epoch_len:
                 break
@@ -325,13 +316,17 @@ def league_play(
     batch_size: int
         The batch size for backprop.
     args: DotDict
+        The arguments needed to build the network.
     logdir: str
+        The path to all of the agents.
     rollout_len: int
+        The number of steps to keep in the rollout.
     starting_epoch: Optional[int]
+        What epoch to start on (if resuming training).
 
     Returns
     -------
-
+    None
     """
     agent.save_args(args)
     step_counter = StepCounter()

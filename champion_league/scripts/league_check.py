@@ -116,7 +116,7 @@ def agent_check(
                 for win_rate in win_rates[epoch].values()
             ]
         )
-        print(f"Epoch {epoch:3d}: {agents_beaten}")
+        print_wins(win_rates)
         if agents_beaten >= (len(league_agents) * 0.75):
             move_to_league(
                 os.path.join(logdir, "challengers"),

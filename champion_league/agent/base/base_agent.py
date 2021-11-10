@@ -220,7 +220,8 @@ class Agent:
         None
         """
         if opponent not in self.win_rates:
-            self.win_rates[opponent] = [win, 1]
+            self.win_rates[opponent] = [win]
         else:
-            self.win_rates[opponent][0] += win
-            self.win_rates[opponent][1] += 1
+            self.win_rates[opponent].append(win)
+            if len(self.win_rates[opponent]) > 100:
+                self.win_rates[opponent] = self.win_rates[opponent][-100:]
