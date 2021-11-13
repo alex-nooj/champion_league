@@ -1,12 +1,30 @@
-enum34~=1.1.10
+absl-py==0.12.0
+-e git+https://github.com/heronsystems/adeptRL.git@aa727ff3687fab1652f17a869e8720a4adde1807#egg=adeptRL
+black==21.9b0
+enum34==1.1.10
 gym~=0.18.3
-numpy~=1.19.5
+numpy==1.19.5
 omegaconf~=2.0.5
 pillow~=8.2.0
 plotly~=4.10.0
-pytest~=6.2.4
+pre-commit @ file:///home/conda/feedstock_root/build_artifacts/pre-commit_1628352428487/work
+pyinstrument==3.4.2
+pytest==6.2.4
+pytest-asyncio==0.15.1
+pytest-cov==2.12.1
+pytest-timeout==1.4.2
+python-dateutil==2.8.1
+PyYAML==5.3.1
 setuptools~=45.2.0
-torchvision~=0.10.0
-tqdm~=4.60.0
-trueskill~=0.4.5
+tensorboard==2.5.0
+tensorboard-data-server==0.6.1
+tensorboard-plugin-wit==1.8.0
+tensorboardX==2.2
+torch==1.9.0
+torchaudio==0.9.0a0+33b2469
+torchvision==0.10.0
+tqdm==4.60.0
+trueskill==0.4.5
+typing-extensions==3.10.0.2
+typing-inspect==0.7.1
 typing~=3.7.4.3
