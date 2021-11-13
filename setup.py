@@ -2,11 +2,11 @@ from setuptools import setup
 
 setup(
     name="champion_league",
-    version="0.0.1",
+    version="0.1",
     packages=[
         "champion_league",
+        "champion_league.env",
         "champion_league.agent",
-        "champion_league.agent.dqn",
         "champion_league.agent.ppo",
         "champion_league.agent.scripted",
         "champion_league.utils",
@@ -14,10 +14,11 @@ setup(
         "champion_league.network",
         "champion_league.scripts",
         "champion_league.preprocessors",
+        "champion_league.preprocessors.modules",
     ],
     url="https://github.com/alex-nooj/champion_league",
-    license="GNU",
+    license="",
     author="anewgent",
     author_email="",
-    description="Reinforcement Learning for Pokemon Battling",
+    description="Repo for training a neural network to be the very best, like no one ever was.",
 )
