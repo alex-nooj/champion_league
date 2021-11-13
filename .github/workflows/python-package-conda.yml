@@ -22,7 +22,7 @@ jobs:
       run: |
         sudo apt install -y $(grep -o ^[^#][[:alnum:]-]* "packages.list")
         python3 -m pip install --upgrade pip
-        pip3 install -r requirements.txt    - name: Lint with flake8
+        pip3 install -r requirements.txt
     - name: Test with pytest
       run: |
         conda install pytest
