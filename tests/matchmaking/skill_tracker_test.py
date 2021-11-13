@@ -1,6 +1,6 @@
+import os
 from typing import Dict
 
-import numpy as np
 import pytest
 
 from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
@@ -31,7 +31,7 @@ def test_update(
 ):
     skill_tracker = LeagueSkillTracker(
         tag="test_skill_tracker",
-        logdir="./data",
+        logdir=os.path.join(os.path.dirname(os.path.abspath(__file__)), "./data"),
         default_mu=25,
         default_sigma=8.333,
         resume=False,
