@@ -12,7 +12,7 @@ class TestMatchMaker:
         matchmaker = MatchMaker(
             self_play_prob=1.0,
             league_play_prob=0.0,
-            logdir=os.path.join(os.path.dirname(os.path.abspath(__file__)), "./data"),
+            logdir=os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"),
             tag="challenger_0",
         )
 
