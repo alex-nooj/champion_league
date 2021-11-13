@@ -1,6 +1,5 @@
 from typing import Dict
 
-import numpy as np
 import pytest
 
 from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
