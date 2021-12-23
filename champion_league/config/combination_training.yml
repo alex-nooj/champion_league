@@ -39,7 +39,7 @@ imitation:
   batches_per_epoch: 1000
   dropout: 0.1
   nb_epochs: 100
-  patience: 15
+  patience: 10
 
 league:
   dropout: 0.0

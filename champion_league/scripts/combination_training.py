@@ -69,7 +69,7 @@ def main(multi_args: Dict[str, DotDict]):
 
     league_play(
         preprocessor=preprocessor,
-        network=league_network,
+        network=league_network.eval(),
         args=league_args,
         starting_epoch=starting_epoch,
     )
