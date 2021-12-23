@@ -2,17 +2,16 @@ import asyncio
 import os
 from typing import Dict
 from typing import List
-from typing import Optional
 from typing import Tuple
 
 import torch
 from poke_env.environment.battle import Battle
+from torch import nn
 from torch import Tensor
 from torch.utils.data import DataLoader
 
 from champion_league.agent.imitation.imitation_agent import ImitationAgent
 from champion_league.agent.opponent.rl_opponent import RLOpponent
-from champion_league.agent.ppo import PPOAgent
 from champion_league.env import OpponentPlayer
 from champion_league.env import RLPlayer
 from champion_league.network import build_network_from_args
@@ -28,13 +27,60 @@ from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
 def identity_embedding(battle: Battle) -> Battle:
+    """Pass-through embedding function.
+
+    Parameters
+    ----------
+    battle: Battle
+        The current state of the environment.
+
+    Returns
+    -------
+    Battle
+        The current state of the environment.
+    """
     return battle
+
+
+async def agent_battle(
+    player1: OpponentPlayer, player2: OpponentPlayer, nb_battles: int
+):
+    """Function for battling between two agents.
+
+    Parameters
+    ----------
+    player1
+        The player that will issue the challenges.
+    player2
+        The player that will accept the challenges.
+    nb_battles
+        The number of battles to perform.
+
+    Returns
+    -------
+    None
+    """
+    await player1.battle_against(player2, nb_battles)
 
 
 def record_episode(
     player: RLPlayer,
     agent: ImitationAgent,
 ) -> Tuple[Dict[str, List[Tensor]], List[int], List[float]]:
+    """Records a single battle.
+
+    Parameters
+    ----------
+    player
+        The environment that is communicating with Showdown.
+    agent
+        The agent that is playing the game.
+
+    Returns
+    -------
+    Tuple[Dict[str, List[Tensor]], List[int], List[float]]
+        Tuple containing the observations, actions, and rewards-to-go, respectively.
+    """
     observation = player.reset()
     reset = True
     states = {}
@@ -63,11 +109,33 @@ def record_episode(
 def record_epoch(
     player: RLPlayer,
     agent: ImitationAgent,
-    nb_batches: int,
     batch_size: int,
+    nb_batches: int,
     progress_bar: ProgressBar,
     train: bool,
 ) -> PokeSet:
+    """Records all of the state, action, and value pairs from the agent we'd like to imitate.
+
+    Parameters
+    ----------
+    player
+        The environment that is communicating with Showdown.
+    agent
+        The agent that is playing the game.
+    batch_size
+        The number of samples to include in one batch.
+    nb_batches
+        The number of batches to collect.
+    progress_bar
+        Used to print the progress so users don't go insane.
+    train
+        Whether this is a training epoch.
+
+    Returns
+    -------
+    PokeSet
+        The recorded dataset (Subclass of PyTorch's Dataset class).
+    """
     states = {}
     actions = []
     rewards = []
@@ -101,6 +169,25 @@ def train_epoch(
     nb_batches: int,
     progress_bar: ProgressBar,
 ):
+    """Records the training dataset for the agent.
+
+    Parameters
+    ----------
+    player
+        The environment that is communicating with Showdown.
+    agent
+        The agent that is playing the game.
+    batch_size
+        The number of samples to include in one batch.
+    nb_batches
+        The number of batches to collect.
+    progress_bar
+        Used to print the progress so users don't go insane.
+
+    Returns
+    -------
+    None
+    """
     agent.training_set = DataLoader(
         record_epoch(player, agent, nb_batches, batch_size, progress_bar, True),
         batch_size=batch_size,
@@ -116,6 +203,25 @@ def validation_epoch(
     nb_batches: int,
     progress_bar: ProgressBar,
 ):
+    """Records the validation dataset for the agent.
+
+    Parameters
+    ----------
+    player
+        The environment that is communicating with Showdown.
+    agent
+        The agent that is playing the game.
+    batch_size
+        The number of samples to include in one batch.
+    nb_batches
+        The number of batches to collect.
+    progress_bar
+        Used to print the progress so users don't go insane.
+
+    Returns
+    -------
+    None
+    """
     agent.validation_set = DataLoader(
         record_epoch(player, agent, nb_batches, batch_size, progress_bar, False),
         batch_size=batch_size,
@@ -125,30 +231,58 @@ def validation_epoch(
 
 
 def imitation_learning(
-    battle_format: str,
-    reward_scheme: RewardScheme,
     preprocessor: Preprocessor,
-    agent: ImitationAgent,
-    nb_epochs: int,
-    batch_size: int,
-    patience: int,
-    logdir: str,
+    network: nn.Module,
     args: DotDict,
-    batches_per_epoch: Optional[int] = 600,
 ):
+    """The main loop for performing supervised learning between a network and a trained agent.
+
+    Parameters
+    ----------
+    preprocessor
+        The preprocessor that this agent will be using to convert Battle objects to tensors.
+    network
+        The network that will be training.
+    args
+        Hyperparameters used for training. MUST CONTAIN:
+        - batch_size: int
+        - battle_format: str
+        - batches_per_epoch
+        - device: int
+        - logdir: str
+        - nb_epochs: int
+        - patience: int
+        - rewards: Dict[str, float]
+        - tag: str
+
+    Returns
+    -------
+    None
+    """
+    agent = ImitationAgent(
+        device=args.device,
+        network=network,
+        lr=args.lr,
+        embed_battle=preprocessor.embed_battle,
+        logdir=os.path.join(args.logdir, "challengers"),
+        tag=args.tag,
+    )
+
     agent.save_model(agent.network, 0, args)
+    reward_scheme = RewardScheme(args.rewards)
 
     progress_bar = ProgressBar(["Samples Collected"])
     progress_bar.set_epoch(0)
+
     player = RLPlayer(
-        battle_format=battle_format,
+        battle_format=args.battle_format,
         embed_battle=identity_embedding,
         reward_scheme=reward_scheme,
         server_configuration=DockerServerConfiguration,
     )
 
     opponent = OpponentPlayer.from_path(
-        path=os.path.join(logdir, "league", "simple_heuristic_0"),
+        path=os.path.join(args.logdir, "league", "simple_heuristic_0"),
         device=agent.device,
     )
 
@@ -157,8 +291,8 @@ def imitation_learning(
         opponent=opponent,
         env_algorithm_kwargs={
             "agent": agent,
-            "batch_size": batch_size,
-            "nb_batches": batches_per_epoch,
+            "batch_size": args.batch_size,
+            "nb_batches": args.batches_per_epoch,
             "progress_bar": progress_bar,
         },
     )
@@ -168,8 +302,8 @@ def imitation_learning(
         opponent=opponent,
         env_algorithm_kwargs={
             "agent": agent,
-            "batch_size": batch_size,
-            "nb_batches": batches_per_epoch // 3,
+            "batch_size": args.batch_size,
+            "nb_batches": args.batches_per_epoch // 3,
             "progress_bar": progress_bar,
         },
     )
@@ -177,16 +311,16 @@ def imitation_learning(
     progress_bar.close()
 
     min_val_loss = None
-    fuse = patience
+    fuse = args.patience
 
-    for epoch in range(nb_epochs):
+    for epoch in range(args.nb_epochs):
         _ = agent.learn_step(agent.training_set, epoch)
         validation_stats = agent.validation_step(agent.validation_set)
 
         if min_val_loss is None or validation_stats["Total"] < min_val_loss:
             min_val_loss = validation_stats["Total"]
             agent.save_model(agent.network, 0, args, "best_model.pt")
-            fuse = patience
+            fuse = args.patience
         else:
             fuse -= 1
 
@@ -204,13 +338,9 @@ def imitation_learning(
         max_concurrent_battles=100,
     )
 
-    asyncio.get_event_loop().run_until_complete(battle(player, opponent, 100))
+    asyncio.get_event_loop().run_until_complete(agent_battle(player, opponent, 100))
 
     print(player.n_won_battles)
-
-
-async def battle(player1: OpponentPlayer, player2: OpponentPlayer, nb_battles: int):
-    await player1.battle_against(player2, nb_battles)
 
 
 def main(args: DotDict):
@@ -219,27 +349,10 @@ def main(args: DotDict):
 
     network = build_network_from_args(args).eval()
 
-    agent = ImitationAgent(
-        device=args.device,
-        network=network,
-        lr=args.lr,
-        embed_battle=preprocessor.embed_battle,
-        logdir=os.path.join(args.logdir, "challengers"),
-        tag=args.tag,
-    )
-
-    reward_scheme = RewardScheme(args.rewards)
     imitation_learning(
-        battle_format=args.battle_format,
-        reward_scheme=reward_scheme,
         preprocessor=preprocessor,
-        agent=agent,
-        nb_epochs=args.nb_epochs,
-        batch_size=args.batch_size,
-        patience=args.patience,
-        logdir=args.logdir,
+        network=network,
         args=args,
-        batches_per_epoch=args.batches_per_epoch,
     )
 
 

@@ -1,5 +1,5 @@
-nb_actions: 10
 battle_format: gen8randombattle
+nb_actions: 10
 device: 0
 
 logdir: None

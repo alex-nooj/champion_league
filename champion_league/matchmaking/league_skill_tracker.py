@@ -76,7 +76,7 @@ class LeagueSkillTracker:
 
         Returns
         -------
-        "SkillTracker"
+        SkillTracker
             The class, constructed around the given arguments.
         """
         return cls(
