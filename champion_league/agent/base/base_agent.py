@@ -15,7 +15,7 @@ from champion_league.utils.directory_utils import get_save_dir
 
 
 class Agent:
-    def __init__(self, logdir: str, tag: str, resume: Optional[bool]):
+    def __init__(self, logdir: str, tag: str, resume: Optional[bool] = False):
         """The base class for an agent. Implements some methods that are just useful for all agents
         or more useful as a standard (like tensorboard logging) while leaving the sample action
         method unimplemented.

@@ -136,7 +136,7 @@ class PPOAgent(Agent):
 
         Returns
         -------
-        int
+        Tuple[int, Dict[str, torch.Tensor]]
             The action chosen by the network.
         """
         y, next_internals = self.network.forward(

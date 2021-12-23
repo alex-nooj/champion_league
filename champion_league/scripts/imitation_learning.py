@@ -1,220 +1,247 @@
-import json
+import asyncio
 import os
-from collections import OrderedDict
-from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Tuple
-from typing import Union
 
-import numpy as np
 import torch
-from numpy.lib.npyio import NpzFile
+from poke_env.environment.battle import Battle
+from torch import Tensor
 from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
-from torch.utils.tensorboard import SummaryWriter
 
+from champion_league.agent.imitation.imitation_agent import ImitationAgent
+from champion_league.agent.opponent.rl_opponent import RLOpponent
+from champion_league.agent.ppo import PPOAgent
+from champion_league.env import OpponentPlayer
+from champion_league.env import RLPlayer
 from champion_league.network import build_network_from_args
-from champion_league.utils.directory_utils import check_and_make_dir
+from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.preprocessors import Preprocessor
+from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
+from champion_league.utils.poke_set import PokeSet
 from champion_league.utils.progress_bar import ProgressBar
+from champion_league.utils.replay import cumulative_sum
+from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
-def save_args(args: DotDict):
-    check_and_make_dir(args.logdir)
-    check_and_make_dir(os.path.join(args.logdir, args.tag))
-
-    with open(os.path.join(args.logdir, args.tag, "args.json"), "w") as fp:
-        json.dump(args, fp, indent=2)
+def identity_embedding(battle: Battle) -> Battle:
+    return battle
 
 
-def save_model(save_path: str, network: torch.nn.Module):
-    torch.save(network.state_dict(), save_path)
+def record_episode(
+    player: RLPlayer,
+    agent: ImitationAgent,
+) -> Tuple[Dict[str, List[Tensor]], List[int], List[float]]:
+    observation = player.reset()
+    reset = True
+    states = {}
+    actions = []
+    rewards = []
+
+    done = False
+    while not done:
+        action = agent.act(observation)
+        new_observation, reward, done, _ = player.step(action)
+        state = agent.embed_battle(observation, reset=reset)
+        reset = False
+        for key, value in state.items():
+            if key not in states:
+                states[key] = [value.cpu()]
+            else:
+                states[key].append(value.cpu())
+        actions.append(action)
+        rewards.append(reward / player.reward_scheme.max)
+        observation = new_observation
+    rewards.append(0)
+
+    return states, actions, cumulative_sum(rewards)[:-1]
 
 
-class PokeSet(Dataset):
-    def __init__(
-        self,
-        states: torch.Tensor,
-        actions: torch.Tensor,
-        rewards: torch.Tensor,
-        device: int,
-    ):
-        self.states = states
-        self.actions = actions
-        self.rewards = rewards
-        self.device = f"cuda:{device}"
-
-    def __len__(self) -> int:
-        return self.states.shape[0]
-
-    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        return (
-            self.states[idx].float().to(self.device),
-            self.actions[idx].to(self.device),
-            self.rewards[idx].float().to(self.device),
-        )
-
-
-def create_datasets(
-    dataset: Union[Dict[str, np.ndarray], NpzFile],
-    split_ratio: float,
-    device: int,
+def record_epoch(
+    player: RLPlayer,
+    agent: ImitationAgent,
+    nb_batches: int,
     batch_size: int,
-) -> Tuple[DataLoader, DataLoader]:
-    states = torch.tensor(dataset["states"])
-    actions = torch.tensor(dataset["actions"])
-    rewards = torch.tensor(dataset["rewards"])
-
-    split_idx = int(split_ratio * states.shape[0])
-
-    train_set = PokeSet(
-        states[:split_idx], actions[:split_idx], rewards[:split_idx], device
-    )
-    val_set = PokeSet(
-        states[split_idx:], actions[split_idx:], rewards[split_idx:], device
-    )
-
-    return (
-        DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True),
-        DataLoader(val_set, batch_size=batch_size, shuffle=True, drop_last=True),
-    )
-
-
-def eval_over_dataset(
-    dataset: DataLoader,
-    network: torch.nn.Module,
     progress_bar: ProgressBar,
-    optim: Optional[Any] = None,
-) -> Dict[str, float]:
-    action_loss_fcn = torch.nn.CrossEntropyLoss()
-    reward_loss_fcn = torch.nn.MSELoss()
-    sample_count = 0
-    action_acc = 0
-    epoch_reward_loss = 0
-    epoch_action_loss = 0
-    epoch_total_loss = 0
-    for batch_idx, (state, action, reward) in enumerate(dataset):
-        preds, _ = network(state)
-        action_acc += torch.sum(torch.argmax(preds["rough_action"], dim=-1) == action)
+    train: bool,
+) -> PokeSet:
+    states = {}
+    actions = []
+    rewards = []
 
-        sample_count += dataset.batch_size
-        action_loss = action_loss_fcn(preds["rough_action"], action)
-        reward_loss = reward_loss_fcn(preds["critic"].squeeze(-1), reward)
-        total_loss = action_loss + reward_loss
-
-        epoch_action_loss += action_loss
-        epoch_reward_loss += reward_loss
-        epoch_total_loss += total_loss
-
-        if optim is not None:
-            optim.zero_grad()
-            total_loss.backward()
-            optim.step()
-
+    while len(actions) < nb_batches * batch_size:
         progress_bar.print_bar(
-            batch_idx / len(dataset),
-            {
-                "Accuracy": action_acc / sample_count,
-                "Action Loss": epoch_action_loss / batch_idx,
-                "Reward Loss": epoch_reward_loss / batch_idx,
-                "Total Loss": epoch_total_loss / batch_idx,
-            },
-            optim is not None,
+            len(actions) / (nb_batches * batch_size),
+            {"Samples Collected": len(actions)},
+            train,
         )
+        batch_states, batch_actions, batch_rewards = record_episode(player, agent)
+        for key, value in batch_states.items():
+            if key not in states:
+                states[key] = value[::2]
+            else:
+                states[key] += value[::2]
+        actions += batch_actions[::2]
+        rewards += batch_rewards[::2]
 
-    return {
-        "Accuracy": action_acc / sample_count,
-        "Action Loss": epoch_action_loss / len(dataset),
-        "Reward Loss": epoch_reward_loss / len(dataset),
-        "Total Loss": epoch_total_loss / len(dataset),
-    }
+    progress_bar.print_bar(1, {"Samples Collected": len(actions)}, train)
+    states = {k: torch.stack(v) for k, v in states.items()}
+    actions = torch.tensor(actions)
+    rewards = torch.tensor(rewards)
+    return PokeSet(states, actions, rewards, agent.device)
+
+
+def train_epoch(
+    player: RLPlayer,
+    agent: ImitationAgent,
+    batch_size: int,
+    nb_batches: int,
+    progress_bar: ProgressBar,
+):
+    agent.training_set = DataLoader(
+        record_epoch(player, agent, nb_batches, batch_size, progress_bar, True),
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=True,
+    )
+
+
+def validation_epoch(
+    player: RLPlayer,
+    agent: ImitationAgent,
+    batch_size: int,
+    nb_batches: int,
+    progress_bar: ProgressBar,
+):
+    agent.validation_set = DataLoader(
+        record_epoch(player, agent, nb_batches, batch_size, progress_bar, False),
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=True,
+    )
 
 
 def imitation_learning(
-    dataset: Union[str, Dict[str, np.ndarray]],
-    split_ratio: float,
-    device: int,
-    batch_size: int,
+    battle_format: str,
+    reward_scheme: RewardScheme,
+    preprocessor: Preprocessor,
+    agent: ImitationAgent,
     nb_epochs: int,
-    lr: float,
-    network: torch.nn.Module,
+    batch_size: int,
+    patience: int,
     logdir: str,
-    tag: str,
-    patience: Optional[int],
-) -> torch.nn.Module:
+    args: DotDict,
+    batches_per_epoch: Optional[int] = 600,
+):
+    agent.save_model(agent.network, 0, args)
 
-    writer = SummaryWriter(log_dir=os.path.join(logdir, tag))
-
-    if type(dataset) == str:
-        dataset = np.load(dataset)
-
-    train_set, val_set = create_datasets(dataset, split_ratio, device, batch_size)
-
-    check_and_make_dir(os.path.join(logdir, tag))
-    check_and_make_dir(os.path.join(logdir, tag, "sl"))
-
-    optim = torch.optim.Adam(network.parameters(), lr)
-
-    progress_bar = ProgressBar(
-        ["Accuracy", "Action Loss", "Reward Loss", "Total Loss"],
+    progress_bar = ProgressBar(["Samples Collected"])
+    progress_bar.set_epoch(0)
+    player = RLPlayer(
+        battle_format=battle_format,
+        embed_battle=identity_embedding,
+        reward_scheme=reward_scheme,
+        server_configuration=DockerServerConfiguration,
     )
 
-    min_val_loss = None
-    epochs_since_improvement = 0
-    best_model = None
-    for epoch in range(nb_epochs):
-        if epoch != 0:
-            progress_bar.set_epoch(epoch)
-        training_results = eval_over_dataset(train_set, network, progress_bar, optim)
+    opponent = OpponentPlayer.from_path(
+        path=os.path.join(logdir, "league", "simple_heuristic_0"),
+        device=agent.device,
+    )
 
-        for k, v in training_results.items():
-            writer.add_scalar(f"Imitation Training/{k}", v, epoch)
+    player.play_against(
+        env_algorithm=train_epoch,
+        opponent=opponent,
+        env_algorithm_kwargs={
+            "agent": agent,
+            "batch_size": batch_size,
+            "nb_batches": batches_per_epoch,
+            "progress_bar": progress_bar,
+        },
+    )
 
-        with torch.no_grad():
-            validation_results = eval_over_dataset(val_set, network, progress_bar)
-            for k, v in validation_results.items():
-                writer.add_scalar(f"Imitation Validation/{k}", v, epoch)
-
-            if min_val_loss is None or validation_results["Total Loss"] < min_val_loss:
-                min_val_loss = validation_results["Total Loss"]
-                best_model = OrderedDict(
-                    [(k, torch.clone(v)) for k, v in network.state_dict().items()]
-                )
-
-                save_model(os.path.join(logdir, tag, "sl", "best_model.pt"), network)
-                epochs_since_improvement = 0
-            elif 0 < patience < epochs_since_improvement:
-                break
-            else:
-                epochs_since_improvement += 1
+    player.play_against(
+        env_algorithm=validation_epoch,
+        opponent=opponent,
+        env_algorithm_kwargs={
+            "agent": agent,
+            "batch_size": batch_size,
+            "nb_batches": batches_per_epoch // 3,
+            "progress_bar": progress_bar,
+        },
+    )
 
     progress_bar.close()
-    network.load_state_dict(best_model)
-    return network
+
+    min_val_loss = None
+    fuse = patience
+
+    for epoch in range(nb_epochs):
+        _ = agent.learn_step(agent.training_set, epoch)
+        validation_stats = agent.validation_step(agent.validation_set)
+
+        if min_val_loss is None or validation_stats["Total"] < min_val_loss:
+            min_val_loss = validation_stats["Total"]
+            agent.save_model(agent.network, 0, args, "best_model.pt")
+            fuse = patience
+        else:
+            fuse -= 1
+
+        if fuse < 0:
+            break
+    agent.progress_bar.close()
+
+    player = OpponentPlayer(
+        RLOpponent(
+            network=agent.network.eval(),
+            preprocessor=preprocessor,
+            device=args.device,
+            sample_moves=False,
+        ),
+        max_concurrent_battles=100,
+    )
+
+    asyncio.get_event_loop().run_until_complete(battle(player, opponent, 100))
+
+    print(player.n_won_battles)
 
 
-def main(args: DotDict) -> torch.nn.Module:
-    dataset = np.load(args.dataset)
+async def battle(player1: OpponentPlayer, player2: OpponentPlayer, nb_battles: int):
+    await player1.battle_against(player2, nb_battles)
 
-    args.in_shape = dataset["states"].shape[1:]
 
-    network = build_network_from_args(args).to(f"cuda:{args.device}")
+def main(args: DotDict):
+    preprocessor = build_preprocessor_from_args(args)
+    args.in_shape = preprocessor.output_shape
 
-    return imitation_learning(
-        dataset=dataset,
-        split_ratio=args.split_ratio,
+    network = build_network_from_args(args).eval()
+
+    agent = ImitationAgent(
         device=args.device,
-        batch_size=args.batch_size,
-        nb_epochs=args.nb_epochs,
-        lr=args.lr,
         network=network,
+        lr=args.lr,
+        embed_battle=preprocessor.embed_battle,
         logdir=os.path.join(args.logdir, "challengers"),
         tag=args.tag,
+    )
+
+    reward_scheme = RewardScheme(args.rewards)
+    imitation_learning(
+        battle_format=args.battle_format,
+        reward_scheme=reward_scheme,
+        preprocessor=preprocessor,
+        agent=agent,
+        nb_epochs=args.nb_epochs,
+        batch_size=args.batch_size,
         patience=args.patience,
+        logdir=args.logdir,
+        args=args,
+        batches_per_epoch=args.batches_per_epoch,
     )
 
 
 if __name__ == "__main__":
-    _ = main(parse_args())
+    main(parse_args())

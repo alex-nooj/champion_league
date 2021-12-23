@@ -24,10 +24,6 @@ class NoDynamaxingPlayer(SimpleHeuristicsPlayer):
         return False
 
 
-def identity_embedding(battle: Battle) -> Battle:
-    return battle
-
-
 @torch.no_grad()
 def record_game(
     player: RLPlayer, preprocessor: Preprocessor, gamma: float

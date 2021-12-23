@@ -1,8 +1,10 @@
 from typing import Dict
+from typing import Optional
 from typing import Tuple
 
 import torch
 from poke_env.environment.battle import Battle
+from torch import Tensor
 
 from champion_league.preprocessors import Preprocessor
 from champion_league.preprocessors.modules import AlliedPokemonIdx
@@ -19,20 +21,45 @@ ABILITIES_IX = {k: v + 1 for v, k in enumerate(ABILITIES)}
 
 
 class ModularPreprocessor(Preprocessor):
+    """Preprocessor for converting Battle objects into tensors"""
+
     def __init__(self, device: int):
+        """Constructor
+
+        Parameters
+        ----------
+        device
+            Which device to move the tensors onto.
+        """
         self._output_shape = {
             "2D": (NB_POKEMON, len(AlliedPokemonIdx) + NB_MOVES * len(MoveIdx)),
             "1D": NB_POKEMON,
         }
         self.device = f"cuda:{device}"
 
-    def embed_battle(self, battle: Battle) -> Dict[str, torch.Tensor]:
+    def embed_battle(self, battle: Battle, **kwargs) -> Dict[str, Tensor]:
+        """
+
+        Parameters
+        ----------
+        battle
+            The current state of the battle.
+        **kwargs
+            Arbitrary keyword arguments.
+
+        Returns
+        -------
+        Dict[str, Tensor]
+            The embedded battle, with keys '2D' and '1D'.
+        """
         embedded_battle = torch.zeros(self._output_shape["2D"])
         abilities = torch.zeros(self._output_shape["1D"])
 
         for poke_ix, (_, pokemon) in enumerate(battle.team.items()):
             embedded_pokemon = embed_allied_pokemon(pokemon)
             embedded_moves = torch.zeros((4, len(MoveIdx)))
+
+            # For each pokemon, embed each move.
             for move_ix, (_, move) in enumerate(pokemon.moves.items()):
                 if move_ix == 4:
                     break
