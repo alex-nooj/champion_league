@@ -10,7 +10,20 @@ from champion_league.utils.directory_utils import DotDict
 
 
 class FrameStacker(Preprocessor):
+    """Preprocessor that stacks the output from another preprocessor."""
+
     def __init__(self, sub_processor: Preprocessor, sequence_len: int, device: int):
+        """Constructor
+
+        Parameters
+        ----------
+        sub_processor
+            The preprocessing scheme we'd like to use and stack.
+        sequence_len
+            The number of previous frames to include in the output.
+        device
+            The device to move the tensors to.
+        """
         self.processor = sub_processor
         self.sequence_len = sequence_len
         self.frame_idx = 0
@@ -23,13 +36,24 @@ class FrameStacker(Preprocessor):
             except TypeError:
                 self._output_shape[k] = v * sequence_len
 
-    @property
-    def output_shape(self) -> Dict[str, Tuple[int, int]]:
-        return self._output_shape
-
     def embed_battle(
         self, battle: Battle, reset: Optional[bool] = False
     ) -> Dict[str, torch.Tensor]:
+        """Method that calls the subprocessor on the current frame, then stacks the previous frames
+        onto it, embedding the temporal data into each frame.
+
+        Parameters
+        ----------
+        battle
+            The Battle object (game state) to be preprocessed.
+        reset
+            Whether or not to reset the preprocessing.
+
+        Returns
+        -------
+        Dict[str, Tensor]
+            The state, preprocessed into a form that is useable by the neural network.
+        """
         current_frame = self.processor.embed_battle(battle)
         if reset:
             self.reset()
@@ -82,8 +106,32 @@ class FrameStacker(Preprocessor):
             ][k][1:] + [v.squeeze(0)]
         return full_embedding
 
+    @property
+    def output_shape(self) -> Dict[str, Tuple[int, ...]]:
+        """Class property describing the preprocessor's output shape.
+
+        Returns
+        -------
+        Dict[str, Tuple[int, ...]]
+            The output shape for each head of the preprocessor.
+        """
+        return self._output_shape
+
     @classmethod
     def from_args(cls, args: DotDict) -> "FrameStacker":
+        """Constructor for building this preprocessor from arguments.
+
+        Parameters
+        ----------
+        args
+            The arguments to construct this preprocessor. In addition to the key `subprocessor`,
+            these arguments MUST include all the arguments to build the subprocessor.
+
+        Returns
+        -------
+        FrameStacker
+            An instance of the FrameStacker class.
+        """
         from champion_league.preprocessors import build_preprocessor_from_args
 
         sub_processor_args = DotDict({k: v for k, v in args.items()})
@@ -93,4 +141,5 @@ class FrameStacker(Preprocessor):
         return FrameStacker(sub_processor, args.sequence_len, args.device)
 
     def reset(self) -> None:
+        """Empties the previous frames."""
         self.prev_frames = {}

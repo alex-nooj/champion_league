@@ -2,13 +2,8 @@ import os
 import time
 from typing import Dict
 
-import numpy as np
 from omegaconf import DictConfig
 
-from champion_league.agent.imitation.imitation_agent import ImitationAgent
-from champion_league.agent.ppo import PPOAgent
-from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
-from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
@@ -18,6 +13,15 @@ from champion_league.utils.directory_utils import get_most_recent_epoch
 
 
 def parse_multi_args() -> Dict[str, DotDict]:
+    """Function that reads in the more-complicated arguments for combination training and
+    synthesizes them to be more wieldable.
+
+    Returns
+    -------
+    Dict[str, DotDict]
+        Dictionary containing the arguments for imitation learning and league play, as well as some
+        global arguments.
+    """
     from champion_league.config import CFG
 
     multi_args = {}
@@ -33,7 +37,18 @@ def parse_multi_args() -> Dict[str, DotDict]:
     return multi_args
 
 
-def main(multi_args: Dict[str, DotDict]):
+def combination_training(multi_args: Dict[str, DotDict]) -> None:
+    """Method for performing imitation learning and league training sequentially.
+
+    Parameters
+    ----------
+    multi_args
+        The arguments for imitation learning, league play, and meta commands for this script.
+
+    Returns
+    -------
+    None
+    """
     imitation_args = DotDict(multi_args["imitation"])
     league_args = DotDict(multi_args["league"])
 
@@ -77,6 +92,6 @@ def main(multi_args: Dict[str, DotDict]):
 
 if __name__ == "__main__":
     start_time = time.time()
-    main(parse_multi_args())
+    combination_training(parse_multi_args())
     end_time = time.time()
     print(f"Training took {end_time - start_time} seconds!")

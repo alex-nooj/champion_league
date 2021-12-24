@@ -1,6 +1,5 @@
 from typing import Callable
 from typing import Dict
-from typing import List
 from typing import Optional
 from typing import Tuple
 
@@ -16,16 +15,35 @@ from champion_league.utils.progress_bar import ProgressBar
 
 
 class ImitationAgent(Agent):
+    """Trainer class used to perform imitation learning. Uses SimpleHeuristic for acting."""
+
     def __init__(
         self,
         device: int,
         network: nn.Module,
         lr: float,
         embed_battle: Callable[[Battle, Optional[bool]], Dict[str, Tensor]],
-        logdir: str,
+        challenger_dir: str,
         tag: str,
     ):
-        super().__init__(logdir, tag)
+        """Constructor.
+
+        Parameters
+        ----------
+        device
+            Which GPU to load the agent onto.
+        network
+            The network that will be training.
+        lr
+            The learning rate for the network.
+        embed_battle
+            Callable that will convert the Battle objects to the format expected by the network.
+        challenger_dir
+            The path to the agent's directory.
+        tag
+            The name of the agent.
+        """
+        super().__init__(challenger_dir, tag)
         self.device = device
         self.network = network
         self.optimizer = torch.optim.Adam(network.parameters(), lr=lr)
@@ -74,17 +92,20 @@ class ImitationAgent(Agent):
         """
         return self._policy.act(state)
 
-    def learn_step(self, data_loader: DataLoader, epoch: int) -> Dict[str, List[float]]:
+    def learn_step(self, data_loader: DataLoader, epoch: int) -> Dict[str, float]:
         """Supervised learning step.
 
         Parameters
         ----------
         data_loader
-        epoch: int
+            The iterable dataset that we will be using for this learn step.
+        epoch
+            The epoch number.
 
         Returns
         -------
-
+        Dict[str, float]
+            Dictionary containing the loss and accuracy metrics for this learn step.
         """
         self.network.train()
 
@@ -114,16 +135,18 @@ class ImitationAgent(Agent):
         return {k: torch.stack(v).mean().item() for k, v in epoch_stats.items()}
 
     @torch.no_grad()
-    def validation_step(self, data_loader: DataLoader) -> Dict[str, List[float]]:
+    def validation_step(self, data_loader: DataLoader) -> Dict[str, float]:
         """Supervised learning validation step.
 
         Parameters
         ----------
         data_loader
+            The iterable dataset that we will be using for this validation step.
 
         Returns
         -------
-
+        Dict[str, float]
+            Dictionary containing the loss and accuracy metrics for this learn step.
         """
         self.network.eval()
 
@@ -150,14 +173,44 @@ class ImitationAgent(Agent):
         return {k: torch.stack(v).mean().item() for k, v in epoch_stats.items()}
 
     def embed_battle(self, battle: Battle, reset: Optional[bool]) -> Dict[str, Tensor]:
+        """Function for embedding the Battle objects.
+
+        Parameters
+        ----------
+        battle
+            The Battle object to be embedded.
+        reset
+            Whether or not to reset the preprocessing (only used for the framestacker).
+
+        Returns
+        -------
+        Dict[str, Tensor]
+            The embedded battle.
+        """
         return self._embed_battle(battle, reset)
 
     def _predict_batch(
         self,
-        states: Dict[str, torch.Tensor],
-        actions: torch.Tensor,
-        values: torch.Tensor,
-    ) -> Dict[str, torch.Tensor]:
+        states: Dict[str, Tensor],
+        actions: Tensor,
+        values: Tensor,
+    ) -> Dict[str, Tensor]:
+        """Private method for predicting over a batch of data.
+
+        Parameters
+        ----------
+        states
+            The observations that are fed into the network.
+        actions
+            The labels for the action outputs.
+        values
+            The labels for the critic outputs.
+
+        Returns
+        -------
+        Dict[str, Tensor]
+            Dictionary containing the loss and accuracy for this batch.-
+        """
         y, _ = self.network(x_internals={"x": states, "internals": {}})
         x_action = y["rough_action"]
         x_value = y["critic"]

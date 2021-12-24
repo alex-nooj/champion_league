@@ -38,19 +38,20 @@ class ModularPreprocessor(Preprocessor):
         self.device = f"cuda:{device}"
 
     def embed_battle(self, battle: Battle, **kwargs) -> Dict[str, Tensor]:
-        """
+        """Preprocessing function for this class. It will embed all of the pokemon into a 2D tensor,
+        then all of the abilities in a 1D tensor.
 
         Parameters
         ----------
         battle
-            The current state of the battle.
+            The Battle object (game state) to be preprocessed.
         **kwargs
-            Arbitrary keyword arguments.
+            Various keyword arguments.
 
         Returns
         -------
         Dict[str, Tensor]
-            The embedded battle, with keys '2D' and '1D'.
+            The state, preprocessed into a form that is useable by the neural network.
         """
         embedded_battle = torch.zeros(self._output_shape["2D"])
         abilities = torch.zeros(self._output_shape["1D"])
@@ -121,8 +122,27 @@ class ModularPreprocessor(Preprocessor):
 
     @property
     def output_shape(self) -> Dict[str, Tuple[int, ...]]:
+        """Class property describing the preprocessor's output shape.
+
+        Returns
+        -------
+        Dict[str, Tuple[int, ...]]
+            The output shape for each head of the preprocessor.
+        """
         return self._output_shape
 
     @classmethod
     def from_args(cls, args: DotDict) -> "ModularPreprocessor":
+        """Constructor for building this preprocessor from arguments.
+
+        Parameters
+        ----------
+        args
+            The arguments to construct this preprocessor. Arguments MUST include `device`.
+
+        Returns
+        -------
+        ModularPreprocessor
+            An instance of the ModularPreprocessor class.
+        """
         return cls(args.device)

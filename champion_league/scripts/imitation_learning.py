@@ -264,7 +264,7 @@ def imitation_learning(
         network=network,
         lr=args.lr,
         embed_battle=preprocessor.embed_battle,
-        logdir=os.path.join(args.logdir, "challengers"),
+        challenger_dir=os.path.join(args.logdir, "challengers"),
         tag=args.tag,
     )
 
