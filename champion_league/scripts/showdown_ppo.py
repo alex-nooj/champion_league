@@ -104,7 +104,7 @@ def main(args: DotDict):
         lr=args.lr,
         entropy_weight=args.entropy_weight,
         clip=args.clip,
-        logdir=args.logdir,
+        challenger_dir=args.logdir,
         tag=args.tag,
     )
 

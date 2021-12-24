@@ -4,6 +4,7 @@ from typing import Dict
 from typing import Optional
 
 import numpy as np
+from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -289,62 +290,67 @@ def league_epoch(
 
 
 def league_play(
-    battle_format: str,
     preprocessor: Preprocessor,
-    sample_moves: bool,
-    agent: PPOAgent,
-    matchmaker: MatchMaker,
-    skill_tracker: LeagueSkillTracker,
-    nb_steps: int,
-    epoch_len: int,
-    batch_size: int,
+    network: nn.Module,
     args: DotDict,
-    logdir: str,
-    rollout_len: int,
     starting_epoch: Optional[int] = 0,
 ):
-    """The measure_league_diversity loop for running the league.
+    """Main loop for training a league agent.
 
     Parameters
     ----------
-    battle_format: str
-    preprocessor: Preprocessor
-    sample_moves: bool
-    agent: PPOAgent
-        The agent that is playing the game. Handles the sampling of moves and also performing the
-        learn step for the agent.
-    matchmaker: MatchMaker
-        This handles the matchmaking process for the agent. It will take in the Trueskill values for
-        all of the agents to determine a match-up where each agent has an even chance at winning.
-    skill_tracker: skill_tracker
-        This object tracks the trueskill of the agent, as well as all of the agents in the league.
-    nb_steps: int
-        The total number of steps to train the agent.
-    epoch_len: int
-        How many steps are in an epoch.
-    batch_size: int
-        The batch size for backprop.
-    args: DotDict
-    logdir: str
-    rollout_len: int
-    starting_epoch: Optional[int]
+    preprocessor
+        The preprocessor that this agent will be using to convert Battle objects to tensors.
+    network
+        The network that will be training.
+    args
+        Hyperparameters used for training. MUST CONTAIN:
+        - batch_size: int
+        - battle_format: str
+        - clip: float
+        - device: int
+        - entropy_weight: float
+        - epoch_len: int
+        - league_play_prob: float
+        - logdir: str
+        - lr: float
+        - nb_steps: int
+        - rewards: Dict[str, float]
+        - sample_moves: float
+        - self_play_prob: float
+        - tag: str
+    starting_epoch
+        If we're resuming, this is the epoch we're resuming from.
 
     Returns
     -------
-
+    None
     """
+    agent = PPOAgent(
+        device=args.device,
+        network=network,
+        lr=args.lr,
+        entropy_weight=args.entropy_weight,
+        clip=args.clip,
+        challenger_dir=os.path.join(args.logdir, "challengers"),
+        tag=args.tag,
+    )
     agent.save_args(args)
-    step_counter = StepCounter()
-    reward_scheme = RewardScheme(rules=args.rewards)
 
-    for epoch in range(starting_epoch, nb_steps // epoch_len):
+    step_counter = StepCounter()
+    skill_tracker = LeagueSkillTracker.from_args(args)
+    matchmaker = MatchMaker(
+        args.self_play_prob, args.league_play_prob, args.logdir, args.tag
+    )
+
+    for epoch in range(starting_epoch, args.nb_steps // args.epoch_len):
         agent.save_model(agent.network, epoch, args)
         skill_tracker.save_skill_ratings(epoch)
 
         player = RLPlayer(
-            battle_format=battle_format,
+            battle_format=args.battle_format,
             embed_battle=preprocessor.embed_battle,
-            reward_scheme=reward_scheme,
+            reward_scheme=RewardScheme(args.rewards),
             server_configuration=DockerServerConfiguration,
         )
 
@@ -352,7 +358,7 @@ def league_play(
             device=agent.device,
             network=agent.network,
             preprocessor=preprocessor,
-            sample_moves=sample_moves,
+            sample_moves=args.sample_moves,
             max_concurrent_battles=10,
             server_configuration=DockerServerConfiguration,
         )
@@ -365,21 +371,25 @@ def league_play(
                 "opponent": opponent,
                 "matchmaker": matchmaker,
                 "skill_tracker": skill_tracker,
-                "batch_size": batch_size,
-                "rollout_len": rollout_len,
-                "epoch_len": epoch_len,
+                "batch_size": args.batch_size,
+                "rollout_len": args.rollout_len,
+                "epoch_len": args.epoch_len,
                 "step_counter": step_counter,
             },
         )
 
         league_win_rate = league_score(
-            agent, preprocessor, opponent, os.path.join(logdir, "league"), skill_tracker
+            agent,
+            preprocessor,
+            opponent,
+            os.path.join(args.logdir, "league"),
+            skill_tracker,
         )
 
         if league_win_rate > 0.75:
             move_to_league(
-                challengers_dir=os.path.join(logdir, "challengers"),
-                league_dir=os.path.join(logdir, "league"),
+                challengers_dir=os.path.join(args.logdir, "challengers"),
+                league_dir=os.path.join(args.logdir, "league"),
                 tag=agent.tag,
                 epoch=epoch,
             )
@@ -387,8 +397,8 @@ def league_play(
         del player
         del opponent
 
-    agent.save_model(agent.network, nb_steps // epoch_len, args)
-    skill_tracker.save_skill_ratings(nb_steps // epoch_len)
+    agent.save_model(agent.network, args.nb_steps // args.epoch_len, args)
+    skill_tracker.save_skill_ratings(args.nb_steps // args.epoch_len)
 
 
 def main(args: DotDict):
@@ -397,37 +407,10 @@ def main(args: DotDict):
 
     network = build_network_from_args(args).eval()
 
-    matchmaker = MatchMaker(
-        args.self_play_prob, args.league_play_prob, args.logdir, args.tag
-    )
-
-    agent = PPOAgent(
-        device=args.device,
-        network=network,
-        lr=args.lr,
-        entropy_weight=args.entropy_weight,
-        clip=args.clip,
-        logdir=os.path.join(args.logdir, "challengers"),
-        tag=args.tag,
-    )
-
-    agent.save_args(args)
-
-    skill_tracker = LeagueSkillTracker.from_args(args)
-
     league_play(
-        args.battle_format,
-        preprocessor,
-        args.sample_moves,
-        agent,
-        matchmaker,
-        skill_tracker,
-        args.nb_steps,
-        args.epoch_len,
-        args.batch_size,
-        args,
-        args.logdir,
-        args.rollout_len,
+        preprocessor=preprocessor,
+        network=network,
+        args=args,
     )
 
 

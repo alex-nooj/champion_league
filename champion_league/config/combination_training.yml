@@ -2,35 +2,27 @@ imitate: True
 resume: False
 
 default:
-  nb_actions: 10
-  device: 0
+  # Meta info
+  battle_format: gen8randombattle
   logdir: /home/anewgent/Documents/pokemon_trainers/
-  tag: combo_training
+  tag: final_run
+
+  # Preprocessor Arguments
+  preprocessor: FrameStacker
+  sequence_len: 3
+  subprocessor: ModularPreprocessor
+
+  # Network Architecture Arguments
   network: AbilityNetwork
+  nb_actions: 10
   nb_encoders: 1
   nb_heads: 1
   scale: False
-  batch_size: 64
 
-imitation:
-  dataset: /home/anewgent/Documents/pokemon_dataset/dataset.npz
-  nb_epochs: 100
-  split_ratio: 0.9
+  # Training Arguments
+  batch_size: 128
+  device: 0
   lr: 0.001
-  patience: 5
-
-league:
-  battle_format: gen8randombattle
-  preprocessor: ModularPreprocessor
-  nb_steps: 100_000_000
-  epoch_len: 1_000_000
-  lr: 0.0002
-  entropy_weight: 0
-  clip: 0.2
-  self_play_prob: 0.7
-  league_play_prob: 0.2
-  sample_moves: True
-  rollout_len: 60
   rewards:
     OpponentBinaryFaints: 3.0
     AlliedBinaryFaints: 3.0
@@ -42,3 +34,20 @@ league:
     AlliedHPDiff: 1.0
     VictoryRule: 10.0
     LossRule: 10.0
+
+imitation:
+  batches_per_epoch: 1000
+  dropout: 0.1
+  nb_epochs: 100
+  patience: 10
+
+league:
+  dropout: 0.0
+  entropy_weight: 0.001
+  epoch_len: 1_000_000
+  nb_steps: 100_000_000
+  clip: 0.2
+  self_play_prob: 0.7
+  league_play_prob: 0.2
+  sample_moves: True
+  rollout_len: 60

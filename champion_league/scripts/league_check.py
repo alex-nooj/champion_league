@@ -225,7 +225,7 @@ def main(logdir: str, tag: str, nb_battles: int):
         lr=args.lr,
         entropy_weight=args.entropy_weight,
         clip=args.clip,
-        logdir=os.path.join(args.logdir, "challengers"),
+        challenger_dir=os.path.join(args.logdir, "challengers"),
         tag=args.tag,
     )
 

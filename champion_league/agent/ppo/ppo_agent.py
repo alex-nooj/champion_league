@@ -56,7 +56,7 @@ class PPOAgent(Agent):
         lr: float,
         entropy_weight: float,
         clip: float,
-        logdir: str,
+        challenger_dir: str,
         tag: str,
         mini_epochs: Optional[int] = 4,
         resume: Optional[bool] = False,
@@ -76,7 +76,7 @@ class PPOAgent(Agent):
             How much to weigh the entropy loss.
         clip: float
             The clip value (epsilon) used in PPO to clip the loss.
-        logdir: str
+        challenger_dir: str
             The path to the network's directory (up to "challengers")
         tag: str
             The name of the agent.
@@ -85,7 +85,7 @@ class PPOAgent(Agent):
         resume: Optional[bool]
             Whether or not we're starting from a previously trained agent.
         """
-        super().__init__(logdir, tag, resume)
+        super().__init__(challenger_dir, tag, resume)
         self.device = device
         self.network = network
         self.optimizer = torch.optim.Adam(network.parameters(), lr=lr)
@@ -136,7 +136,7 @@ class PPOAgent(Agent):
 
         Returns
         -------
-        int
+        Tuple[int, Dict[str, torch.Tensor]]
             The action chosen by the network.
         """
         y, next_internals = self.network.forward(

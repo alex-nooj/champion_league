@@ -24,6 +24,7 @@ class TestLeaguePlayer:
             nb_heads=1,
             nb_layers=1,
             scale=False,
+            dropout=0.0,
         )
         network = network.to(device)
 

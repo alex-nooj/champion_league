@@ -92,45 +92,6 @@ class Attn(nn.Module):
         return self.projection_output(weighted_v).view(b, q_s, f)
 
 
-class Gate(nn.Module):
-    def __init__(self, in_shape: Tuple[int, int]):
-        """The gating layer for the encoder.
-
-        Parameters
-        ----------
-        in_shape: Tuple[int, int]
-            The input shape of the data. This should not include batch size and should be the same
-            shape as the input to the overall encoder.
-        """
-        super().__init__()
-        # self.gru = nn.GRU(input_size=in_shape[1], hidden_size=in_shape[1])
-
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """Forward function for the Gate module.
-
-        Parameters
-        ----------
-        x: torch.Tensor
-            The output from the previous layer.
-        y: torch.Tensor
-            The tensor from the skip connection.
-
-        Returns
-        -------
-        torch.Tensor
-            The output of the gate.
-        """
-        b, s, f = x.shape
-
-        # gate_output, _ = self.gru(
-        #     torch.reshape(y, (1, b * s, f)),
-        #     torch.reshape(x, (1, b * s, f)),
-        # )
-
-        # return gate_output.view(b, s, f)
-        return x + y
-
-
 class Squeeze(nn.Module):
     def __init__(self, dim: int):
         super().__init__()
@@ -198,6 +159,7 @@ class Encoder(nn.Module):
         in_shape: Tuple[int, int],
         nb_heads: int,
         scale: Optional[bool] = True,
+        dropout: Optional[float] = 0.0,
     ):
         """A gated encoder, as described in the Stablizing the Transformer for RL paper.
 
@@ -210,6 +172,8 @@ class Encoder(nn.Module):
             How many heads to use for the multi-head attention layer.
         scale: Optional[bool]
             Whether to scale the input down.
+        dropout: Optional[float]
+            Dropout to use in the network
         """
 
         super().__init__()
@@ -218,10 +182,10 @@ class Encoder(nn.Module):
                 [
                     ("first_norm", LNorm(in_shape)),
                     ("attn_layer", Attn(in_shape, nb_heads, scale)),
+                    ("dropout", nn.Dropout(p=dropout)),
                 ]
             )
         )
-        self.first_gate = Gate(in_shape)
         self.second_block = nn.Sequential(
             OrderedDict(
                 [
@@ -233,7 +197,6 @@ class Encoder(nn.Module):
                 ]
             )
         )
-        self.second_gate = Gate(in_shape)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """The forward function for the gated encoder.
@@ -250,9 +213,9 @@ class Encoder(nn.Module):
         """
 
         attn_out = self.first_block(x)
-        gate_out = self.first_gate(x, attn_out)
+        gate_out = x + attn_out
         norm_out = self.second_block(gate_out)
-        return self.second_gate(gate_out, norm_out)
+        return gate_out + norm_out
 
 
 class GatedEncoder(BaseNetwork):
@@ -264,6 +227,7 @@ class GatedEncoder(BaseNetwork):
         nb_heads: Optional[int],
         nb_layers: Optional[int],
         scale: Optional[bool],
+        dropout: Optional[float],
     ):
         """The Multi-head, Multi-Encoder, Order-Invariant Gated Encoder module.
 
@@ -281,6 +245,8 @@ class GatedEncoder(BaseNetwork):
             How many linear layers to include after the average pooling layer.
         scale: Optional[bool]
             Whether to scale the input to the encoders.
+        dropout: Optional[float]
+            Dropout to use in the network
         """
         super().__init__()
 
@@ -292,9 +258,14 @@ class GatedEncoder(BaseNetwork):
             nb_layers = 3
         if scale is None:
             scale = False
+        if dropout is None:
+            dropout = 0.0
 
         encoders = [
-            (f"encoder_{i}", Encoder(in_shape["2D"], nb_heads, scale=scale))
+            (
+                f"encoder_{i}",
+                Encoder(in_shape["2D"], nb_heads, scale=scale, dropout=dropout),
+            )
             for i in range(nb_encoders)
         ]
         avg_pooling = [
@@ -312,6 +283,7 @@ class GatedEncoder(BaseNetwork):
             )
             linears.append((f"norm_{i}", nn.BatchNorm1d(in_shape["2D"][1])))
             linears.append((f"relu_{i}", nn.ReLU()))
+            linears.append((f"drop_{i}", nn.Dropout(p=dropout)))
 
         self.encoders = nn.Sequential(OrderedDict(encoders + avg_pooling + linears))
 
@@ -333,7 +305,11 @@ class GatedEncoder(BaseNetwork):
                             (
                                 "critic_1",
                                 nn.Linear(in_shape["2D"][1], 1, bias=True),
-                            )
+                            ),
+                            (
+                                "critic_tanh",
+                                torch.nn.Tanh(),
+                            ),
                         ]
                     )
                 ),
@@ -383,4 +359,5 @@ class GatedEncoder(BaseNetwork):
             args.nb_heads,
             args.nb_layers,
             args.scale,
+            args.dropout,
         )

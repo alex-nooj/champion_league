@@ -1,8 +1,10 @@
 from typing import Dict
+from typing import Optional
 from typing import Tuple
 
 import torch
 from poke_env.environment.battle import Battle
+from torch import Tensor
 
 from champion_league.preprocessors import Preprocessor
 from champion_league.preprocessors.modules import AlliedPokemonIdx
@@ -19,20 +21,46 @@ ABILITIES_IX = {k: v + 1 for v, k in enumerate(ABILITIES)}
 
 
 class ModularPreprocessor(Preprocessor):
+    """Preprocessor for converting Battle objects into tensors"""
+
     def __init__(self, device: int):
+        """Constructor
+
+        Parameters
+        ----------
+        device
+            Which device to move the tensors onto.
+        """
         self._output_shape = {
             "2D": (NB_POKEMON, len(AlliedPokemonIdx) + NB_MOVES * len(MoveIdx)),
             "1D": NB_POKEMON,
         }
         self.device = f"cuda:{device}"
 
-    def embed_battle(self, battle: Battle) -> Dict[str, torch.Tensor]:
+    def embed_battle(self, battle: Battle, **kwargs) -> Dict[str, Tensor]:
+        """Preprocessing function for this class. It will embed all of the pokemon into a 2D tensor,
+        then all of the abilities in a 1D tensor.
+
+        Parameters
+        ----------
+        battle
+            The Battle object (game state) to be preprocessed.
+        **kwargs
+            Various keyword arguments.
+
+        Returns
+        -------
+        Dict[str, Tensor]
+            The state, preprocessed into a form that is useable by the neural network.
+        """
         embedded_battle = torch.zeros(self._output_shape["2D"])
         abilities = torch.zeros(self._output_shape["1D"])
 
         for poke_ix, (_, pokemon) in enumerate(battle.team.items()):
             embedded_pokemon = embed_allied_pokemon(pokemon)
             embedded_moves = torch.zeros((4, len(MoveIdx)))
+
+            # For each pokemon, embed each move.
             for move_ix, (_, move) in enumerate(pokemon.moves.items()):
                 if move_ix == 4:
                     break
@@ -94,8 +122,27 @@ class ModularPreprocessor(Preprocessor):
 
     @property
     def output_shape(self) -> Dict[str, Tuple[int, ...]]:
+        """Class property describing the preprocessor's output shape.
+
+        Returns
+        -------
+        Dict[str, Tuple[int, ...]]
+            The output shape for each head of the preprocessor.
+        """
         return self._output_shape
 
     @classmethod
     def from_args(cls, args: DotDict) -> "ModularPreprocessor":
+        """Constructor for building this preprocessor from arguments.
+
+        Parameters
+        ----------
+        args
+            The arguments to construct this preprocessor. Arguments MUST include `device`.
+
+        Returns
+        -------
+        ModularPreprocessor
+            An instance of the ModularPreprocessor class.
+        """
         return cls(args.device)
