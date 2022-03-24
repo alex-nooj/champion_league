@@ -4,6 +4,7 @@ from typing import Dict
 from typing import Optional
 
 import numpy as np
+from poke_env.teambuilder.teambuilder import Teambuilder
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -296,6 +297,7 @@ def league_epoch(
 def league_play(
     preprocessor: Preprocessor,
     network: nn.Module,
+    team_builder: Teambuilder,
     args: DotDict,
     starting_epoch: Optional[int] = 0,
 ):
@@ -307,6 +309,8 @@ def league_play(
         The preprocessor that this agent will be using to convert Battle objects to tensors.
     network
         The network that will be training.
+    team_builder
+        Teambuilder object for determining the agent's team
     args
         Hyperparameters used for training. MUST CONTAIN:
         - batch_size: int
@@ -417,7 +421,12 @@ def main(args: DotDict):
 
     network = build_network_from_args(args).eval()
 
-    league_play(preprocessor=preprocessor, network=network, args=args)
+    team_builder = AgentTeamBuilder(
+        path=args.team_path, battle_format=args.battle_format
+    )
+    league_play(
+        preprocessor=preprocessor, network=network, team_builder=team_builder, args=args
+    )
 
 
 if __name__ == "__main__":
