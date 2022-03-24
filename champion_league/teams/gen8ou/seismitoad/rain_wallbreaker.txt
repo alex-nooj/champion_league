@@ -1,0 +1,8 @@
+Seismitoad @ Life Orb
+Ability: Swift Swim
+EVs: 252 Atk / 4 SpD / 252 Spe
+Adamant Nature
+- Stealth Rock
+- Liquidation
+- Earthquake
+- Ice Punch

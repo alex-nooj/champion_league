@@ -1,0 +1,8 @@
+Excadrill @ Leftovers
+Ability: Mold Breaker
+EVs: 4 Atk / 252 SpD / 252 Spe
+Jolly Nature
+- Earthquake
+- Iron Head
+- Stealth Rock
+- Toxic

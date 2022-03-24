@@ -1,0 +1,8 @@
+Primarina @ Choice Specs
+Ability: Torrent
+EVs: 4 Def / 252 SpA / 252 Spe
+Modest Nature
+- Hydro Pump
+- Moonblast
+- Psychic
+- Scald

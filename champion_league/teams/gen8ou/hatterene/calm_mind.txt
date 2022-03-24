@@ -1,0 +1,8 @@
+Hatterene @ Leftovers
+Ability: Magic Bounce
+EVs: 252 HP / 196 Def / 60 Spe
+Bold Nature
+- Calm Mind
+- Psyshock
+- Draining Kiss
+- Mystical Fire

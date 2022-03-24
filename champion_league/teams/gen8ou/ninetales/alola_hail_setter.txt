@@ -1,0 +1,8 @@
+Ninetales-Alola @ Icy Rock
+Ability: Snow Warning
+EVs: 252 HP / 4 SpA / 252 Spe
+Timid Nature
+- Aurora Veil
+- Freeze-Dry
+- Encore
+- Pain Split

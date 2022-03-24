@@ -1,0 +1,8 @@
+Hydreigon @ Leftovers
+Ability: Levitate
+EVs: 252 SpA / 4 SpD / 252 Spe
+Timid Nature
+- Dark Pulse
+- Earth Power
+- Flash Cannon
+- Roost

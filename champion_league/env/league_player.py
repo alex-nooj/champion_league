@@ -1,11 +1,13 @@
 import copy
 import json
 import os
+from asyncio import CancelledError
 from typing import Any
 from typing import Optional
 
 import torch
 from poke_env.environment.battle import Battle
+from poke_env.exceptions import ShowdownException
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.player import Player
 from torch import nn
@@ -173,3 +175,6 @@ class LeaguePlayer(Player):
     def reset(self):
         if isinstance(self.opponent, RLOpponent):
             self.opponent.reset()
+
+    def teampreview(self, battle):
+        return "/team " + "".join([str(i + 1) for i in range(6)])

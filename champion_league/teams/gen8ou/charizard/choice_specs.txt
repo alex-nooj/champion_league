@@ -1,0 +1,8 @@
+Charizard @ Choice Specs
+Ability: Solar Power
+EVs: 252 SpA / 4 SpD / 252 Spe
+Timid Nature
+- Weather Ball
+- Overheat
+- Focus Blast
+- Roost

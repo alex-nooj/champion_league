@@ -1,0 +1,8 @@
+Mamoswine @ Choice Band
+Ability: Thick Fat
+EVs: 252 Atk / 4 Def / 252 Spe
+Adamant Nature
+- Icicle Crash
+- Earthquake
+- Ice Shard
+- Knock Off

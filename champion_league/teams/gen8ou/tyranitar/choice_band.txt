@@ -1,0 +1,8 @@
+Tyranitar @ Choice Band
+Ability: Sand Stream
+EVs: 252 Atk / 4 SpD / 252 Spe
+Adamant Nature
+- Stone Edge
+- Crunch
+- Fire Punch
+- Ice Punch

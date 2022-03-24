@@ -1,0 +1,8 @@
+Toxapex @ Rocky Helmet
+Ability: Regenerator
+EVs: 252 HP / 252 Def / 4 SpD
+Bold Nature
+- Knock Off
+- Recover
+- Haze
+- Toxic Spikes

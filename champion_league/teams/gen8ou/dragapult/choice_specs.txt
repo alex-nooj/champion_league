@@ -1,0 +1,8 @@
+Dragapult @ Choice Specs
+Ability: Infiltrator
+EVs: 252 SpA / 4 SpD / 252 Spe
+Timid Nature
+- Shadow Ball
+- Draco Meteor
+- U-turn
+- Flamethrower

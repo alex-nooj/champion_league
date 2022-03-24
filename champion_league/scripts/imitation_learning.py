@@ -18,6 +18,7 @@ from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.preprocessors import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
+from champion_league.teams.team_builder import AgentTeamBuilder
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.poke_set import PokeSet
@@ -259,6 +260,7 @@ def imitation_learning(
     -------
     None
     """
+
     agent = ImitationAgent(
         device=args.device,
         network=network,
@@ -267,6 +269,8 @@ def imitation_learning(
         challenger_dir=os.path.join(args.logdir, "challengers"),
         tag=args.tag,
     )
+
+    team_builder = AgentTeamBuilder(os.path.join(args.logdir, "challengers", args.tag))
 
     agent.save_model(agent.network, 0, args)
     reward_scheme = RewardScheme(args.rewards)
@@ -279,11 +283,14 @@ def imitation_learning(
         embed_battle=identity_embedding,
         reward_scheme=reward_scheme,
         server_configuration=DockerServerConfiguration,
+        team=team_builder,
     )
 
     opponent = OpponentPlayer.from_path(
         path=os.path.join(args.logdir, "league", "simple_heuristic_0"),
         device=agent.device,
+        team=AgentTeamBuilder(),
+        battle_format=args.battle_format,
     )
 
     player.play_against(
@@ -336,6 +343,8 @@ def imitation_learning(
             sample_moves=False,
         ),
         max_concurrent_battles=100,
+        team=team_builder,
+        battle_format=args.battle_format,
     )
 
     asyncio.get_event_loop().run_until_complete(agent_battle(player, opponent, 100))

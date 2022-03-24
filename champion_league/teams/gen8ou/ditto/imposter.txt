@@ -1,0 +1,6 @@
+Ditto @ Choice Scarf
+Ability: Imposter
+EVs: 252 HP / 4 Atk / 252 Def
+IVs: 0 Spe
+Relaxed Nature
+- Transform

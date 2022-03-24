@@ -8,7 +8,7 @@ from typing import Union
 import trueskill
 
 
-class MultiSkillTracker:
+class SkillTracker:
     def __init__(
         self,
         agent_paths: List[str],
@@ -55,7 +55,7 @@ class MultiSkillTracker:
             self.agent_skills[loser]["trueskill"],
         )
 
-    def save_trueskills(self):
+    def save_skill_ratings(self):
         for _, agent in self.agent_skills.items():
             with open(os.path.join(agent["path"], "trueskill.json"), "w") as fp:
                 json.dump(

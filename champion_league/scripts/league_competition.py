@@ -7,7 +7,7 @@ from poke_env.player_configuration import PlayerConfiguration
 from tqdm import tqdm
 
 from champion_league.env import OpponentPlayer
-from champion_league.matchmaking.skill_tracker import MultiSkillTracker
+from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
 from champion_league.utils.server_configuration import DockerServerConfiguration
@@ -112,7 +112,7 @@ def league_competition(
     agent_tags = os.listdir(league_dir)
     agent_tags.sort()
 
-    skill_tracker = MultiSkillTracker(
+    skill_tracker = SkillTracker(
         agent_paths=[os.path.join(league_dir, agent_name) for agent_name in agent_tags],
     )
 
@@ -171,7 +171,7 @@ def league_competition(
         agent_wins=[agent_wins[v] for v in agent_tags],
     )
 
-    skill_tracker.save_trueskills()
+    skill_tracker.save_skill_ratings()
 
 
 if __name__ == "__main__":

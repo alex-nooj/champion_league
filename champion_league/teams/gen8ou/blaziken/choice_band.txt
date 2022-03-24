@@ -1,0 +1,8 @@
+Blaziken @ Choice Band
+Ability: Speed Boost
+EVs: 252 Atk / 4 SpD / 252 Spe
+Jolly Nature
+- Flare Blitz
+- Close Combat
+- Knock Off
+- U-turn

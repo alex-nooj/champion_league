@@ -3,7 +3,9 @@ import os
 from typing import Dict
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
+import numpy as np
 import torch
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
@@ -163,14 +165,14 @@ class Agent:
         """
         check_and_make_dir(path)
 
-    def write_to_tboard(self, label: str, value: float) -> None:
+    def write_to_tboard(self, label: str, value: Union[float, np.ndarray]) -> None:
         """Writes a value to tensorboard, while keeping track of the tensorboard index.
 
         Parameters
         ----------
         label: str
             The label for the value to display on tensorboard
-        value: float
+        value: Union[float, npt.NDArray]
             The value to add to tensorboard
 
         Returns
@@ -206,7 +208,7 @@ class Agent:
             pass
 
     def update_winrates(self, opponent: str, win: int) -> None:
-        """Function for tracking the win-rates of the agent.
+        """Function for tracking the win-rates of the agent with a sliding window.
 
         Parameters
         ----------
@@ -220,7 +222,8 @@ class Agent:
         None
         """
         if opponent not in self.win_rates:
-            self.win_rates[opponent] = [win, 1]
+            self.win_rates[opponent] = [win]
+        elif len(self.win_rates[opponent]) > 100:
+            self.win_rates[opponent] = self.win_rates[opponent][-1:] + [win]
         else:
-            self.win_rates[opponent][0] += win
-            self.win_rates[opponent][1] += 1
+            self.win_rates[opponent].append(win)

@@ -1,0 +1,8 @@
+Conkeldurr @ Flame Orb
+Ability: Guts
+EVs: 252 Atk / 4 SpD / 252 Spe
+Adamant Nature
+- Close Combat
+- Mach Punch
+- Knock Off
+- Facade

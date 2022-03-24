@@ -1,0 +1,8 @@
+Dracozolt @ Life Orb
+Ability: Sand Rush
+EVs: 148 Atk / 176 SpA / 184 Spe
+Naughty Nature
+- Bolt Beak
+- Draco Meteor
+- Earthquake
+- Fire Blast

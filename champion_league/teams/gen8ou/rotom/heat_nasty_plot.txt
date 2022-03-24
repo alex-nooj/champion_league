@@ -1,0 +1,8 @@
+Rotom-Heat @ Heavy-Duty Boots
+Ability: Levitate
+EVs: 248 HP / 8 SpA / 252 Spe
+Timid Nature
+- Nasty Plot
+- Discharge
+- Overheat
+- Pain Split

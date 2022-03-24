@@ -1,0 +1,8 @@
+Pelipper @ Damp Rock
+Ability: Drizzle
+EVs: 248 HP / 252 Def / 8 SpD
+Bold Nature
+- Scald
+- Roost
+- U-turn
+- Defog

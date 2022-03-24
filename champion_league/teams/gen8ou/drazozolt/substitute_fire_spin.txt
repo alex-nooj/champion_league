@@ -1,0 +1,8 @@
+Dracozolt @ Leftovers
+Ability: Sand Rush
+EVs: 184 Atk / 140 SpA / 184 Spe
+Lonely Nature
+- Bolt Beak
+- Draco Meteor
+- Substitute
+- Fire Spin

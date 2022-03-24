@@ -1,0 +1,8 @@
+Dragonite @ Heavy-Duty Boots
+Ability: Multiscale
+EVs: 248 HP / 52 Atk / 56 Def / 152 Spe
+Adamant Nature
+- Dragon Dance
+- Dual Wingbeat
+- Earthquake
+- Roost

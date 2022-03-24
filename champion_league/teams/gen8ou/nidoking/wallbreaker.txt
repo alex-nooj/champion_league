@@ -1,0 +1,8 @@
+Nidoking @ Life Orb
+Ability: Sheer Force
+EVs: 252 SpA / 4 SpD / 252 Spe
+Modest Nature
+- Sludge Wave
+- Earth Power
+- Thunderbolt
+- Flamethrower

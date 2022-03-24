@@ -1,0 +1,8 @@
+Avalugg @ Heavy-Duty Boots
+Ability: Sturdy
+EVs: 252 HP / 252 Def / 4 SpD
+Impish Nature
+- Icicle Spear
+- Body Press
+- Rapid Spin
+- Recover

@@ -1,0 +1,9 @@
+Slowking @ Heavy-Duty Boots
+Ability: Regenerator
+EVs: 252 HP / 4 Def / 252 SpD
+IVs: 0 Spe
+Sassy Nature
+- Scald
+- Future Sight
+- Slack Off
+- Teleport

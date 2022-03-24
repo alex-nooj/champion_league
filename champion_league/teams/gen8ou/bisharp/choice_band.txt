@@ -1,0 +1,8 @@
+Bisharp @ Choice Band
+Ability: Defiant
+EVs: 252 Atk / 4 SpD / 252 Spe
+Adamant Nature
+- Knock Off
+- Sucker Punch
+- Iron Head
+- Beat Up

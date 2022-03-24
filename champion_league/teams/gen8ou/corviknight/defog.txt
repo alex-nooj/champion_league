@@ -1,0 +1,8 @@
+Corviknight @ Leftovers
+Ability: Pressure
+EVs: 252 HP / 168 Def / 88 SpD
+Impish Nature
+- Body Press
+- U-turn
+- Defog
+- Roost

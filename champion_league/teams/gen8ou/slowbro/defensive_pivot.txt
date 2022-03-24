@@ -1,0 +1,9 @@
+Slowbro @ Heavy-Duty Boots
+Ability: Regenerator
+EVs: 248 HP / 252 Def / 8 SpA
+IVs: 0 Atk / 0 Spe
+Relaxed Nature
+- Future Sight
+- Scald
+- Slack Off
+- Teleport

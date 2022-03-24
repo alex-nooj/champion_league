@@ -1,0 +1,8 @@
+Haxorus @ Life Orb
+Ability: Mold Breaker
+EVs: 252 Atk / 4 SpD / 252 Spe
+Jolly Nature
+- Swords Dance
+- Scale Shot
+- Close Combat
+- Poison Jab

@@ -1,0 +1,8 @@
+Amoonguss @ Black Sludge
+Ability: Regenerator
+EVs: 252 HP / 168 Def / 88 SpD
+Bold Nature
+- Spore
+- Giga Drain
+- Sludge Bomb
+- Toxic

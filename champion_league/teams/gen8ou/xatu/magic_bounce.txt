@@ -1,0 +1,8 @@
+Xatu @ Heavy-Duty Boots
+Ability: Magic Bounce
+EVs: 252 HP / 252 Def / 4 SpD
+Bold Nature
+- Psychic
+- Roost
+- Teleport
+- Heat Wave

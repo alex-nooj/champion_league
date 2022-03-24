@@ -19,6 +19,7 @@ from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.preprocessors import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
+from champion_league.teams.team_builder import AgentTeamBuilder
 from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_save_dir
@@ -72,7 +73,9 @@ def print_table(entries: Dict[str, float], float_precision: Optional[int] = 1) -
 
 
 async def league_match(
-    challenger: OpponentPlayer, opponent: LeaguePlayer, nb_battles: Optional[int] = 100
+    challenger: OpponentPlayer,
+    opponent: LeaguePlayer,
+    nb_battles: Optional[int] = 100,
 ) -> None:
     """Asynchronous function for handling one player battling another.
 
@@ -152,7 +155,8 @@ def league_score(
         for result in challenger.battle_history:
             skill_tracker.update(result, league_agent)
         agent.write_to_tboard(
-            f"League Validation/{league_agent}", challenger.win_rate * nb_battles
+            f"League Validation/{league_agent}",
+            challenger.win_rate * nb_battles,
         )
         win_dict[league_agent] = challenger.win_rate
 
@@ -240,7 +244,8 @@ def league_epoch(
         episode = collect_episode(player=player, agent=agent, step_counter=step_counter)
 
         agent.write_to_tboard(
-            "Agent Outputs/Average Episode Reward", float(np.sum(episode.rewards))
+            "Agent Outputs/Average Episode Reward",
+            float(np.sum(episode.rewards)),
         )
 
         agent.write_to_tboard(
@@ -252,7 +257,7 @@ def league_epoch(
 
         agent.write_to_tboard(
             f"League Training/{opponent.tag}",
-            float(agent.win_rates[opponent.tag][0] / agent.win_rates[opponent.tag][1]),
+            float(np.mean(agent.win_rates[opponent.tag])),
         )
 
         if opponent.tag != "self":
@@ -279,9 +284,8 @@ def league_epoch(
             epoch_losses = agent.learn_step(data_loader)
             opponent.update_network(agent.network)
 
-            for key in epoch_losses:
-                for val in epoch_losses[key]:
-                    agent.write_to_tboard(f"League Loss/{key}", val)
+            for k, v in epoch_losses.items():
+                agent.write_to_tboard(f"League Loss/{k}", v)
 
             history.free_memory()
 
@@ -343,6 +347,9 @@ def league_play(
         args.self_play_prob, args.league_play_prob, args.logdir, args.tag
     )
 
+    team_builder = AgentTeamBuilder(
+        path=os.path.join(args.logdir, "challengers", args.tag)
+    )
     for epoch in range(starting_epoch, args.nb_steps // args.epoch_len):
         agent.save_model(agent.network, epoch, args)
         skill_tracker.save_skill_ratings(epoch)
@@ -352,6 +359,7 @@ def league_play(
             embed_battle=preprocessor.embed_battle,
             reward_scheme=RewardScheme(args.rewards),
             server_configuration=DockerServerConfiguration,
+            team=team_builder,
         )
 
         opponent = LeaguePlayer(
@@ -361,6 +369,8 @@ def league_play(
             sample_moves=args.sample_moves,
             max_concurrent_battles=10,
             server_configuration=DockerServerConfiguration,
+            team=AgentTeamBuilder(),
+            battle_format=args.battle_format,
         )
 
         player.play_against(
@@ -407,11 +417,7 @@ def main(args: DotDict):
 
     network = build_network_from_args(args).eval()
 
-    league_play(
-        preprocessor=preprocessor,
-        network=network,
-        args=args,
-    )
+    league_play(preprocessor=preprocessor, network=network, args=args)
 
 
 if __name__ == "__main__":

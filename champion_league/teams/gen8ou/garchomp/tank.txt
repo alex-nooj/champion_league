@@ -1,0 +1,8 @@
+Garchomp @ Leftovers
+Ability: Rough Skin
+EVs: 252 HP / 136 Def / 120 Spe
+Jolly Nature
+- Stealth Rock
+- Earthquake
+- Toxic
+- Protect

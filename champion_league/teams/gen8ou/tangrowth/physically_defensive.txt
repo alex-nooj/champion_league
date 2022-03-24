@@ -1,0 +1,8 @@
+Tangrowth @ Rocky Helmet
+Ability: Regenerator
+EVs: 252 HP / 252 Def / 4 SpD
+Relaxed Nature
+- Giga Drain
+- Knock Off
+- Focus Blast
+- Sleep Powder

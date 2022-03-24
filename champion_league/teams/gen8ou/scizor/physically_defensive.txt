@@ -1,0 +1,8 @@
+Scizor @ Heavy-Duty Boots
+Ability: Technician
+EVs: 248 HP / 172 Def / 88 SpD
+Impish Nature
+- Swords Dance
+- Bullet Punch
+- Knock Off
+- Roost

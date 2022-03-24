@@ -6,8 +6,8 @@ logdir: None
 tag: None
 
 network: gated_encoder
-preprocessor: modular_processor
-subprocessor: simple_preprocessor
+preprocessor: FrameStacker
+subprocessor: ModularPreprocessor
 
 nb_steps: 1_000_000
 epoch_len: 100_000

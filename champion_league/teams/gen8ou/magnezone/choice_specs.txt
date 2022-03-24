@@ -1,0 +1,8 @@
+Magnezone @ Choice Specs
+Ability: Magnet Pull
+EVs: 4 Def / 252 SpA / 252 Spe
+Modest Nature
+- Thunderbolt
+- Flash Cannon
+- Volt Switch
+- Toxic

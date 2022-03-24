@@ -1,0 +1,8 @@
+Tyranitar @ Leftovers
+Ability: Sand Stream
+EVs: 252 HP / 4 Def / 252 SpD
+Careful Nature
+- Stealth Rock
+- Rock Blast
+- Earthquake
+- Thunder Wave

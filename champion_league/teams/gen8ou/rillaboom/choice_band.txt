@@ -1,0 +1,8 @@
+Rillaboom @ Choice Band
+Ability: Grassy Surge
+EVs: 252 Atk / 4 Def / 252 Spe
+Adamant Nature
+- Grassy Glide
+- Knock Off
+- Wood Hammer
+- U-turn
