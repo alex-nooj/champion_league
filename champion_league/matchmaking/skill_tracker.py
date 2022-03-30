@@ -1,38 +1,35 @@
-import json
-import os
+from pathlib import Path
 from typing import Dict
-from typing import List
 from typing import Optional
 from typing import Union
 
 import trueskill
+from omegaconf import OmegaConf
 
 
 class SkillTracker:
     def __init__(
         self,
-        agent_paths: List[str],
+        agents_dir: Path,
         mu: Optional[float] = 25,
         sigma: Optional[float] = 8.333,
     ):
         self.default_mu = mu
         self.default_sigma = sigma
-        self.agent_skills = self._load_skills(agent_paths)
+        self.agent_skills = self._load_skills(agents_dir)
 
     def _load_skills(
-        self, agent_paths: List[str]
+        self, agents_dir: Path
     ) -> Dict[str, Dict[str, Union[trueskill.Rating, str]]]:
         agent_skills = {}
-        for path in agent_paths:
-            trueskill_file = os.path.join(path, "trueskill.json")
+        for path in agents_dir.iterdir():
+            trueskill_file = path / "trueskill.json"
             try:
-                with open(trueskill_file, "r") as fp:
-                    agent_skill = json.load(fp)
+                agent_skill = OmegaConf.to_container(OmegaConf.load(trueskill_file))
             except FileNotFoundError:
                 agent_skill = {"mu": self.default_mu, "sigma": self.default_sigma}
-                with open(trueskill_file, "w") as fp:
-                    json.dump(agent_skill, fp, indent=4)
-            agent_skills[path.rsplit("/")[-1]] = {
+                OmegaConf.save(config=agent_skill, f=trueskill_file)
+            agent_skills[path.stem] = {
                 "trueskill": trueskill.Rating(**agent_skill),
                 "path": path,
             }
@@ -57,9 +54,7 @@ class SkillTracker:
 
     def save_skill_ratings(self):
         for _, agent in self.agent_skills.items():
-            with open(os.path.join(agent["path"], "trueskill.json"), "w") as fp:
-                json.dump(
-                    {"mu": agent["trueskill"].mu, "sigma": agent["trueskill"].sigma},
-                    fp,
-                    indent=4,
-                )
+            OmegaConf.save(
+                config={"mu": agent["trueksill"].mu, "sigma": agent["trueskill"].sigma},
+                f=agent["path"] / "trueskill.yaml",
+            )

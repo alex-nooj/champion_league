@@ -9,7 +9,6 @@ from torch import Tensor
 from champion_league.network.base_network import BaseNetwork
 from champion_league.network.gated_encoder import GatedEncoder
 from champion_league.utils.abilities import ABILITIES
-from champion_league.utils.directory_utils import DotDict
 
 
 class AbilityNetwork(BaseNetwork):
@@ -99,35 +98,4 @@ class AbilityNetwork(BaseNetwork):
                     )
                 }
             }
-        )
-
-    @classmethod
-    def from_args(cls, args: DotDict) -> "AbilityNetwork":
-        """Class method used to construct the network from arbitrary arguments.
-
-        Parameters
-        ----------
-        args
-            DotDict that MUST contain keys `nb_actions` and `in_shape`. Other optional keys are:
-            - embedding_dim
-            - nb_encoders
-            - nb_heads
-            - nb_layers
-            - scale
-            - dropout
-
-        Returns
-        -------
-        AbilityNetwork
-            This function will build the AbilityNetwork according to args and return it.
-        """
-        return AbilityNetwork(
-            nb_actions=args.nb_actions,
-            in_shape=args.in_shape,
-            embedding_dim=args.embedding_dim or 5,
-            nb_encoders=args.nb_encoders or 1,
-            nb_heads=args.nb_heads or 1,
-            nb_layers=args.nb_layers or 3,
-            scale=args.scale or False,
-            dropout=args.dropout or 0.0,
         )

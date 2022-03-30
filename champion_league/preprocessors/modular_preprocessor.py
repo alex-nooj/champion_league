@@ -1,5 +1,4 @@
 from typing import Dict
-from typing import Optional
 from typing import Tuple
 
 import torch
@@ -13,7 +12,6 @@ from champion_league.preprocessors.modules import embed_enemy_pokemon
 from champion_league.preprocessors.modules import embed_move
 from champion_league.preprocessors.modules import MoveIdx
 from champion_league.utils.abilities import ABILITIES
-from champion_league.utils.directory_utils import DotDict
 
 NB_POKEMON = 12
 NB_MOVES = 4
@@ -23,7 +21,7 @@ ABILITIES_IX = {k: v + 1 for v, k in enumerate(ABILITIES)}
 class ModularPreprocessor(Preprocessor):
     """Preprocessor for converting Battle objects into tensors"""
 
-    def __init__(self, device: int):
+    def __init__(self, device: int, *args, **kwargs):
         """Constructor
 
         Parameters
@@ -31,11 +29,11 @@ class ModularPreprocessor(Preprocessor):
         device
             Which device to move the tensors onto.
         """
+        super().__init__(device)
         self._output_shape = {
             "2D": (NB_POKEMON, len(AlliedPokemonIdx) + NB_MOVES * len(MoveIdx)),
             "1D": NB_POKEMON,
         }
-        self.device = f"cuda:{device}"
 
     def embed_battle(self, battle: Battle, **kwargs) -> Dict[str, Tensor]:
         """Preprocessing function for this class. It will embed all of the pokemon into a 2D tensor,
@@ -130,19 +128,3 @@ class ModularPreprocessor(Preprocessor):
             The output shape for each head of the preprocessor.
         """
         return self._output_shape
-
-    @classmethod
-    def from_args(cls, args: DotDict) -> "ModularPreprocessor":
-        """Constructor for building this preprocessor from arguments.
-
-        Parameters
-        ----------
-        args
-            The arguments to construct this preprocessor. Arguments MUST include `device`.
-
-        Returns
-        -------
-        ModularPreprocessor
-            An instance of the ModularPreprocessor class.
-        """
-        return cls(args.device)

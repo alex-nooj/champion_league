@@ -1,22 +1,23 @@
-import os
+from pathlib import Path
+from typing import Any
+from typing import Dict
 
 import numpy as np
-from poke_env.teambuilder.constant_teambuilder import ConstantTeambuilder
 from poke_env.teambuilder.teambuilder import Teambuilder
 from torch import nn
 from torch.utils.data import DataLoader
 
 from champion_league.agent.ppo import PPOAgent
+from champion_league.config import parse_args
+from champion_league.config.load_configs import save_args
 from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
-from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.network import NETWORKS
 from champion_league.preprocessors import Preprocessor
+from champion_league.preprocessors import PREPROCESSORS
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.teams.team_builder import load_team_from_file
 from champion_league.utils.collect_episode import collect_episode
-from champion_league.utils.directory_utils import DotDict
-from champion_league.utils.parse_args import parse_args
 from champion_league.utils.replay import History
 from champion_league.utils.server_configuration import DockerServerConfiguration
 from champion_league.utils.step_counter import StepCounter
@@ -76,45 +77,46 @@ def agent_epoch(
 custom_builder = RandomTeamFromPool([])
 
 
-def agent_play(preprocessor: Preprocessor, network: nn.Module, args: DotDict):
+def agent_play(preprocessor: Preprocessor, network: nn.Module, args: Dict[str, Any]):
 
+    agent_dir = Path(args["logdir"], "challengers", args["tag"])
     agent = PPOAgent(
-        device=args.device,
+        device=args["device"],
         network=network,
-        lr=args.lr,
-        entropy_weight=args.entropy_weight,
-        clip=args.clip,
-        challenger_dir=os.path.join(args.logdir, "challengers"),
-        tag=args.tag,
+        lr=args["lr"],
+        entropy_weight=args["entropy_weight"],
+        clip=args["clip"],
+        challenger_dir=Path(args["logdir"], "challengers"),
+        tag=args["tag"],
     )
-    agent.save_args(args)
+    save_args(agent_dir, 0, args)
 
     step_counter = StepCounter()
 
     starting_epoch = 0
 
-    for opponent_path in args.opponents:
+    for opponent_path in args["opponents"]:
         for epoch in range(
-            starting_epoch, args.nb_steps // args.epoch_len + starting_epoch
+            starting_epoch, args["nb_steps"] // args["epoch_len"] + starting_epoch
         ):
             print(f"\nAgent {opponent_path.rsplit('/')[-1]} - Epoch {epoch:3d}\n")
 
-            agent.save_model(agent.network, epoch, args)
+            agent.save_model(agent_dir, epoch, agent.network)
 
             opponent = LeaguePlayer(
-                device=args.device,
+                device=args["device"],
                 network=network,
                 preprocessor=preprocessor,
                 sample_moves=False,
                 team=custom_builder,
-                battle_format=args.battle_format,
+                battle_format=args["battle_format"],
             )
             opponent.change_agent(opponent_path)
 
             player = RLPlayer(
-                battle_format=args.battle_format,
+                battle_format=args["battle_format"],
                 embed_battle=preprocessor.embed_battle,
-                reward_scheme=RewardScheme(args.rewards),
+                reward_scheme=RewardScheme(args["rewards"]),
                 server_configuration=DockerServerConfiguration,
                 team=custom_builder,
             )
@@ -125,9 +127,9 @@ def agent_play(preprocessor: Preprocessor, network: nn.Module, args: DotDict):
                 env_algorithm_kwargs={
                     "agent": agent,
                     "opponent": opponent,
-                    "batch_size": args.batch_size,
-                    "rollout_len": args.rollout_len,
-                    "epoch_len": args.epoch_len,
+                    "batch_size": args["batch_size"],
+                    "rollout_len": args["rollout_len"],
+                    "epoch_len": args["epoch_len"],
                     "step_counter": step_counter,
                 },
             )
@@ -136,14 +138,22 @@ def agent_play(preprocessor: Preprocessor, network: nn.Module, args: DotDict):
                 break
 
 
-def main(args: DotDict):
-    preprocessor = build_preprocessor_from_args(args)
-    args.in_shape = preprocessor.output_shape
-
-    network = build_network_from_args(args).eval()
+def main(args: Dict[str, Any]):
+    preprocessor = PREPROCESSORS[args["preprocessor"]](
+        args["device"], **args[args["preprocessor"]]
+    )
+    network = (
+        NETWORKS[args["network"]](
+            nb_actions=args["nb_actions"],
+            in_shape=preprocessor.output_shape,
+            **args[args["network"]],
+        )
+        .eval()
+        .to(args["device"])
+    )
 
     agent_play(preprocessor=preprocessor, network=network, args=args)
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    main(parse_args(__file__))

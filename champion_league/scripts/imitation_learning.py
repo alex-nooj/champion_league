@@ -1,5 +1,6 @@
 import asyncio
-import os
+from pathlib import Path
+from typing import Any
 from typing import Dict
 from typing import List
 from typing import Tuple
@@ -12,15 +13,14 @@ from torch.utils.data import DataLoader
 
 from champion_league.agent.imitation.imitation_agent import ImitationAgent
 from champion_league.agent.opponent.rl_opponent import RLOpponent
+from champion_league.config import parse_args
 from champion_league.env import OpponentPlayer
 from champion_league.env import RLPlayer
-from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.network import NETWORKS
 from champion_league.preprocessors import Preprocessor
+from champion_league.preprocessors import PREPROCESSORS
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.teams.team_builder import AgentTeamBuilder
-from champion_league.utils.directory_utils import DotDict
-from champion_league.utils.parse_args import parse_args
 from champion_league.utils.poke_set import PokeSet
 from champion_league.utils.progress_bar import ProgressBar
 from champion_league.utils.replay import cumulative_sum
@@ -234,7 +234,7 @@ def validation_epoch(
 def imitation_learning(
     preprocessor: Preprocessor,
     network: nn.Module,
-    args: DotDict,
+    args: Dict[str, Any],
 ):
     """The main loop for performing supervised learning between a network and a trained agent.
 
@@ -262,24 +262,24 @@ def imitation_learning(
     """
 
     agent = ImitationAgent(
-        device=args.device,
+        device=args["device"],
         network=network,
-        lr=args.lr,
+        lr=args["lr"],
         embed_battle=preprocessor.embed_battle,
-        challenger_dir=os.path.join(args.logdir, "challengers"),
-        tag=args.tag,
+        challenger_dir=Path(args["logdir"], "challengers"),
+        tag=args["tag"],
     )
 
-    team_builder = AgentTeamBuilder(os.path.join(args.logdir, "challengers", args.tag))
+    team_builder = AgentTeamBuilder(Path(args["logdir"], "challengers", args["tag"]))
 
-    agent.save_model(agent.network, 0, args)
-    reward_scheme = RewardScheme(args.rewards)
+    agent.save_model(Path(args["logdir"], args["tag"]), 0, agent.network)
+    reward_scheme = RewardScheme(args["rewards"])
 
     progress_bar = ProgressBar(["Samples Collected"])
     progress_bar.set_epoch(0)
 
     player = RLPlayer(
-        battle_format=args.battle_format,
+        battle_format=args["battle_format"],
         embed_battle=identity_embedding,
         reward_scheme=reward_scheme,
         server_configuration=DockerServerConfiguration,
@@ -287,10 +287,10 @@ def imitation_learning(
     )
 
     opponent = OpponentPlayer.from_path(
-        path=os.path.join(args.logdir, "league", "simple_heuristic_0"),
+        path=Path(args["logdir"], "league", "simple_heuristic_0"),
         device=agent.device,
         team=AgentTeamBuilder(),
-        battle_format=args.battle_format,
+        battle_format=args["battle_format"],
     )
 
     player.play_against(
@@ -298,8 +298,8 @@ def imitation_learning(
         opponent=opponent,
         env_algorithm_kwargs={
             "agent": agent,
-            "batch_size": args.batch_size,
-            "nb_batches": args.batches_per_epoch,
+            "batch_size": args["batch_size"],
+            "nb_batches": args["batches_per_epoch"],
             "progress_bar": progress_bar,
         },
     )
@@ -309,8 +309,8 @@ def imitation_learning(
         opponent=opponent,
         env_algorithm_kwargs={
             "agent": agent,
-            "batch_size": args.batch_size,
-            "nb_batches": args.batches_per_epoch // 3,
+            "batch_size": args["batch_size"],
+            "nb_batches": args["batches_per_epoch"] // 3,
             "progress_bar": progress_bar,
         },
     )
@@ -318,16 +318,16 @@ def imitation_learning(
     progress_bar.close()
 
     min_val_loss = None
-    fuse = args.patience
+    fuse = args["patience"]
 
-    for epoch in range(args.nb_epochs):
+    for epoch in range(args["nb_epochs"]):
         _ = agent.learn_step(agent.training_set, epoch)
         validation_stats = agent.validation_step(agent.validation_set)
 
         if min_val_loss is None or validation_stats["Total"] < min_val_loss:
             min_val_loss = validation_stats["Total"]
-            agent.save_model(agent.network, 0, args, "best_model.pt")
-            fuse = args.patience
+            agent.save_model(Path(args["logdir"], args["tag"]), 0, agent.network)
+            fuse = args["patience"]
         else:
             fuse -= 1
 
@@ -339,12 +339,12 @@ def imitation_learning(
         RLOpponent(
             network=agent.network.eval(),
             preprocessor=preprocessor,
-            device=args.device,
+            device=args["device"],
             sample_moves=False,
         ),
         max_concurrent_battles=100,
         team=team_builder,
-        battle_format=args.battle_format,
+        battle_format=args["battle_format"],
     )
 
     asyncio.get_event_loop().run_until_complete(agent_battle(player, opponent, 100))
@@ -352,11 +352,19 @@ def imitation_learning(
     print(player.n_won_battles)
 
 
-def main(args: DotDict):
-    preprocessor = build_preprocessor_from_args(args)
-    args.in_shape = preprocessor.output_shape
-
-    network = build_network_from_args(args).eval()
+def main(args: Dict[str, Any]):
+    preprocessor = PREPROCESSORS[args["preprocessor"]](
+        args["device"], **args[args["preprocessor"]]
+    )
+    network = (
+        NETWORKS[args["network"]](
+            nb_actions=args["nb_actions"],
+            in_shape=preprocessor.output_shape,
+            **args[args["network"]],
+        )
+        .eval()
+        .to(args["device"])
+    )
 
     imitation_learning(
         preprocessor=preprocessor,
@@ -366,4 +374,4 @@ def main(args: DotDict):
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    main(parse_args(__file__))

@@ -1,0 +1,7 @@
+embedding_dim: 5
+nb_encoders: 1
+nb_heads: 1
+nb_layers: 3
+scale: False
+lstm_hidden: 512
+linear_hidden: 128

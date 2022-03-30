@@ -10,6 +10,9 @@ from torch import Tensor
 class Preprocessor:
     """Abstract class for preprocessing."""
 
+    def __init__(self, device: int, **kwargs):
+        self.device = f"cuda:{device}"
+
     @abstractmethod
     def embed_battle(
         self, battle: Battle, reset: Optional[bool] = False

@@ -1,0 +1,33 @@
+battle_format: gen8ou
+nb_actions: 10
+device: 0
+
+logdir: ???
+tag: ???
+
+preprocessor: ModularPreprocessor
+network: AbilityNetwork
+
+nb_steps: 10_000_000
+epoch_len: 100_000
+batch_size: 64
+
+lr: 0.001
+entropy_weight: 0.01
+sample_moves: True
+rollout_len: 20
+clip: 0.2
+
+rewards:
+  OpponentBinaryFaints: 1.0
+  AlliedBinaryFaints: 1.0
+  OpponentScalarFaints: 0
+  AlliedScalarFaints: 0
+  OpponentStatusRule: 0
+  AlliedStatusRule: 0
+  OpponentHPDiff: 0.5
+  AlliedHPDiff: 0.5
+  VictoryRule: 10.0
+  LossRule: 10.0
+
+opponents: ???

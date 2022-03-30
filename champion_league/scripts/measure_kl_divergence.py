@@ -2,19 +2,20 @@ import asyncio
 import copy
 import json
 import os
+from pathlib import Path
 from typing import List
 from typing import Union
 
 import plotly.express as px
 import torch
+from omegaconf import OmegaConf
 from poke_env.environment.battle import Battle
 from poke_env.player.player import Player
 
+from champion_league.config import parse_args
 from champion_league.env.max_damage_player import MaxDamagePlayer
-from champion_league.network import build_network_from_args
+from champion_league.network import build_network
 from champion_league.preprocessors import build_preprocessor_from_args
-from champion_league.utils.directory_utils import DotDict
-from champion_league.utils.parse_args import parse_args
 
 
 class KLMaxDamage(MaxDamagePlayer):
@@ -62,7 +63,7 @@ async def match(player1: Player, player2: Player, nb_battles: int) -> None:
 
 
 def get_agent_distributions(
-    agent_name: str, league_dir: str, battles: List[Battle]
+    agent_name: str, league_dir: str, battles: List[Battle], device: int
 ) -> Union[torch.Tensor, None]:
     """Function for getting a specified network's distribution over a batch of game states.
 
@@ -74,6 +75,8 @@ def get_agent_distributions(
         The path to the league.
     battles: List[Battle]
         A list of Battle Objects from PokeEnv to be predicted over.
+    device: int
+        Device to load the network onto
 
     Returns
     -------
@@ -81,24 +84,30 @@ def get_agent_distributions(
         Returns `None` if the agent is scripted, otherwise returns a tensor containing all of the
         action distributions for the agent.
     """
-    with open(os.path.join(league_dir, agent_name, "args.json"), "r") as fp:
-        args = DotDict(json.load(fp))
+    path = Path(league_dir, agent_name, "args.yaml")
+    args = OmegaConf.to_container(OmegaConf.load(path / "args.yaml"))
 
     if "scripted" in args:
         return None
 
-    args.resume = False
-    network = build_network_from_args(args)
+    preprocessor = build_preprocessor_from_args(args)
+    network = build_network(
+        args["nb_actions"],
+        preprocessor.output_shape,
+        device,
+        args["network"],
+        args[args["network"]],
+    )
+
     network.load_state_dict(
         torch.load(
-            os.path.join(league_dir, agent_name, "network.pt"),
+            path / "network.pt",
             map_location=lambda storage, loc: storage,
         )
     )
 
-    preprocessor = build_preprocessor_from_args(args)
-
     proc_battles = [preprocessor.embed_battle(battle) for battle in battles]
+
     tensor_battles = {
         k: torch.stack([pb[k] for pb in proc_battles]).squeeze()
         for k in proc_battles[0]
@@ -107,7 +116,7 @@ def get_agent_distributions(
     return network.forward(tensor_battles)["action"]
 
 
-def measure_league_diversity(nb_battles: int, league_dir: str) -> None:
+def measure_league_diversity(nb_battles: int, league_dir: str, device: int) -> None:
     """Determines and plots the KL divergence between each agent, as well as the number of times
     two agents select the same move. Used to determine when two agents are near-identical for
     pruning.
@@ -118,6 +127,8 @@ def measure_league_diversity(nb_battles: int, league_dir: str) -> None:
         The number of battles to be played.
     league_dir: str
         The path to the league.
+    device: int
+        Device to load the network onto
 
     Returns
     -------
@@ -131,7 +142,7 @@ def measure_league_diversity(nb_battles: int, league_dir: str) -> None:
 
     agent_predictions = {}
     for agent in os.listdir(league_dir):
-        predictions = get_agent_distributions(agent, league_dir, battles)
+        predictions = get_agent_distributions(agent, league_dir, battles, device)
         if predictions is not None:
             agent_predictions[agent] = predictions.cpu()
 

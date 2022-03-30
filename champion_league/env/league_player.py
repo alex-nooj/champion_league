@@ -1,23 +1,21 @@
 import copy
-import json
-import os
-from asyncio import CancelledError
+from pathlib import Path
 from typing import Any
 from typing import Optional
+from typing import Union
 
 import torch
+from omegaconf import OmegaConf
 from poke_env.environment.battle import Battle
-from poke_env.exceptions import ShowdownException
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.player import Player
 from torch import nn
 
 from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.scripted import SCRIPTED_AGENTS
-from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.network import NETWORKS
 from champion_league.preprocessors import Preprocessor
-from champion_league.utils.directory_utils import DotDict
+from champion_league.preprocessors import PREPROCESSORS
 
 
 class LeaguePlayer(Player):
@@ -88,7 +86,7 @@ class LeaguePlayer(Player):
 
     def change_agent(
         self,
-        agent_path: str,
+        agent_path: Union[str, Path],
     ) -> str:
         """This handles the swapping of the agent choosing the moves. For the league, this is useful
         as it allows the agent to see many different selection strategies during training, making it
@@ -123,25 +121,27 @@ class LeaguePlayer(Player):
         else:
             # Otherwise, we're playing a league agent, so we have to build that network. So first we
             # load up the arguments, which will act as build instructions.
-            with open(os.path.join(agent_path, "args.json"), "r") as fp:
-                args = json.load(fp)
-                args = DotDict(args)
+            args = OmegaConf.to_container(OmegaConf.load(Path(agent_path, "args.yaml")))
 
             if "scripted" in args:
                 # Scripted agents act differently than ML agents, so we have to treat them a little
                 # differently.
                 self.mode = "scripted"
-                self.opponent = SCRIPTED_AGENTS[args.agent]
+                self.opponent = SCRIPTED_AGENTS[args["agent"]]
             else:
                 # Otherwise, we have an ML agent, and have to build the LeagueOpponent class using
                 # this network as a selection strategy.
                 self.mode = "ml"
-                args.resume = False
-                network = build_network_from_args(args).eval()
-                network.load_state_dict(
-                    torch.load(os.path.join(agent_path, "network.pt"))
+                preprocessor = PREPROCESSORS[args["preprocessor"]](
+                    args["device"], **args[args["preprocessor"]]
                 )
-                preprocessor = build_preprocessor_from_args(args)
+                network = NETWORKS[args["network"]](
+                    nb_actions=args["nb_actions"],
+                    in_shape=preprocessor.output_shape,
+                    **args[args["network"]],
+                ).eval()
+                network.load_state_dict(torch.load(Path(agent_path, "network.pt")))
+
                 self.opponent = RLOpponent(
                     network=network,
                     preprocessor=preprocessor,
@@ -151,10 +151,10 @@ class LeaguePlayer(Player):
 
             # Sometimes, we aren't actually fighting a league opponent and are instead just fighting
             # an earlier iteration of the current agent, which should still count as self-play
-            if agent_path.rsplit("/")[-3] == "challengers":
+            if list(agent_path.parents)[2] == "challengers":
                 self.tag = "self"
             else:
-                self.tag = agent_path.rsplit("/")[-1]
+                self.tag = agent_path.stem
 
         return self.tag
 

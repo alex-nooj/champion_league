@@ -1,0 +1,18 @@
+battle_format: gen8ou
+device: 0
+sample_moves: True
+
+config: ???
+
+logdir: /tmp/pokemon_trainers/
+tag: None
+network: AbilityNetwork
+preprocessor: ModularPreprocessor
+
+nb_steps: 1_000_000
+epoch_len: 10_000
+batch_size: 32
+rollout_len: 60
+lr: 0.001
+entropy_weight: 0.001
+clip: 0.2

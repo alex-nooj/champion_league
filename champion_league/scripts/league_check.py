@@ -1,24 +1,24 @@
-import json
-import os
+from pathlib import Path
+from typing import Any
 from typing import Dict
 from typing import List
 
 import numpy as np
 import torch
+from omegaconf import OmegaConf
 from torch import nn
 from tqdm import tqdm
 
 from champion_league.agent.ppo import PPOAgent
+from champion_league.config import parse_args
 from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
-from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.network import NETWORKS
+from champion_league.preprocessors import PREPROCESSORS
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.scripts.league_play import move_to_league
 from champion_league.utils.collect_episode import collect_episode
-from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_save_dir
-from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
 from champion_league.utils.server_configuration import DockerServerConfiguration
 from champion_league.utils.step_counter import StepCounter
@@ -96,7 +96,7 @@ def agent_check(
     None
     """
     win_rates = {}
-    league_agents = os.listdir(os.path.join(logdir, "league"))
+    league_agents = list(Path(logdir, "league"))
     league_agents.sort()
     for epoch in agent_epochs:
         print(f"Testing Epoch {epoch}...")
@@ -104,12 +104,12 @@ def agent_check(
         win_rates[epoch] = {}
         for league_agent in tqdm(league_agents):
             win_rates[epoch][league_agent] = 0
-            _ = opponent.change_agent(os.path.join(logdir, "league", league_agent))
+            _ = opponent.change_agent(league_agent)
             for _ in range(nb_battles):
                 episode = collect_episode(
                     player=player, agent=agent, step_counter=step_counter
                 )
-                win_rates[epoch][league_agent] += int(episode.rewards[-1] > 0)
+                win_rates[epoch][league_agent.stem] += int(episode.rewards[-1] > 0)
         agents_beaten = np.sum(
             [
                 int(win_rate > (nb_battles * 0.5))
@@ -119,8 +119,8 @@ def agent_check(
         print(f"Epoch {epoch:3d}: {agents_beaten}")
         if agents_beaten >= (len(league_agents) * 0.75):
             move_to_league(
-                os.path.join(logdir, "challengers"),
-                os.path.join(logdir, "league"),
+                Path(logdir, "challengers"),
+                Path(logdir, "league"),
                 agent.tag,
                 epoch,
             )
@@ -128,7 +128,7 @@ def agent_check(
     print_wins(win_rates)
 
 
-def get_old_args(logdir: str, tag: str) -> DotDict:
+def get_old_args(logdir: str, tag: str) -> Dict[str, Any]:
     """Retrieves the arguments of a previously trained agent.
 
     Parameters
@@ -143,11 +143,10 @@ def get_old_args(logdir: str, tag: str) -> DotDict:
     DotDict
         DotDict containing all of the arguments.
     """
-    with open(os.path.join(logdir, "challengers", tag, "args.json"), "r") as fp:
-        args = DotDict(json.load(fp))
-    args.resume = False
-    args.logdir = logdir
-    return args
+
+    return OmegaConf.to_container(
+        OmegaConf.load(Path(logdir, "challengers", tag, "args.yaml"))
+    )
 
 
 def load_epoch(logdir: str, tag: str, epoch: int, network: nn.Module) -> nn.Module:
@@ -171,14 +170,7 @@ def load_epoch(logdir: str, tag: str, epoch: int, network: nn.Module) -> nn.Modu
     """
     network.load_state_dict(
         torch.load(
-            os.path.join(
-                get_save_dir(
-                    logdir=os.path.join(logdir, "challengers"),
-                    tag=tag,
-                    epoch=epoch,
-                ),
-                "network.pt",
-            )
+            get_save_dir(Path(logdir, tag), epoch) / "network.pt",
         )
     )
     return network
@@ -201,36 +193,42 @@ def main(logdir: str, tag: str, nb_battles: int):
     None
     """
     args = get_old_args(logdir, tag)
-    preprocessor = build_preprocessor_from_args(args)
-    args.in_shape = preprocessor.output_shape
-    args.resume = False
-    reward_scheme = RewardScheme(rules=args.rewards)
 
-    network = build_network_from_args(args).eval()
-    agent_dir = os.path.join(logdir, "challengers", args.tag)
+    agent_dir = Path(logdir, "challengers", args["tag"])
+
+    preprocessor = PREPROCESSORS[args["preprocessor"]](
+        args["device"], **args[args["preprocessor"]]
+    )
+
+    network = NETWORKS[args["network"]](
+        args["nb_actions"], preprocessor.output_shape, **args[args["network"]]
+    ).eval()
+    reward_scheme = RewardScheme(rules=args["rewards"])
+
     agent_epochs = [
-        int(e.rsplit("_")[-1])
-        for e in os.listdir(agent_dir)
-        if os.path.isdir(os.path.join(agent_dir, e)) and e != "sl"
+        int(e.stem.rsplit("_")[-1])
+        for e in agent_dir.iterdir()
+        if e.is_dir() and e.stem != "sl"
     ]
+
     step_counter = StepCounter()
     agent_epochs.sort()
 
-    league_agents = os.listdir(os.path.join(logdir, "league"))
+    league_agents = [p for p in Path(logdir, "league").iterdir()]
     league_agents.sort()
 
     agent = PPOAgent(
-        device=args.device,
+        device=args["device"],
         network=network,
-        lr=args.lr,
-        entropy_weight=args.entropy_weight,
-        clip=args.clip,
-        challenger_dir=os.path.join(args.logdir, "challengers"),
-        tag=args.tag,
+        lr=args["lr"],
+        entropy_weight=args["entropy_weight"],
+        clip=args["clip"],
+        challenger_dir=Path(args["logdir"], "challengers"),
+        tag=args["tag"],
     )
 
     player = RLPlayer(
-        battle_format=args.battle_format,
+        battle_format=args["battle_format"],
         embed_battle=preprocessor.embed_battle,
         reward_scheme=reward_scheme,
         server_configuration=DockerServerConfiguration,
@@ -260,4 +258,4 @@ def main(logdir: str, tag: str, nb_battles: int):
 
 
 if __name__ == "__main__":
-    main(**parse_args())
+    main(**parse_args(__file__))

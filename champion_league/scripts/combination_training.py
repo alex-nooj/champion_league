@@ -1,54 +1,31 @@
 import os
 import time
+from typing import Any
 from typing import Dict
 
 from omegaconf import DictConfig
 
+from champion_league.config import parse_args
 from champion_league.network import build_network_from_args
 from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
 from champion_league.scripts.league_play import league_play
-from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_most_recent_epoch
 
 
-def parse_multi_args() -> Dict[str, DotDict]:
-    """Function that reads in the more-complicated arguments for combination training and
-    synthesizes them to be more wieldable.
-
-    Returns
-    -------
-    Dict[str, DotDict]
-        Dictionary containing the arguments for imitation learning and league play, as well as some
-        global arguments.
-    """
-    from champion_league.config import CFG
-
-    multi_args = {}
-    arg_dicts = {"imitation": CFG.imitation, "league": CFG.league}
-    for arg_dict in arg_dicts:
-        multi_args[arg_dict] = {**CFG.default, **arg_dicts[arg_dict]}
-        for arg_name, arg_value in multi_args[arg_dict].items():
-            if type(arg_value) == DictConfig:
-                multi_args[arg_dict][arg_name] = DotDict(multi_args[arg_dict][arg_name])
-
-    multi_args["imitate"] = CFG.imitate
-    multi_args["resume"] = CFG.resume
-    return multi_args
-
-
-def combination_training(multi_args: Dict[str, DotDict]) -> None:
+def combination_training(args: Dict[str, Any]) -> None:
     """Method for performing imitation learning and league training sequentially.
 
     Parameters
     ----------
-    multi_args
+    args
         The arguments for imitation learning, league play, and meta commands for this script.
 
     Returns
     -------
     None
     """
+
     imitation_args = DotDict(multi_args["imitation"])
     league_args = DotDict(multi_args["league"])
 
@@ -92,6 +69,6 @@ def combination_training(multi_args: Dict[str, DotDict]) -> None:
 
 if __name__ == "__main__":
     start_time = time.time()
-    combination_training(parse_multi_args())
+    combination_training(parse_args())
     end_time = time.time()
     print(f"Training took {end_time - start_time} seconds!")

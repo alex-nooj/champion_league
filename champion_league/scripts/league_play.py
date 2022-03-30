@@ -1,5 +1,6 @@
 import asyncio
-import os
+from pathlib import Path
+from typing import Any
 from typing import Dict
 from typing import Optional
 
@@ -11,20 +12,20 @@ from tqdm import tqdm
 
 from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.ppo import PPOAgent
+from champion_league.config import parse_args
+from champion_league.config.load_configs import save_args
 from champion_league.env import OpponentPlayer
 from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
-from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
+from champion_league.network import NETWORKS
 from champion_league.preprocessors import Preprocessor
+from champion_league.preprocessors import PREPROCESSORS
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.teams.team_builder import AgentTeamBuilder
 from champion_league.utils.collect_episode import collect_episode
-from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_save_dir
-from champion_league.utils.parse_args import parse_args
 from champion_league.utils.progress_bar import centered
 from champion_league.utils.replay import History
 from champion_league.utils.server_configuration import DockerServerConfiguration
@@ -100,7 +101,7 @@ def league_score(
     agent: PPOAgent,
     preprocessor: Preprocessor,
     opponent: LeaguePlayer,
-    league_dir: str,
+    league_dir: Path,
     skill_tracker: LeagueSkillTracker,
     nb_battles: Optional[int] = 100,
 ) -> float:
@@ -140,42 +141,42 @@ def league_score(
     sample_moves = opponent.sample_moves
     opponent.sample_moves = False
 
-    league_agents = os.listdir(league_dir)
-
     overall_wins = 0
     win_dict = {}
-    for league_agent in tqdm(league_agents):
+    for league_agent in tqdm(league_dir.iterdir()):
         # To eval, we play 100 games against each agent in the league. If the agent wins over 50
         # games against 75% of the opponents, it is added to the league as a league agent.
-        _ = opponent.change_agent(os.path.join(league_dir, league_agent))
+        _ = opponent.change_agent(league_agent)
 
         asyncio.get_event_loop().run_until_complete(
             league_match(challenger, opponent, nb_battles=nb_battles)
         )
 
         for result in challenger.battle_history:
-            skill_tracker.update(result, league_agent)
+            skill_tracker.update(result, league_agent.stem)
         agent.write_to_tboard(
-            f"League Validation/{league_agent}",
+            f"League Validation/{league_agent.stem}",
             challenger.win_rate * nb_battles,
         )
-        win_dict[league_agent] = challenger.win_rate
+        win_dict[league_agent.stem] = challenger.win_rate
 
         overall_wins += int(challenger.win_rate >= 0.5)
         challenger.reset_battles()
     print_table(win_dict)
     opponent.sample_moves = sample_moves
-    return overall_wins / len(league_agents)
+    return overall_wins / len(list(league_dir.iterdir()))
 
 
-def move_to_league(challengers_dir: str, league_dir: str, tag: str, epoch: int) -> None:
+def move_to_league(
+    challengers_dir: Path, league_dir: Path, tag: str, epoch: int
+) -> None:
     """Adds the files necessary to build an agent into the league directory
 
     Parameters
     ----------
-    challengers_dir: str
+    challengers_dir: Path
         The path to the agent
-    league_dir: str
+    league_dir: Path
         The path to the league
     tag: str
         The name of the agent
@@ -183,13 +184,10 @@ def move_to_league(challengers_dir: str, league_dir: str, tag: str, epoch: int) 
         The epoch of training
     """
     try:
-        os.symlink(
-            src=get_save_dir(challengers_dir, tag, epoch),
-            dst=os.path.join(
-                league_dir,
-                f"{tag}_{epoch:05d}",
-            ),
-            target_is_directory=True,
+        league_agent = get_save_dir(league_dir / tag, epoch, False)
+
+        league_agent.symlink_to(
+            get_save_dir(challengers_dir / tag, epoch), target_is_directory=True
         )
     except FileExistsError:
         pass
@@ -286,7 +284,7 @@ def league_epoch(
             opponent.update_network(agent.network)
 
             for k, v in epoch_losses.items():
-                agent.write_to_tboard(f"League Loss/{k}", v)
+                agent.write_to_tboard(f"League Loss/{k}", np.mean(v))
 
             history.free_memory()
 
@@ -297,8 +295,8 @@ def league_epoch(
 def league_play(
     preprocessor: Preprocessor,
     network: nn.Module,
-    team_builder: Teambuilder,
-    args: DotDict,
+    # team_builder: Teambuilder,
+    args: Dict[str, Any],
     starting_epoch: Optional[int] = 0,
 ):
     """Main loop for training a league agent.
@@ -334,47 +332,45 @@ def league_play(
     -------
     None
     """
+    agent_dir = Path(args["logdir"], "challengers", args["tag"])
+    agent_dir.mkdir(parents=True, exist_ok=True)
+
     agent = PPOAgent(
-        device=args.device,
+        device=args["device"],
         network=network,
-        lr=args.lr,
-        entropy_weight=args.entropy_weight,
-        clip=args.clip,
-        challenger_dir=os.path.join(args.logdir, "challengers"),
-        tag=args.tag,
+        lr=args["lr"],
+        entropy_weight=args["entropy_weight"],
+        clip=args["clip"],
+        challenger_dir=Path(args["logdir"], "challengers"),
+        tag=args["tag"],
     )
-    agent.save_args(args)
 
     step_counter = StepCounter()
-    skill_tracker = LeagueSkillTracker.from_args(args)
+    skill_tracker = LeagueSkillTracker(args["tag"], args["logdir"], args["resume"])
     matchmaker = MatchMaker(
-        args.self_play_prob, args.league_play_prob, args.logdir, args.tag
+        args["self_play_prob"], args["league_play_prob"], args["logdir"], args["tag"]
     )
 
-    team_builder = AgentTeamBuilder(
-        path=os.path.join(args.logdir, "challengers", args.tag)
-    )
-    for epoch in range(starting_epoch, args.nb_steps // args.epoch_len):
-        agent.save_model(agent.network, epoch, args)
-        skill_tracker.save_skill_ratings(epoch)
+    for epoch in range(starting_epoch, args["nb_steps"] // args["epoch_len"]):
+        save_args(agent_dir=agent_dir, args=args, epoch=epoch)
 
         player = RLPlayer(
-            battle_format=args.battle_format,
+            battle_format=args["battle_format"],
             embed_battle=preprocessor.embed_battle,
-            reward_scheme=RewardScheme(args.rewards),
+            reward_scheme=RewardScheme(args["rewards"]),
             server_configuration=DockerServerConfiguration,
-            team=team_builder,
+            # team=team_builder,
         )
 
         opponent = LeaguePlayer(
             device=agent.device,
             network=agent.network,
             preprocessor=preprocessor,
-            sample_moves=args.sample_moves,
+            sample_moves=args["sample_moves"],
             max_concurrent_battles=10,
             server_configuration=DockerServerConfiguration,
-            team=AgentTeamBuilder(),
-            battle_format=args.battle_format,
+            # team=AgentTeamBuilder(),
+            battle_format=args["battle_format"],
         )
 
         player.play_against(
@@ -385,25 +381,28 @@ def league_play(
                 "opponent": opponent,
                 "matchmaker": matchmaker,
                 "skill_tracker": skill_tracker,
-                "batch_size": args.batch_size,
-                "rollout_len": args.rollout_len,
-                "epoch_len": args.epoch_len,
+                "batch_size": args["batch_size"],
+                "rollout_len": args["rollout_len"],
+                "epoch_len": args["epoch_len"],
                 "step_counter": step_counter,
             },
         )
+
+        agent.save_model(agent_dir, epoch, network)
+        skill_tracker.save_skill_ratings(epoch)
 
         league_win_rate = league_score(
             agent,
             preprocessor,
             opponent,
-            os.path.join(args.logdir, "league"),
+            Path(args["logdir"], "league"),
             skill_tracker,
         )
 
         if league_win_rate > 0.75:
             move_to_league(
-                challengers_dir=os.path.join(args.logdir, "challengers"),
-                league_dir=os.path.join(args.logdir, "league"),
+                challengers_dir=Path(args["logdir"], "challengers"),
+                league_dir=Path(args["logdir"], "league"),
                 tag=agent.tag,
                 epoch=epoch,
             )
@@ -411,23 +410,31 @@ def league_play(
         del player
         del opponent
 
-    agent.save_model(agent.network, args.nb_steps // args.epoch_len, args)
-    skill_tracker.save_skill_ratings(args.nb_steps // args.epoch_len)
 
+def main(args: Dict[str, Any]):
+    agent_dir = Path(args["logdir"], "challengers", args["tag"])
+    agent_dir.mkdir(parents=True, exist_ok=True)
 
-def main(args: DotDict):
-    preprocessor = build_preprocessor_from_args(args)
-    args.in_shape = preprocessor.output_shape
-
-    network = build_network_from_args(args).eval()
-
-    team_builder = AgentTeamBuilder(
-        path=args.team_path, battle_format=args.battle_format
+    preprocessor = PREPROCESSORS[args["preprocessor"]](
+        args["device"], **args[args["preprocessor"]]
     )
-    league_play(
-        preprocessor=preprocessor, network=network, team_builder=team_builder, args=args
+
+    network = (
+        NETWORKS[args["network"]](
+            nb_actions=args["nb_actions"],
+            in_shape=preprocessor.output_shape,
+            **args[args["network"]],
+        )
+        .eval()
+        .to(args["device"])
     )
+
+    if "resume" in args and args["resume"]:
+        network.resume(agent_dir)
+
+    # team_builder = AgentTeamBuilder(path=args["team_path"], battle_format=args["battle_format"])
+    league_play(preprocessor=preprocessor, network=network, args=args)
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    main(parse_args(__file__))

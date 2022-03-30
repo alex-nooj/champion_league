@@ -10,7 +10,6 @@ from champion_league.network.base_network import BaseNetwork
 from champion_league.network.gated_encoder import Encoder
 from champion_league.network.gated_encoder import Squeeze
 from champion_league.utils.abilities import ABILITIES
-from champion_league.utils.directory_utils import DotDict
 
 
 class EncoderLSTM(BaseNetwork):
@@ -154,17 +153,3 @@ class EncoderLSTM(BaseNetwork):
             "hx": torch.zeros((1, self.lstm_hidden), device=device),
             "cx": torch.zeros((1, self.lstm_hidden), device=device),
         }
-
-    @classmethod
-    def from_args(cls, args: DotDict) -> "EncoderLSTM":
-        return cls(
-            nb_actions=args.nb_actions,
-            in_shape=args.in_shape,
-            embedding_dim=args.embedding_dim,
-            nb_encoders=args.nb_encoders,
-            nb_heads=args.nb_heads,
-            nb_layers=args.nb_layers,
-            scale=args.scale,
-            lstm_hidden=args.lstm_hidden,
-            linear_hidden=args.linear_hidden,
-        )

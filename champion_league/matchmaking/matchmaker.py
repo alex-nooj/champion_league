@@ -1,5 +1,6 @@
-import os
+from pathlib import Path
 from typing import Dict
+from typing import Union
 
 import numpy as np
 import trueskill
@@ -42,7 +43,7 @@ class MatchMaker:
 
     def choose_match(
         self, agent_skill: trueskill.Rating, trueskills: Dict[str, trueskill.Rating]
-    ) -> str:
+    ) -> Union[str, Path]:
         """Function for choosing the opponent.
 
         Parameters
@@ -60,7 +61,7 @@ class MatchMaker:
         mode_probs = []
         mode_options = []
         for agent_type in ["challengers", "league", "exploiters"]:
-            if len(os.listdir(os.path.join(self.logdir, agent_type))) > 0:
+            if any(Path(self.logdir, agent_type).iterdir()):
                 mode_options.append(agent_type)
                 mode_probs.append(self.game_mode_probs[agent_type])
 
@@ -73,7 +74,7 @@ class MatchMaker:
         if game_mode == "challengers":
             return self._choose_self()
         elif game_mode == "league":
-            return self._choose_league_agent(agent_skill, trueskills)
+            return Path(self._choose_league_agent(agent_skill, trueskills))
         elif game_mode == "exploiters":
             return self._choose_exploiter()
 
@@ -89,18 +90,17 @@ class MatchMaker:
         if np.random.randint(low=0, high=100) < 99:
             return "self"
         else:
-            agents = os.listdir(os.path.join(self.logdir, "challengers", self.tag))
+            agent_path = Path(self.logdir, "challengers", self.tag)
             agents = [
                 epoch
-                for epoch in agents
-                if os.path.isdir(
-                    os.path.join(self.logdir, "challengers", self.tag, epoch)
-                )
-                and epoch != "sl"
+                for epoch in agent_path.iterdir()
+                if epoch.is_dir() and epoch.stem != "sl"
             ]
             try:
                 opponent = np.random.choice(agents)
-                return os.path.join(self.logdir, "challengers", self.tag, opponent)
+                return str(
+                    Path(self.logdir, "challengers", self.tag, np.random.choice(agents))
+                )
             except ValueError:
                 return "self"
 
@@ -121,10 +121,12 @@ class MatchMaker:
         str
             The path to a league agent.
         """
-        agents = os.listdir(os.path.join(self.logdir, "league"))
+        league_path = Path(self.logdir, "league")
 
-        if any(agent not in trueskills for agent in agents):
-            unplayed_agents = [agent for agent in agents if agent not in trueskills]
+        if any(agent.stem not in trueskills for agent in league_path.iterdir()):
+            unplayed_agents = [
+                agent for agent in league_path.iterdir() if agent not in trueskills
+            ]
             opponent = np.random.choice(unplayed_agents)
         else:
             if np.random.randint(low=0, high=100) < 90:
@@ -145,8 +147,8 @@ class MatchMaker:
                 ]
             if len(valid_agents) == 0:
                 valid_agents = [k for k in trueskills]
-            opponent = np.random.choice(valid_agents)
-        return os.path.join(self.logdir, "league", opponent)
+            opponent = league_path / np.random.choice(valid_agents)
+        return str(opponent)
 
     def _choose_exploiter(self) -> str:
         """Function for selecting an exploiter for the training agent. Not Implemented.

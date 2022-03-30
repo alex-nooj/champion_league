@@ -1,0 +1,4 @@
+network: AbilityNetwork
+
+AbilityNetwork:
+  nb_encoders: 3

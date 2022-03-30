@@ -1,0 +1,34 @@
+battle_format: gen8randombattle
+nb_actions: 10
+device: 0
+
+logdir: ???
+tag: ???
+resume: False
+
+network: GatedEncoder
+preprocessor: ModularPreprocessor
+sample_moves: False
+
+nb_steps: 1_000_000
+epoch_len: 100_000
+batch_size: 64
+rollout_len: 20
+lr: 0.001
+entropy_weight: 0.01
+clip: 0.2
+
+self_play_prob: 0.7
+league_play_prob: 0.2
+
+rewards:
+  OpponentBinaryFaints: 1.0
+  AlliedBinaryFaints: 1.0
+  OpponentScalarFaints: 0
+  AlliedScalarFaints: 0
+  OpponentStatusRule: 0
+  AlliedStatusRule: 0
+  OpponentHPDiff: 0.5
+  AlliedHPDiff: 0.5
+  VictoryRule: 10.0
+  LossRule: 10.0

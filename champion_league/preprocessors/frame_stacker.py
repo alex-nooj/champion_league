@@ -1,18 +1,36 @@
+import inspect
+from typing import Any
 from typing import Dict
 from typing import Optional
 from typing import Tuple
 
 import torch
+from omegaconf import OmegaConf
 from poke_env.environment.battle import Battle
 
+from champion_league.preprocessors import PREPROCESSORS
 from champion_league.preprocessors.base_preprocessor import Preprocessor
-from champion_league.utils.directory_utils import DotDict
+
+
+def build_subprocessor(
+    sub_processor: str, device: int, sub_processor_args: Dict[str, Any]
+) -> Preprocessor:
+    default_args = inspect.getfile(PREPROCESSORS[sub_processor])
+    args = OmegaConf.merge(default_args, sub_processor_args)
+    return PREPROCESSORS[sub_processor](device, **args)
 
 
 class FrameStacker(Preprocessor):
     """Preprocessor that stacks the output from another preprocessor."""
 
-    def __init__(self, sub_processor: Preprocessor, sequence_len: int, device: int):
+    def __init__(
+        self,
+        device: int,
+        *,
+        sub_processor: Optional[str] = None,
+        sub_processor_args: Optional[Dict[str, Any]],
+        sequence_len: Optional[int] = None,
+    ):
         """Constructor
 
         Parameters
@@ -24,10 +42,10 @@ class FrameStacker(Preprocessor):
         device
             The device to move the tensors to.
         """
-        self.processor = sub_processor
+        super().__init__(device)
+        self.processor = build_subprocessor(sub_processor, device, sub_processor_args)
         self.sequence_len = sequence_len
         self.frame_idx = 0
-        self.device = device
         self.prev_frames = {}
         self._output_shape = {}
         for k, v in self.processor.output_shape.items():
@@ -116,29 +134,6 @@ class FrameStacker(Preprocessor):
             The output shape for each head of the preprocessor.
         """
         return self._output_shape
-
-    @classmethod
-    def from_args(cls, args: DotDict) -> "FrameStacker":
-        """Constructor for building this preprocessor from arguments.
-
-        Parameters
-        ----------
-        args
-            The arguments to construct this preprocessor. In addition to the key `subprocessor`,
-            these arguments MUST include all the arguments to build the subprocessor.
-
-        Returns
-        -------
-        FrameStacker
-            An instance of the FrameStacker class.
-        """
-        from champion_league.preprocessors import build_preprocessor_from_args
-
-        sub_processor_args = DotDict({k: v for k, v in args.items()})
-        sub_processor_args.preprocessor = args.subprocessor
-        sub_processor = build_preprocessor_from_args(sub_processor_args)
-
-        return FrameStacker(sub_processor, args.sequence_len, args.device)
 
     def reset(self) -> None:
         """Empties the previous frames."""

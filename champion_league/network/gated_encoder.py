@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 
 from champion_league.network.base_network import BaseNetwork
-from champion_league.utils.directory_utils import DotDict
 
 
 class Attn(nn.Module):
@@ -348,16 +347,4 @@ class GatedEncoder(BaseNetwork):
                 "rough_action": rough_action,
             },
             {},
-        )
-
-    @classmethod
-    def from_args(cls, args: DotDict) -> "GatedEncoder":
-        return cls(
-            args.nb_actions,
-            args.in_shape,
-            args.nb_encoders,
-            args.nb_heads,
-            args.nb_layers,
-            args.scale,
-            args.dropout,
         )
