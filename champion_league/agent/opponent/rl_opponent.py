@@ -53,7 +53,7 @@ class RLOpponent:
             The move that the agent would like to select, converted into a form that is readable by
             PokeEnv and Showdown.
         """
-        state = self.preprocessor.embed_battle(battle)
+        state = self.preprocessor.embed_battle(battle, False)
 
         if battle.battle_tag not in self._prev_internals:
             self._prev_internals[battle.battle_tag] = self.network.reset(self.device)

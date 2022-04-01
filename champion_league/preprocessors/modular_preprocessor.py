@@ -35,7 +35,7 @@ class ModularPreprocessor(Preprocessor):
             "1D": NB_POKEMON,
         }
 
-    def embed_battle(self, battle: Battle, **kwargs) -> Dict[str, Tensor]:
+    def embed_battle(self, battle: Battle, reset: bool) -> Dict[str, Tensor]:
         """Preprocessing function for this class. It will embed all of the pokemon into a 2D tensor,
         then all of the abilities in a 1D tensor.
 
@@ -43,8 +43,8 @@ class ModularPreprocessor(Preprocessor):
         ----------
         battle
             The Battle object (game state) to be preprocessed.
-        **kwargs
-            Various keyword arguments.
+        reset
+            Whether or not the battle has been reset
 
         Returns
         -------

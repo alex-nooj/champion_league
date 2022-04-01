@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -11,6 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from champion_league.agent.base.base_agent import Agent
+from champion_league.utils.poke_path import PokePath
 
 
 def ac_loss(
@@ -56,7 +58,7 @@ class PPOAgent(Agent):
         lr: float,
         entropy_weight: float,
         clip: float,
-        challenger_dir: str,
+        league_path: PokePath,
         tag: str,
         mini_epochs: Optional[int] = 4,
         resume: Optional[bool] = False,
@@ -76,7 +78,7 @@ class PPOAgent(Agent):
             How much to weigh the entropy loss.
         clip: float
             The clip value (epsilon) used in PPO to clip the loss.
-        challenger_dir: str
+        league_path: PokePath
             The path to the network's directory (up to "challengers")
         tag: str
             The name of the agent.
@@ -85,7 +87,7 @@ class PPOAgent(Agent):
         resume: Optional[bool]
             Whether or not we're starting from a previously trained agent.
         """
-        super().__init__(challenger_dir, tag, resume)
+        super().__init__(league_path, tag, resume)
         self.device = device
         self.network = network
         self.optimizer = torch.optim.Adam(network.parameters(), lr=lr)

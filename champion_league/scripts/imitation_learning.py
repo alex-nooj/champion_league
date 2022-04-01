@@ -1,5 +1,4 @@
 import asyncio
-from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import List
@@ -16,11 +15,11 @@ from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.config import parse_args
 from champion_league.env import OpponentPlayer
 from champion_league.env import RLPlayer
-from champion_league.network import NETWORKS
 from champion_league.preprocessors import Preprocessor
-from champion_league.preprocessors import PREPROCESSORS
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.teams.team_builder import AgentTeamBuilder
+from champion_league.utils.agent_utils import build_network_and_preproc
+from champion_league.utils.poke_path import PokePath
 from champion_league.utils.poke_set import PokeSet
 from champion_league.utils.progress_bar import ProgressBar
 from champion_league.utils.replay import cumulative_sum
@@ -232,14 +231,13 @@ def validation_epoch(
 
 
 def imitation_learning(
-    preprocessor: Preprocessor,
-    network: nn.Module,
-    args: Dict[str, Any],
+    preprocessor: Preprocessor, network: nn.Module, league_path, args: Dict[str, Any]
 ):
     """The main loop for performing supervised learning between a network and a trained agent.
 
     Parameters
     ----------
+    league_path
     preprocessor
         The preprocessor that this agent will be using to convert Battle objects to tensors.
     network
@@ -266,13 +264,13 @@ def imitation_learning(
         network=network,
         lr=args["lr"],
         embed_battle=preprocessor.embed_battle,
-        challenger_dir=Path(args["logdir"], "challengers"),
+        league_path=league_path,
         tag=args["tag"],
     )
 
-    team_builder = AgentTeamBuilder(Path(args["logdir"], "challengers", args["tag"]))
+    team_builder = AgentTeamBuilder(league_path.agent)
 
-    agent.save_model(Path(args["logdir"], args["tag"]), 0, agent.network)
+    agent.save_model(0, agent.network)
     reward_scheme = RewardScheme(args["rewards"])
 
     progress_bar = ProgressBar(["Samples Collected"])
@@ -287,7 +285,7 @@ def imitation_learning(
     )
 
     opponent = OpponentPlayer.from_path(
-        path=Path(args["logdir"], "league", "simple_heuristic_0"),
+        path=league_path.league / "simple_heuristic_0",
         device=agent.device,
         team=AgentTeamBuilder(),
         battle_format=args["battle_format"],
@@ -326,7 +324,7 @@ def imitation_learning(
 
         if min_val_loss is None or validation_stats["Total"] < min_val_loss:
             min_val_loss = validation_stats["Total"]
-            agent.save_model(Path(args["logdir"], args["tag"]), 0, agent.network)
+            agent.save_model(0, agent.network)
             fuse = args["patience"]
         else:
             fuse -= 1
@@ -353,23 +351,14 @@ def imitation_learning(
 
 
 def main(args: Dict[str, Any]):
-    preprocessor = PREPROCESSORS[args["preprocessor"]](
-        args["device"], **args[args["preprocessor"]]
-    )
-    network = (
-        NETWORKS[args["network"]](
-            nb_actions=args["nb_actions"],
-            in_shape=preprocessor.output_shape,
-            **args[args["network"]],
-        )
-        .eval()
-        .to(args["device"])
-    )
+    league_path = PokePath(args["logdir"], args["tag"])
+
+    network, preprocessor = build_network_and_preproc(args)
+    if "resume" in args and args["resume"]:
+        network.resume(league_path.agent)
 
     imitation_learning(
-        preprocessor=preprocessor,
-        network=network,
-        args=args,
+        preprocessor=preprocessor, network=network, league_path=league_path, args=args
     )
 
 

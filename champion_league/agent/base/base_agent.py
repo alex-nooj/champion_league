@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Dict
 from typing import Optional
 from typing import Tuple
@@ -12,17 +11,18 @@ from torch.utils.tensorboard import SummaryWriter
 
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
+from champion_league.utils.poke_path import PokePath
 
 
 class Agent:
-    def __init__(self, logdir: str, tag: str, resume: Optional[bool] = False):
+    def __init__(self, league_path: PokePath, tag: str, resume: Optional[bool] = False):
         """The base class for an agent. Implements some methods that are just useful for all agents
         or more useful as a standard (like tensorboard logging) while leaving the sample action
         method unimplemented.
 
         Parameters
         ----------
-        logdir: str
+        league_path: str
             The path to the agent (should be up to and including "challengers" if this is a league
             agent
         tag: str
@@ -30,15 +30,16 @@ class Agent:
         resume: Optional[bool]
             Whether or not we're starting from a previously trained agent.
         """
-        self.logdir = logdir
+        self.league_path = league_path
+        self.logdir = league_path
         self.tag = tag
-        self.writer = SummaryWriter(log_dir=Path(logdir, tag))
+        self.writer = SummaryWriter(log_dir=str(league_path.agent))
         self.index_dict = {}
         self.win_rates = {}
 
         if resume:
             try:
-                self.reload_tboard(get_most_recent_epoch(Path(logdir, tag)))
+                self.reload_tboard(get_most_recent_epoch(league_path.agent))
             except ValueError:
                 pass
 
@@ -62,18 +63,11 @@ class Agent:
         """
         raise NotImplementedError
 
-    def save_model(
-        self,
-        agent_dir: Path,
-        epoch: int,
-        network: nn.Module,
-    ) -> None:
+    def save_model(self, epoch: int, network: nn.Module) -> None:
         """Saves the current network into an epoch directory so that it can be called back later.
 
         Parameters
         ----------
-        agent_dir
-            Path to the agent (no epoch)
         network: nn.Module
             The network to be saved
         epoch: int
@@ -83,7 +77,7 @@ class Agent:
         -------
         None
         """
-        save_dir = get_save_dir(agent_dir, epoch)
+        save_dir = get_save_dir(self.league_path.agent, epoch)
         save_file = save_dir / "network.pt"
         torch.save(network.state_dict(), str(save_file))
         OmegaConf.save(config=self.index_dict, f=str(save_dir / "tboard_info.yaml"))
@@ -102,7 +96,7 @@ class Agent:
         -------
         None
         """
-        save_dir = get_save_dir(Path(self.logdir, self.tag), epoch)
+        save_dir = get_save_dir(self.league_path.agent, epoch)
 
         OmegaConf.save(config=win_rates, f=save_dir / "win_rates.yaml")
 
@@ -143,8 +137,7 @@ class Agent:
         try:
             self.index_dict = OmegaConf.to_container(
                 OmegaConf.load(
-                    get_save_dir(Path(self.logdir, self.tag), epoch)
-                    / "tboard_info.yaml"
+                    get_save_dir(self.league_path.agent, epoch) / "tboard_info.yaml"
                 )
             )
         except FileNotFoundError:

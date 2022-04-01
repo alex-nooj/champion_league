@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from champion_league.agent.base.base_agent import Agent
 from champion_league.agent.scripted import SimpleHeuristic
+from champion_league.utils.poke_path import PokePath
 from champion_league.utils.progress_bar import ProgressBar
 
 
@@ -22,8 +23,8 @@ class ImitationAgent(Agent):
         device: int,
         network: nn.Module,
         lr: float,
-        embed_battle: Callable[[Battle, Optional[bool]], Dict[str, Tensor]],
-        challenger_dir: str,
+        embed_battle: Callable[[Battle, bool], Dict[str, Tensor]],
+        league_path: PokePath,
         tag: str,
     ):
         """Constructor.
@@ -38,12 +39,12 @@ class ImitationAgent(Agent):
             The learning rate for the network.
         embed_battle
             Callable that will convert the Battle objects to the format expected by the network.
-        challenger_dir
+        league_path
             The path to the agent's directory.
         tag
             The name of the agent.
         """
-        super().__init__(challenger_dir, tag)
+        super().__init__(league_path, tag)
         self.device = device
         self.network = network
         self.optimizer = torch.optim.Adam(network.parameters(), lr=lr)
@@ -172,7 +173,9 @@ class ImitationAgent(Agent):
 
         return {k: torch.stack(v).mean().item() for k, v in epoch_stats.items()}
 
-    def embed_battle(self, battle: Battle, reset: Optional[bool]) -> Dict[str, Tensor]:
+    def embed_battle(
+        self, battle: Battle, reset: Optional[bool] = None
+    ) -> Dict[str, Tensor]:
         """Function for embedding the Battle objects.
 
         Parameters

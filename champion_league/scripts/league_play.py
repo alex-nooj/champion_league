@@ -5,7 +5,6 @@ from typing import Dict
 from typing import Optional
 
 import numpy as np
-from poke_env.teambuilder.teambuilder import Teambuilder
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -19,13 +18,12 @@ from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
-from champion_league.network import NETWORKS
 from champion_league.preprocessors import Preprocessor
-from champion_league.preprocessors import PREPROCESSORS
 from champion_league.reward.reward_scheme import RewardScheme
-from champion_league.teams.team_builder import AgentTeamBuilder
+from champion_league.utils.agent_utils import build_network_and_preproc
 from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.directory_utils import get_save_dir
+from champion_league.utils.poke_path import PokePath
 from champion_league.utils.progress_bar import centered
 from champion_league.utils.replay import History
 from champion_league.utils.server_configuration import DockerServerConfiguration
@@ -295,7 +293,7 @@ def league_epoch(
 def league_play(
     preprocessor: Preprocessor,
     network: nn.Module,
-    # team_builder: Teambuilder,
+    league_path: PokePath,
     args: Dict[str, Any],
     starting_epoch: Optional[int] = 0,
 ):
@@ -303,6 +301,7 @@ def league_play(
 
     Parameters
     ----------
+    league_path
     preprocessor
         The preprocessor that this agent will be using to convert Battle objects to tensors.
     network
@@ -332,8 +331,6 @@ def league_play(
     -------
     None
     """
-    agent_dir = Path(args["logdir"], "challengers", args["tag"])
-    agent_dir.mkdir(parents=True, exist_ok=True)
 
     agent = PPOAgent(
         device=args["device"],
@@ -341,7 +338,7 @@ def league_play(
         lr=args["lr"],
         entropy_weight=args["entropy_weight"],
         clip=args["clip"],
-        challenger_dir=Path(args["logdir"], "challengers"),
+        league_path=league_path,
         tag=args["tag"],
     )
 
@@ -352,7 +349,7 @@ def league_play(
     )
 
     for epoch in range(starting_epoch, args["nb_steps"] // args["epoch_len"]):
-        save_args(agent_dir=agent_dir, args=args, epoch=epoch)
+        save_args(agent_dir=league_path.agent, args=args, epoch=epoch)
 
         player = RLPlayer(
             battle_format=args["battle_format"],
@@ -388,21 +385,21 @@ def league_play(
             },
         )
 
-        agent.save_model(agent_dir, epoch, network)
+        agent.save_model(epoch, network)
         skill_tracker.save_skill_ratings(epoch)
 
         league_win_rate = league_score(
             agent,
             preprocessor,
             opponent,
-            Path(args["logdir"], "league"),
+            league_path.league,
             skill_tracker,
         )
 
         if league_win_rate > 0.75:
             move_to_league(
-                challengers_dir=Path(args["logdir"], "challengers"),
-                league_dir=Path(args["logdir"], "league"),
+                challengers_dir=league_path.challengers,
+                league_dir=league_path.league,
                 tag=agent.tag,
                 epoch=epoch,
             )
@@ -412,28 +409,17 @@ def league_play(
 
 
 def main(args: Dict[str, Any]):
-    agent_dir = Path(args["logdir"], "challengers", args["tag"])
-    agent_dir.mkdir(parents=True, exist_ok=True)
+    league_path = PokePath(args["logdir"], args["tag"])
 
-    preprocessor = PREPROCESSORS[args["preprocessor"]](
-        args["device"], **args[args["preprocessor"]]
-    )
-
-    network = (
-        NETWORKS[args["network"]](
-            nb_actions=args["nb_actions"],
-            in_shape=preprocessor.output_shape,
-            **args[args["network"]],
-        )
-        .eval()
-        .to(args["device"])
-    )
+    network, preprocessor = build_network_and_preproc(args)
 
     if "resume" in args and args["resume"]:
-        network.resume(agent_dir)
+        network.resume(league_path.agent)
 
     # team_builder = AgentTeamBuilder(path=args["team_path"], battle_format=args["battle_format"])
-    league_play(preprocessor=preprocessor, network=network, args=args)
+    league_play(
+        preprocessor=preprocessor, network=network, league_path=league_path, args=args
+    )
 
 
 if __name__ == "__main__":

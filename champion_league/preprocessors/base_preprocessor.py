@@ -14,9 +14,7 @@ class Preprocessor:
         self.device = f"cuda:{device}"
 
     @abstractmethod
-    def embed_battle(
-        self, battle: Battle, reset: Optional[bool] = False
-    ) -> Dict[str, Tensor]:
+    def embed_battle(self, battle: Battle, reset: bool) -> Dict[str, Tensor]:
         """Abstract method for converting a Battle object into a Dictionary of tensors useable by
         the networks.
 

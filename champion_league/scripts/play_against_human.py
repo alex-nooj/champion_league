@@ -20,4 +20,4 @@ async def main(args: Dict[str, Any]):
 
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(main(parse_args()))
+    asyncio.get_event_loop().run_until_complete(main(parse_args(__file__)))

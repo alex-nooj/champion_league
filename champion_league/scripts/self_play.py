@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any
 from typing import Dict
 
@@ -10,10 +9,10 @@ from champion_league.config import parse_args
 from champion_league.config.load_configs import save_args
 from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
-from champion_league.network import NETWORKS
-from champion_league.preprocessors import PREPROCESSORS
 from champion_league.reward.reward_scheme import RewardScheme
+from champion_league.utils.agent_utils import build_network_and_preproc
 from champion_league.utils.collect_episode import collect_episode
+from champion_league.utils.poke_path import PokePath
 from champion_league.utils.replay import History
 from champion_league.utils.server_configuration import DockerServerConfiguration
 from champion_league.utils.step_counter import StepCounter
@@ -106,25 +105,12 @@ def self_epoch(
 
 
 def main(args: Dict[str, Any]):
-    agent_dir = Path(args["logdir"], "challengers", args["tag"])
-    agent_dir.mkdir(parents=True, exist_ok=True)
+    league_path = PokePath(args["logdir"], args["tag"])
 
-    preprocessor = PREPROCESSORS[args["preprocessor"]](
-        args["device"], **args[args["preprocessor"]]
-    )
-
-    network = (
-        NETWORKS[args["network"]](
-            nb_actions=args["nb_actions"],
-            in_shape=preprocessor.output_shape,
-            **args[args["network"]],
-        )
-        .eval()
-        .to(args["device"])
-    )
+    network, preprocessor = build_network_and_preproc(args)
 
     if "resume" in args and args["resume"]:
-        network.resume(agent_dir)
+        network.resume(league_path.agent)
 
     reward_scheme = RewardScheme(rules=args["rewards"])
 
@@ -134,7 +120,7 @@ def main(args: Dict[str, Any]):
         lr=args["lr"],
         entropy_weight=args["entropy_weight"],
         clip=args["clip"],
-        challenger_dir=agent_dir.parent,
+        league_path=league_path,
         tag=args["tag"],
     )
 
@@ -159,7 +145,7 @@ def main(args: Dict[str, Any]):
     opponent.change_agent("self")
 
     for epoch in range(args["nb_steps"] // args["epoch_len"]):
-        save_args(agent_dir=agent_dir, args=args, epoch=epoch)
+        save_args(agent_dir=league_path.agent, args=args, epoch=epoch)
 
         env_player.play_against(
             env_algorithm=self_epoch,
@@ -173,7 +159,7 @@ def main(args: Dict[str, Any]):
                 "step_counter": step_counter,
             },
         )
-        agent.save_model(agent_dir, epoch, network)
+        agent.save_model(epoch, network)
 
 
 if __name__ == "__main__":

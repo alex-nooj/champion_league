@@ -51,4 +51,4 @@ def agent_battle(
 
 
 if __name__ == "__main__":
-    agent_battle(**parse_args())
+    agent_battle(**parse_args(__file__))

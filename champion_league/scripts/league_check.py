@@ -223,7 +223,7 @@ def main(logdir: str, tag: str, nb_battles: int):
         lr=args["lr"],
         entropy_weight=args["entropy_weight"],
         clip=args["clip"],
-        challenger_dir=Path(args["logdir"], "challengers"),
+        league_path=Path(args["logdir"], "challengers"),
         tag=args["tag"],
     )
 

@@ -1,7 +1,0 @@
-network: AbilityNetwork
-preprocessor: ModularPreprocessor
-
-config: ???
-
-AbilityNetwork:
-  nb_encoders: 2

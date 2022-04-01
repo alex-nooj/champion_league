@@ -90,7 +90,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
         torch.Tensor
             The battle converted into something readable by the network.
         """
-        return self.embed_battle_cls(battle=battle)
+        return self.embed_battle_cls(battle=battle, reset=False)
 
     def compute_reward(self, battle: Battle) -> float:
         """Function for determining the reward from the current gamestate

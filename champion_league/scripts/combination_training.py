@@ -1,16 +1,13 @@
-import os
 import time
 from typing import Any
 from typing import Dict
 
-from omegaconf import DictConfig
-
 from champion_league.config import parse_args
-from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
 from champion_league.scripts.imitation_learning import imitation_learning
 from champion_league.scripts.league_play import league_play
+from champion_league.utils.agent_utils import build_network_and_preproc
 from champion_league.utils.directory_utils import get_most_recent_epoch
+from champion_league.utils.poke_path import PokePath
 
 
 def combination_training(args: Dict[str, Any]) -> None:
@@ -25,50 +22,32 @@ def combination_training(args: Dict[str, Any]) -> None:
     -------
     None
     """
+    league_path = PokePath(args["logdir"], args["tag"])
+    network, preprocessor = build_network_and_preproc(args)
 
-    imitation_args = DotDict(multi_args["imitation"])
-    league_args = DotDict(multi_args["league"])
-
-    preprocessor = build_preprocessor_from_args(league_args)
-
-    imitation_args.in_shape = preprocessor.output_shape
-    league_args.in_shape = preprocessor.output_shape
-
-    imitation_args.resume = multi_args["resume"]
-    league_args.resume = multi_args["resume"]
-
-    if not multi_args["resume"] and multi_args["imitate"]:
-        imitation_network = build_network_from_args(imitation_args)
+    starting_epoch = 0
+    if args["resume"]:
+        network.resume(league_path.agent)
+        starting_epoch = get_most_recent_epoch(league_path.agent)
+    elif args["imitate"]:
         imitation_learning(
             preprocessor=preprocessor,
-            network=imitation_network,
-            args=imitation_args,
+            network=network.train(),
+            league_path=league_path,
+            args=args,
         )
-        league_network = build_network_from_args(league_args)
-        league_network.load_state_dict(imitation_network.state_dict())
-        starting_epoch = 0
-    elif multi_args["resume"]:
-        league_network = build_network_from_args(league_args)
-        try:
-            starting_epoch = get_most_recent_epoch(
-                os.path.join(league_args.logdir, "challengers", league_args.tag)
-            )
-        except ValueError:
-            starting_epoch = 0
-    else:
-        league_network = build_network_from_args(league_args)
-        starting_epoch = 0
 
     league_play(
         preprocessor=preprocessor,
-        network=league_network.eval(),
-        args=league_args,
+        network=network.eval(),
+        league_path=league_path,
+        args=args,
         starting_epoch=starting_epoch,
     )
 
 
 if __name__ == "__main__":
     start_time = time.time()
-    combination_training(parse_args())
+    combination_training(parse_args(__file__))
     end_time = time.time()
     print(f"Training took {end_time - start_time} seconds!")
