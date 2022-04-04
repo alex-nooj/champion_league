@@ -1,7 +1,7 @@
 imitate: False
 resume: False
 
-battle_format: gen8randombattle
+battle_format: gen8ou
 nb_actions: 10
 
 logdir: ???

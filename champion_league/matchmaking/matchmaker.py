@@ -5,14 +5,15 @@ from typing import Union
 import numpy as np
 import trueskill
 
+from champion_league.utils.poke_path import PokePath
+
 
 class MatchMaker:
     def __init__(
         self,
         self_play_prob: float,
         league_play_prob: float,
-        logdir: str,
-        tag: str,
+        league_path: PokePath,
     ):
         """This class handles all the logic in selecting an opponent for the league.
 
@@ -22,10 +23,6 @@ class MatchMaker:
             The desired probability of choosing the training agent as the opponent.
         league_play_prob: float
             The desired probability of choosing a league agent as the opponent.
-        logdir: str
-            The path to all of the agents.
-        tag: str
-            The name of the training agent.
         """
         if 1 - self_play_prob - league_play_prob < 0:
             raise RuntimeError("Self Play and League Play Probs are too high!")
@@ -38,8 +35,7 @@ class MatchMaker:
 
         self.self_play_prob = self_play_prob
         self.league_play_prob = league_play_prob
-        self.logdir = logdir
-        self.tag = tag
+        self.league_path = league_path
 
     def choose_match(
         self, agent_skill: trueskill.Rating, trueskills: Dict[str, trueskill.Rating]
@@ -60,10 +56,14 @@ class MatchMaker:
         """
         mode_probs = []
         mode_options = []
-        for agent_type in ["challengers", "league", "exploiters"]:
-            if any(Path(self.logdir, agent_type).iterdir()):
-                mode_options.append(agent_type)
-                mode_probs.append(self.game_mode_probs[agent_type])
+        for agent_type in [
+            self.league_path.challengers,
+            self.league_path.league,
+            self.league_path.exploiters,
+        ]:
+            if any(agent_type.iterdir()):
+                mode_options.append(agent_type.stem)
+                mode_probs.append(self.game_mode_probs[agent_type.stem])
 
         # Re-normalize the probabilities
         mode_probs = [prob / np.sum(mode_probs) for prob in mode_probs]
@@ -78,29 +78,27 @@ class MatchMaker:
         elif game_mode == "exploiters":
             return self._choose_exploiter()
 
-    def _choose_self(self) -> str:
+    def _choose_self(self) -> Union[str, Path]:
         """Function for choosing a version of the training agent for self-play.
 
         Returns
         -------
-        str
+        Union[str, Path]
             Either the path to a previous version of the agent, or 'self', to use just the current
             agent.
         """
         if np.random.randint(low=0, high=100) < 99:
             return "self"
         else:
-            agent_path = Path(self.logdir, "challengers", self.tag)
             agents = [
                 epoch
-                for epoch in agent_path.iterdir()
-                if epoch.is_dir() and epoch.stem != "sl"
+                for epoch in self.league_path.agent.iterdir()
+                if epoch.is_dir()
+                and epoch.stem != "sl"
+                and (epoch / "network.pt").is_file()
             ]
             try:
-                opponent = np.random.choice(agents)
-                return str(
-                    Path(self.logdir, "challengers", self.tag, np.random.choice(agents))
-                )
+                return self.league_path.agent / np.random.choice(agents)
             except ValueError:
                 return "self"
 
@@ -121,11 +119,14 @@ class MatchMaker:
         str
             The path to a league agent.
         """
-        league_path = Path(self.logdir, "league")
 
-        if any(agent.stem not in trueskills for agent in league_path.iterdir()):
+        if any(
+            agent.stem not in trueskills for agent in self.league_path.league.iterdir()
+        ):
             unplayed_agents = [
-                agent for agent in league_path.iterdir() if agent not in trueskills
+                agent
+                for agent in self.league_path.league.iterdir()
+                if agent not in trueskills
             ]
             opponent = np.random.choice(unplayed_agents)
         else:
@@ -147,7 +148,7 @@ class MatchMaker:
                 ]
             if len(valid_agents) == 0:
                 valid_agents = [k for k in trueskills]
-            opponent = league_path / np.random.choice(valid_agents)
+            opponent = self.league_path.league / np.random.choice(valid_agents)
         return str(opponent)
 
     def _choose_exploiter(self) -> str:

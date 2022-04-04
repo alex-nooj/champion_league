@@ -16,6 +16,7 @@ from champion_league.agent.scripted import SCRIPTED_AGENTS
 from champion_league.network import NETWORKS
 from champion_league.preprocessors import Preprocessor
 from champion_league.preprocessors import PREPROCESSORS
+from champion_league.teams.team_builder import AgentTeamBuilder
 
 
 class LeaguePlayer(Player):
@@ -27,6 +28,7 @@ class LeaguePlayer(Player):
         network: nn.Module,
         preprocessor: Preprocessor,
         sample_moves: Optional[bool] = True,
+        team: Optional[AgentTeamBuilder] = None,
         **kwargs: Any,
     ):
         """This is the player for the league. It acts as the opponent for the training agent and
@@ -46,7 +48,7 @@ class LeaguePlayer(Player):
             Additional keyword arguments. Any of those used by PokeEnv would be placed here, such as
             player configurations, server configurations, or player avatar.
         """
-        super().__init__(**kwargs)
+        super().__init__(team=team, **kwargs)
         self.sample_moves = sample_moves
 
         self.opponent = None
@@ -55,7 +57,6 @@ class LeaguePlayer(Player):
         self.network = None
         self.update_network(network)
         self.preprocessor = preprocessor
-
         self.tag = self.change_agent("self")
 
     def choose_move(self, battle: Battle) -> BattleOrder:
@@ -98,7 +99,7 @@ class LeaguePlayer(Player):
 
         Parameters
         ----------
-        agent_path: str
+        agent_path: Union[str, Path]
             The path to the chosen agent.
 
         Returns
@@ -128,6 +129,7 @@ class LeaguePlayer(Player):
                 # differently.
                 self.mode = "scripted"
                 self.opponent = SCRIPTED_AGENTS[args["agent"]]
+                self._team.clear_team()
             else:
                 # Otherwise, we have an ML agent, and have to build the LeagueOpponent class using
                 # this network as a selection strategy.
@@ -148,6 +150,7 @@ class LeaguePlayer(Player):
                     device=self.device,
                     sample_moves=self.sample_moves,
                 )
+                self._team.load_new_team(agent_path)
 
             # Sometimes, we aren't actually fighting a league opponent and are instead just fighting
             # an earlier iteration of the current agent, which should still count as self-play

@@ -7,28 +7,25 @@ from omegaconf import OmegaConf
 
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
+from champion_league.utils.poke_path import PokePath
 
 
 class LeagueSkillTracker:
     def __init__(
         self,
-        tag: str,
-        logdir: str,
+        league_path: PokePath,
         resume: Optional[bool] = False,
     ):
         """Helper class for tracking the trueskill of an agent and the league agents.
 
         Parameters
         ----------
-        tag: str
-            The name of the training agent.
-        logdir: str
-            The path to all of the agents.
+        league_path: PokePath
+            Path to where the entirety of the league is being stored.
         resume: Optional[bool]
             Whether or not to load a previous trueskill rating for the training agent.
         """
-        self.tag = tag
-        self.logdir = logdir
+        self.league_path = league_path
         self.default_mu = 25
         self.default_sigma = 8.333
 
@@ -36,15 +33,14 @@ class LeagueSkillTracker:
         agent_sigma = None
         if resume:
             try:
-                epoch = get_most_recent_epoch(Path(logdir, "challengers", tag))
+                epoch = get_most_recent_epoch(self.league_path.agent)
                 skill_file = (
-                    get_save_dir(Path(logdir, "challengers", tag), epoch)
-                    / "trueskill.yaml"
+                    get_save_dir(self.league_path.agent, epoch) / "trueskill.yaml"
                 )
                 temp = OmegaConf.to_container(OmegaConf.load(skill_file))
                 agent_mu = temp["mu"]
                 agent_sigma = temp["sigma"]
-            except ValueError:
+            except (ValueError, FileNotFoundError):
                 pass
 
         self.agent_skill = trueskill.Rating(
@@ -64,7 +60,7 @@ class LeagueSkillTracker:
         """
         return {
             agent.stem: self._load_agent_skill(agent)
-            for agent in Path(self.logdir, "league").iterdir()
+            for agent in self.league_path.league.iterdir()
         }
 
     def _load_agent_skill(self, agent_path: Path) -> trueskill.Rating:
@@ -92,14 +88,13 @@ class LeagueSkillTracker:
 
     def _save_league_skill(self):
         """Saves the trueskills of all the league agents."""
-        league_dir = Path(self.logdir, "league")
         for agent, skill in self.skill_ratings.items():
             OmegaConf.save(
                 {
                     "mu": skill.mu,
                     "sigma": skill.sigma,
                 },
-                Path(league_dir, agent, "trueskill.yaml"),
+                self.league_path.league / agent / "trueskill.yaml",
             )
 
     def _save_agent_skill(self, epoch: int) -> None:
@@ -114,10 +109,7 @@ class LeagueSkillTracker:
         -------
         None
         """
-        trueskill_file = (
-            get_save_dir(Path(self.logdir, "challengers", self.tag), epoch)
-            / "trueskill.yaml"
-        )
+        trueskill_file = get_save_dir(self.league_path.agent, epoch) / "trueskill.yaml"
 
         OmegaConf.save(
             {
@@ -156,11 +148,14 @@ class LeagueSkillTracker:
         -------
         None
         """
+        if (self.league_path.agent / opponent).is_dir():
+            opponent = "self"
+
         try:
             _ = self.skill_ratings[opponent]
         except KeyError:
             self.skill_ratings[opponent] = self._load_agent_skill(
-                Path(self.logdir, "league", opponent)
+                self.league_path.league / opponent
             )
         finally:
             if agent_won:

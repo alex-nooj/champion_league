@@ -33,7 +33,7 @@ class RLOpponent:
         sample_moves: Optional[bool]
             Whether to sample the network's distribution when choosing a move.
         """
-        self.network = network.eval()
+        self.network = network.eval().to(f"cuda:{device}")
         self.preprocessor = preprocessor
         self.sample_moves = sample_moves
         self.device = device

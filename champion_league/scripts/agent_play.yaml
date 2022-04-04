@@ -4,6 +4,7 @@ device: 0
 
 logdir: ???
 tag: ???
+team_path: ???
 
 preprocessor: ModularPreprocessor
 network: AbilityNetwork

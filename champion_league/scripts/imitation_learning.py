@@ -26,11 +26,12 @@ from champion_league.utils.replay import cumulative_sum
 from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
-def identity_embedding(battle: Battle) -> Battle:
+def identity_embedding(battle: Battle, reset: bool) -> Battle:
     """Pass-through embedding function.
 
     Parameters
     ----------
+    reset
     battle: Battle
         The current state of the environment.
 

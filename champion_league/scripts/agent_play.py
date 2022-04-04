@@ -2,7 +2,6 @@ from typing import Any
 from typing import Dict
 
 import numpy as np
-from poke_env.teambuilder.teambuilder import Teambuilder
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -13,25 +12,13 @@ from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
 from champion_league.preprocessors import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
-from champion_league.teams.team_builder import load_team_from_file
+from champion_league.teams.team_builder import AgentTeamBuilder
 from champion_league.utils.agent_utils import build_network_and_preproc
 from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.poke_path import PokePath
 from champion_league.utils.replay import History
 from champion_league.utils.server_configuration import DockerServerConfiguration
 from champion_league.utils.step_counter import StepCounter
-
-
-class RandomTeamFromPool(Teambuilder):
-    def __init__(self, teams):
-        team = load_team_from_file(
-            "/home/anewgent/Documents/pokemon_trainers/challengers/quick_test/"
-        )
-        parsed_team = self.parse_showdown_team(team)
-        self.team = self.join_team(parsed_team)
-
-    def yield_team(self):
-        return self.team
 
 
 def agent_epoch(
@@ -73,9 +60,6 @@ def agent_epoch(
             history.free_memory()
 
 
-custom_builder = RandomTeamFromPool([])
-
-
 def agent_play(
     preprocessor: Preprocessor,
     network: nn.Module,
@@ -97,6 +81,9 @@ def agent_play(
 
     starting_epoch = 0
 
+    team_builder = AgentTeamBuilder(
+        agent_path=league_path.agent, battle_format=args["battle_format"]
+    )
     for opponent_path in args["opponents"]:
         for epoch in range(
             starting_epoch, args["nb_steps"] // args["epoch_len"] + starting_epoch
@@ -110,7 +97,7 @@ def agent_play(
                 network=network,
                 preprocessor=preprocessor,
                 sample_moves=False,
-                team=custom_builder,
+                team=AgentTeamBuilder(),
                 battle_format=args["battle_format"],
             )
             opponent.change_agent(opponent_path)
@@ -120,7 +107,7 @@ def agent_play(
                 embed_battle=preprocessor.embed_battle,
                 reward_scheme=RewardScheme(args["rewards"]),
                 server_configuration=DockerServerConfiguration,
-                team=custom_builder,
+                team=team_builder,
             )
 
             player.play_against(

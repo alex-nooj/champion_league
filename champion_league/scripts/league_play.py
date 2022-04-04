@@ -20,8 +20,11 @@ from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.preprocessors import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
+from champion_league.teams.team_builder import AgentTeamBuilder
+from champion_league.teams.team_builder import save_team_to_file
 from champion_league.utils.agent_utils import build_network_and_preproc
 from champion_league.utils.collect_episode import collect_episode
+from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
 from champion_league.utils.poke_path import PokePath
 from champion_league.utils.progress_bar import centered
@@ -306,8 +309,6 @@ def league_play(
         The preprocessor that this agent will be using to convert Battle objects to tensors.
     network
         The network that will be training.
-    team_builder
-        Teambuilder object for determining the agent's team
     args
         Hyperparameters used for training. MUST CONTAIN:
         - batch_size: int
@@ -343,20 +344,22 @@ def league_play(
     )
 
     step_counter = StepCounter()
-    skill_tracker = LeagueSkillTracker(args["tag"], args["logdir"], args["resume"])
+    skill_tracker = LeagueSkillTracker(league_path, args["resume"])
     matchmaker = MatchMaker(
-        args["self_play_prob"], args["league_play_prob"], args["logdir"], args["tag"]
+        args["self_play_prob"], args["league_play_prob"], league_path
     )
-
+    team_builder = AgentTeamBuilder(
+        agent_path=league_path.agent, battle_format=args["battle_format"]
+    )
     for epoch in range(starting_epoch, args["nb_steps"] // args["epoch_len"]):
         save_args(agent_dir=league_path.agent, args=args, epoch=epoch)
-
+        team_builder.save_team()
         player = RLPlayer(
             battle_format=args["battle_format"],
             embed_battle=preprocessor.embed_battle,
             reward_scheme=RewardScheme(args["rewards"]),
             server_configuration=DockerServerConfiguration,
-            # team=team_builder,
+            team=team_builder,
         )
 
         opponent = LeaguePlayer(
@@ -366,7 +369,7 @@ def league_play(
             sample_moves=args["sample_moves"],
             max_concurrent_battles=10,
             server_configuration=DockerServerConfiguration,
-            # team=AgentTeamBuilder(),
+            team=AgentTeamBuilder(),
             battle_format=args["battle_format"],
         )
 
@@ -416,7 +419,6 @@ def main(args: Dict[str, Any]):
     if "resume" in args and args["resume"]:
         network.resume(league_path.agent)
 
-    # team_builder = AgentTeamBuilder(path=args["team_path"], battle_format=args["battle_format"])
     league_play(
         preprocessor=preprocessor, network=network, league_path=league_path, args=args
     )
