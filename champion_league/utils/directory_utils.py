@@ -20,4 +20,7 @@ def get_most_recent_epoch(agent_path: Path) -> int:
         if e.is_dir() and str(e) != "sl"
     ]
 
-    return max(epochs)
+    try:
+        return max(epochs)
+    except ValueError:
+        return 0

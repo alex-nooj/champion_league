@@ -29,6 +29,7 @@ class LeaguePlayer(Player):
         preprocessor: Preprocessor,
         sample_moves: Optional[bool] = True,
         team: Optional[AgentTeamBuilder] = None,
+        training_team: Optional[AgentTeamBuilder] = None,
         **kwargs: Any,
     ):
         """This is the player for the league. It acts as the opponent for the training agent and
@@ -57,6 +58,8 @@ class LeaguePlayer(Player):
         self.network = None
         self.update_network(network)
         self.preprocessor = preprocessor
+        self.training_team = training_team
+        self.team = team
         self.tag = self.change_agent("self")
 
     def choose_move(self, battle: Battle) -> BattleOrder:
@@ -119,11 +122,13 @@ class LeaguePlayer(Player):
             )
             self.mode = "self"
             self.tag = "self"
+            self._team = self.training_team
         else:
             # Otherwise, we're playing a league agent, so we have to build that network. So first we
             # load up the arguments, which will act as build instructions.
-            args = OmegaConf.to_container(OmegaConf.load(Path(agent_path, "args.yaml")))
 
+            args = OmegaConf.to_container(OmegaConf.load(Path(agent_path, "args.yaml")))
+            self._team = self.team
             if "scripted" in args:
                 # Scripted agents act differently than ML agents, so we have to treat them a little
                 # differently.

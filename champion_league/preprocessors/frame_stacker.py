@@ -8,15 +8,13 @@ import torch
 from omegaconf import OmegaConf
 from poke_env.environment.battle import Battle
 
+from champion_league.config.load_configs import get_default_args
 from champion_league.preprocessors import PREPROCESSORS
 from champion_league.preprocessors.base_preprocessor import Preprocessor
 
 
-def build_subprocessor(
-    sub_processor: str, device: int, sub_processor_args: Dict[str, Any]
-) -> Preprocessor:
-    default_args = inspect.getfile(PREPROCESSORS[sub_processor])
-    args = OmegaConf.merge(default_args, sub_processor_args)
+def build_subprocessor(sub_processor: str, device: int) -> Preprocessor:
+    args = get_default_args(inspect.getfile(PREPROCESSORS[sub_processor]))
     return PREPROCESSORS[sub_processor](device, **args)
 
 
@@ -28,7 +26,6 @@ class FrameStacker(Preprocessor):
         device: int,
         *,
         sub_processor: Optional[str] = None,
-        sub_processor_args: Optional[Dict[str, Any]],
         sequence_len: Optional[int] = None,
     ):
         """Constructor
@@ -43,7 +40,7 @@ class FrameStacker(Preprocessor):
             The device to move the tensors to.
         """
         super().__init__(device)
-        self.processor = build_subprocessor(sub_processor, device, sub_processor_args)
+        self.processor = build_subprocessor(sub_processor, device)
         self.sequence_len = sequence_len
         self.frame_idx = 0
         self.prev_frames = {}
@@ -72,7 +69,7 @@ class FrameStacker(Preprocessor):
         Dict[str, Tensor]
             The state, preprocessed into a form that is useable by the neural network.
         """
-        current_frame = self.processor.embed_battle(battle)
+        current_frame = self.processor.embed_battle(battle, reset)
         if reset:
             self.reset()
 

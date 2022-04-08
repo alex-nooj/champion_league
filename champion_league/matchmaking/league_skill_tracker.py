@@ -148,9 +148,6 @@ class LeagueSkillTracker:
         -------
         None
         """
-        if (self.league_path.agent / opponent).is_dir():
-            opponent = "self"
-
         try:
             _ = self.skill_ratings[opponent]
         except KeyError:

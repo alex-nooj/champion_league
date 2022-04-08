@@ -1,3 +1,4 @@
+from collections import deque
 from typing import Dict
 from typing import Optional
 from typing import Tuple
@@ -158,8 +159,7 @@ class Agent:
         None
         """
         if opponent not in self.win_rates:
-            self.win_rates[opponent] = [win]
-        elif len(self.win_rates[opponent]) > 100:
-            self.win_rates[opponent] = self.win_rates[opponent][-1:] + [win]
-        else:
-            self.win_rates[opponent].append(win)
+            self.win_rates[opponent] = deque([0 for _ in range(100)])
+
+        self.win_rates[opponent].append(win)
+        self.win_rates[opponent].popleft()

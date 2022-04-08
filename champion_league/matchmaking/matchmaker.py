@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Dict
-from typing import Union
 
 import numpy as np
 import trueskill
@@ -39,7 +38,7 @@ class MatchMaker:
 
     def choose_match(
         self, agent_skill: trueskill.Rating, trueskills: Dict[str, trueskill.Rating]
-    ) -> Union[str, Path]:
+    ) -> Path:
         """Function for choosing the opponent.
 
         Parameters
@@ -51,8 +50,8 @@ class MatchMaker:
 
         Returns
         -------
-        str
-            The path to the opponent, or 'self' for self-play.
+        Path
+            The path to the opponent
         """
         mode_probs = []
         mode_options = []
@@ -78,7 +77,7 @@ class MatchMaker:
         elif game_mode == "exploiters":
             return self._choose_exploiter()
 
-    def _choose_self(self) -> Union[str, Path]:
+    def _choose_self(self) -> Path:
         """Function for choosing a version of the training agent for self-play.
 
         Returns
@@ -87,20 +86,17 @@ class MatchMaker:
             Either the path to a previous version of the agent, or 'self', to use just the current
             agent.
         """
+        selves = [
+            epoch
+            for epoch in self.league_path.agent.iterdir()
+            if epoch.is_dir() and epoch.stem != "sl"
+        ]
+
+        selves.sort()
         if np.random.randint(low=0, high=100) < 99:
-            return "self"
+            return selves[-1]
         else:
-            agents = [
-                epoch
-                for epoch in self.league_path.agent.iterdir()
-                if epoch.is_dir()
-                and epoch.stem != "sl"
-                and (epoch / "network.pt").is_file()
-            ]
-            try:
-                return self.league_path.agent / np.random.choice(agents)
-            except ValueError:
-                return "self"
+            return np.random.choice(selves)
 
     def _choose_league_agent(
         self, agent_skill: trueskill.Rating, trueskills: Dict[str, trueskill.Rating]
@@ -151,7 +147,7 @@ class MatchMaker:
             opponent = self.league_path.league / np.random.choice(valid_agents)
         return str(opponent)
 
-    def _choose_exploiter(self) -> str:
+    def _choose_exploiter(self) -> Path:
         """Function for selecting an exploiter for the training agent. Not Implemented.
 
         Raises
@@ -160,6 +156,6 @@ class MatchMaker:
 
         Returns
         -------
-        str
+        Path
         """
         raise NotImplementedError
