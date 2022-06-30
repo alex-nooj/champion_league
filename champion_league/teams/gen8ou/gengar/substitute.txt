@@ -1,0 +1,8 @@
+Gengar @ Black Sludge
+Ability: Cursed Body
+EVs: 252 SpA / 4 SpD / 252 Spe
+Timid Nature
+- Substitute
+- Nasty Plot
+- Shadow Ball
+- Focus Blast

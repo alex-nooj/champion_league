@@ -1,0 +1,8 @@
+Dragapult @ Heavy-Duty Boots
+Ability: Infiltrator
+EVs: 4 Def / 252 SpA / 252 Spe
+Timid Nature
+- Hex
+- Draco Meteor
+- U-turn
+- Thunder Wave

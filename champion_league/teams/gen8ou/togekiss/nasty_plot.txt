@@ -1,0 +1,8 @@
+Togekiss @ Heavy-Duty Boots
+Ability: Serene Grace
+EVs: 252 HP / 120 Def / 136 Spe
+Timid Nature
+- Nasty Plot
+- Air Slash
+- Roost
+- Heal Bell

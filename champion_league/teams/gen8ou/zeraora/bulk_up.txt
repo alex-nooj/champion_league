@@ -1,0 +1,8 @@
+Zeraora @ Heavy-Duty Boots
+Ability: Volt Absorb
+EVs: 252 Atk / 4 SpD / 252 Spe
+Jolly Nature
+- Bulk Up
+- Plasma Fists
+- Knock Off
+- Close Combat

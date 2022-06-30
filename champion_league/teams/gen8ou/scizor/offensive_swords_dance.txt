@@ -1,0 +1,8 @@
+Scizor @ Life Orb
+Ability: Technician
+EVs: 252 Atk / 4 SpD / 252 Spe
+Adamant Nature
+- Swords Dance
+- Bullet Punch
+- Knock Off
+- Sand Tomb

@@ -1,0 +1,8 @@
+Venusaur @ Life Orb
+Ability: Chlorophyll
+EVs: 252 SpA / 4 SpD / 252 Spe
+Modest Nature
+- Growth
+- Giga Drain
+- Weather Ball
+- Earth Power

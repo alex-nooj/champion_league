@@ -1,28 +1,30 @@
-import json
-import os
+from collections import deque
 from typing import Dict
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
+import numpy as np
 import torch
+from omegaconf import OmegaConf
 from torch import nn
+from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
 
-from champion_league.utils.directory_utils import check_and_make_dir
-from champion_league.utils.directory_utils import DotDict
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
+from champion_league.utils.poke_path import PokePath
 
 
 class Agent:
-    def __init__(self, logdir: str, tag: str, resume: Optional[bool] = False):
+    def __init__(self, league_path: PokePath, tag: str, resume: Optional[bool] = False):
         """The base class for an agent. Implements some methods that are just useful for all agents
         or more useful as a standard (like tensorboard logging) while leaving the sample action
         method unimplemented.
 
         Parameters
         ----------
-        logdir: str
+        league_path: str
             The path to the agent (should be up to and including "challengers" if this is a league
             agent
         tag: str
@@ -30,21 +32,20 @@ class Agent:
         resume: Optional[bool]
             Whether or not we're starting from a previously trained agent.
         """
-        self.logdir = logdir
+        self.league_path = league_path
+        self.logdir = league_path
         self.tag = tag
-        self.writer = SummaryWriter(log_dir=os.path.join(logdir, tag))
+        self.writer = SummaryWriter(log_dir=str(league_path.agent))
         self.index_dict = {}
         self.win_rates = {}
 
         if resume:
             try:
-                self.reload_tboard(get_most_recent_epoch(os.path.join(logdir, tag)))
+                self.reload_tboard(get_most_recent_epoch(league_path.agent))
             except ValueError:
                 pass
 
-    def sample_action(
-        self, state: Dict[str, torch.Tensor], internals: Dict[str, torch.Tensor]
-    ) -> Tuple[float, float, float]:
+    def sample_action(self, state: Dict[str, Tensor]) -> Tuple[float, float, float]:
         """Abstract method for sampling an action from a distribution. This method should take in a
         state and return an action, log_probability, and the value of the current state.
 
@@ -52,8 +53,6 @@ class Agent:
         ----------
         state: Dict[str, torch.Tensor]
             The current, preprocessed state
-        internals: Dict[str, torch.Tensor]
-            The previous internals of the network.
 
         Returns
         -------
@@ -62,9 +61,7 @@ class Agent:
         """
         raise NotImplementedError
 
-    def save_model(
-        self, network: nn.Module, epoch: int, args: DotDict, title: Optional[str] = None
-    ) -> None:
+    def save_model(self, epoch: int, network: nn.Module) -> None:
         """Saves the current network into an epoch directory so that it can be called back later.
 
         Parameters
@@ -73,45 +70,15 @@ class Agent:
             The network to be saved
         epoch: int
             The current epoch of training
-        args: DotDict
-            The arguments used to set up training
-        title: Optional[str]
-            An optional argument for naming the weights file
 
         Returns
         -------
         None
         """
-        if title is None:
-            title = f"network.pt"
-
-        save_dir = self._get_save_dir(epoch)
-        self._check_and_make_dir(save_dir)
-        torch.save(network.state_dict(), os.path.join(save_dir, title))
-
-        with open(os.path.join(save_dir, "args.json"), "w") as fp:
-            json.dump(args, fp, indent=2)
-
-        with open(os.path.join(save_dir, "tboard_info.json"), "w") as fp:
-            json.dump(self.index_dict, fp, indent=2)
-
-    def save_args(self, args: DotDict) -> None:
-        """Saves just the arguments used to set up training
-
-        Parameters
-        ----------
-        args: DotDict
-            Arguments used to set up training
-
-        Returns
-        -------
-        None
-        """
-        self._check_and_make_dir(self.logdir)
-        self._check_and_make_dir(os.path.join(self.logdir, self.tag))
-
-        with open(os.path.join(self.logdir, self.tag, "args.json"), "w") as fp:
-            json.dump(args, fp, indent=2)
+        save_dir = get_save_dir(self.league_path.agent, epoch)
+        save_file = save_dir / "network.pt"
+        torch.save(network.state_dict(), str(save_file))
+        OmegaConf.save(config=self.index_dict, f=str(save_dir / "tboard_info.yaml"))
 
     def save_wins(self, epoch: int, win_rates: Dict[str, float]) -> None:
         """Saves the win rates of the current agent
@@ -127,50 +94,18 @@ class Agent:
         -------
         None
         """
-        save_dir = self._get_save_dir(epoch)
-        self._check_and_make_dir(save_dir)
+        save_dir = get_save_dir(self.league_path.agent, epoch)
 
-        with open(os.path.join(save_dir, "win_rates.json"), "w") as fp:
-            json.dump(win_rates, fp, indent=2)
+        OmegaConf.save(config=win_rates, f=save_dir / "win_rates.yaml")
 
-    def _get_save_dir(self, epoch: int) -> str:
-        """Helper function for getting the name of the epoch directory.
-
-        Parameters
-        ----------
-        epoch: int
-            The desired epoch
-
-        Returns
-        -------
-        str
-            The full path with the proper naming convention.
-        """
-        return get_save_dir(self.logdir, self.tag, epoch)
-
-    @staticmethod
-    def _check_and_make_dir(path: str) -> None:
-        """First checks if a directory exists then creates it if it doesn't.
-
-        Parameters
-        ----------
-        path: str
-            The path of the directory to be created
-
-        Returns
-        -------
-        None
-        """
-        check_and_make_dir(path)
-
-    def write_to_tboard(self, label: str, value: float) -> None:
+    def log_scalar(self, label: str, value: Union[float, np.ndarray]) -> None:
         """Writes a value to tensorboard, while keeping track of the tensorboard index.
 
         Parameters
         ----------
         label: str
             The label for the value to display on tensorboard
-        value: float
+        value: Union[float, npt.NDArray]
             The value to add to tensorboard
 
         Returns
@@ -198,15 +133,16 @@ class Agent:
         None
         """
         try:
-            with open(
-                os.path.join(self._get_save_dir(epoch), "tboard_info.json"), "r"
-            ) as fp:
-                self.index_dict = json.load(fp)
+            self.index_dict = OmegaConf.to_container(
+                OmegaConf.load(
+                    get_save_dir(self.league_path.agent, epoch) / "tboard_info.yaml"
+                )
+            )
         except FileNotFoundError:
             pass
 
     def update_winrates(self, opponent: str, win: int) -> None:
-        """Function for tracking the win-rates of the agent.
+        """Function for tracking the win-rates of the agent with a sliding window.
 
         Parameters
         ----------
@@ -220,7 +156,7 @@ class Agent:
         None
         """
         if opponent not in self.win_rates:
-            self.win_rates[opponent] = [win, 1]
-        else:
-            self.win_rates[opponent][0] += win
-            self.win_rates[opponent][1] += 1
+            self.win_rates[opponent] = deque([0 for _ in range(100)])
+
+        self.win_rates[opponent].append(win)
+        self.win_rates[opponent].popleft()

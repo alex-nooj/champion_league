@@ -45,7 +45,6 @@ class Episode:
             The discount for the advantages
         """
         self.observations = []
-        self.internals = []
         self.actions = []
         self.advantages = []
         self.rewards = []
@@ -58,7 +57,6 @@ class Episode:
     def append(
         self,
         observation: Dict[str, torch.Tensor],
-        internals: Dict[str, torch.Tensor],
         action: int,
         reward: float,
         value: float,
@@ -66,7 +64,6 @@ class Episode:
         reward_scale: Optional[float] = 1.0,
     ):
         self.observations.append(observation)
-        self.internals.append(internals)
         self.actions.append(action)
         self.rewards.append(reward / reward_scale)
         self.values.append(value)
@@ -93,7 +90,6 @@ class History(Dataset):
     def __init__(self):
         self.episodes = []
         self.observations = []
-        self.internals = []
         self.actions = []
         self.advantages = []
         self.rewards = []
@@ -104,7 +100,6 @@ class History(Dataset):
     def free_memory(self):
         del self.episodes[:]
         del self.observations[:]
-        del self.internals[:]
         del self.actions[:]
         del self.advantages[:]
         del self.rewards[:]
@@ -119,7 +114,6 @@ class History(Dataset):
     def build_dataset(self):
         for episode in self.episodes:
             self.observations += episode.observations
-            self.internals += episode.internals
             self.actions += episode.actions
             self.advantages += episode.advantages
             self.rewards += episode.rewards
@@ -135,7 +129,6 @@ class History(Dataset):
         self, idx: int
     ) -> Tuple[
         List[Dict[str, torch.Tensor]],
-        List[Dict[str, torch.Tensor]],
         List[int],
         List[float],
         List[float],
@@ -143,7 +136,6 @@ class History(Dataset):
     ]:
         return (
             self.observations[idx],
-            self.internals[idx],
             self.actions[idx],
             self.advantages[idx],
             self.log_probabilities[idx],

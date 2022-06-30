@@ -1,0 +1,8 @@
+Kommo-o @ Leftovers
+Ability: Bulletproof
+EVs: 252 HP / 148 Def / 40 SpD / 68 Spe
+Impish Nature
+- Body Press
+- Earthquake
+- Stealth Rock
+- Toxic

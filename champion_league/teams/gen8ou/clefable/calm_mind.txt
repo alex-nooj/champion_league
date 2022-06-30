@@ -1,0 +1,8 @@
+Clefable @ Life Orb
+Ability: Magic Guard
+EVs: 252 HP / 196 Def / 60 Spe
+Bold Nature
+- Calm Mind
+- Moonblast
+- Soft-Boiled
+- Thunder

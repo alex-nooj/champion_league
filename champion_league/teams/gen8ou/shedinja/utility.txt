@@ -1,0 +1,9 @@
+Shedinja @ Heavy-Duty Boots
+Ability: Wonder Guard
+EVs: 252 SpA / 252 Spe
+IVs: 0 Def / 0 SpD
+Rash Nature
+- Hex
+- Toxic
+- Will-O-Wisp
+- Protect

@@ -1,0 +1,8 @@
+Magnezone @ Leftovers
+Ability: Magnet Pull
+EVs: 4 HP / 252 Def / 252 Spe
+Timid Nature
+- Iron Defense
+- Body Press
+- Thunderbolt
+- Toxic

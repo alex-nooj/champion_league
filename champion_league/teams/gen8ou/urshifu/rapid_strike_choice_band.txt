@@ -1,0 +1,8 @@
+Urshifu-Rapid-Strike @ Choice Band
+Ability: Unseen Fist
+EVs: 252 Atk / 4 Def / 252 Spe
+Jolly Nature
+- Surging Strikes
+- Close Combat
+- Aqua Jet
+- U-turn

@@ -1,0 +1,8 @@
+Garchomp @ Leftovers
+Ability: Rough Skin
+EVs: 252 Atk / 4 SpD / 252 Spe
+Jolly Nature
+- Swords Dance
+- Earthquake
+- Fire Fang
+- Scale Shot

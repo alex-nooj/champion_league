@@ -1,0 +1,8 @@
+Gastrodon @ Heavy-Duty Boots
+Ability: Sticky Hold
+EVs: 252 HP / 4 Def / 252 SpD
+Sassy Nature
+- Scald
+- Earthquake
+- Recover
+- Clear Smog

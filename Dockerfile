@@ -1,4 +1,4 @@
-FROM node:12.3 as showdown
+FROM node as showdown
 
 ADD ./third_party/pokemon-showdown /showdown/pokemon-showdown
 

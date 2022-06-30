@@ -1,0 +1,8 @@
+Volcarona @ Heavy-Duty Boots
+Ability: Flame Body
+EVs: 248 HP / 156 Def / 16 SpA / 88 Spe
+Timid Nature
+- Quiver Dance
+- Roost
+- Flamethrower
+- Psychic

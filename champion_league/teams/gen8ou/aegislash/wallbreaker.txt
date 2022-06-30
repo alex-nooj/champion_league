@@ -1,0 +1,8 @@
+Aegislash @ Choice Specs
+Ability: Stance Change
+EVs: 4 Def / 252 SpA / 252 Spe
+Modest Nature
+- Shadow Ball
+- Flash Cannon
+- Close Combat
+- Shadow Sneak

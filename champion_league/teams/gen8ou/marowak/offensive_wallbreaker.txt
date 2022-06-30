@@ -1,0 +1,8 @@
+Marowak-Alola @ Thick Club
+Ability: Rock Head
+EVs: 252 Atk / 4 SpD / 252 Spe
+Adamant Nature
+- Swords Dance
+- Flare Blitz
+- Poltergeist
+- Earthquake

@@ -1,0 +1,8 @@
+Reuniclus @ Life Orb
+Ability: Magic Guard
+EVs: 252 HP / 212 Def / 44 Spe
+Bold Nature
+- Calm Mind
+- Psyshock
+- Recover
+- Thunder

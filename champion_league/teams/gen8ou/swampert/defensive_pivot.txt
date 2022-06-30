@@ -1,0 +1,9 @@
+Swampert @ Leftovers
+Ability: Damp
+EVs: 252 HP / 4 Def / 252 SpD
+IVs: 0 Spe
+Sassy Nature
+- Stealth Rock
+- Flip Turn
+- Earthquake
+- Toxic

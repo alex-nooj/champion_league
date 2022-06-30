@@ -1,0 +1,8 @@
+Shuckle @ Red Card
+Ability: Sturdy
+EVs: 252 HP / 252 Def / 4 SpD
+Bold Nature
+- Sticky Web
+- Stealth Rock
+- Encore
+- Final Gambit

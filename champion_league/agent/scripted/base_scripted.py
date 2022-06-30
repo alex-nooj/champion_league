@@ -9,8 +9,6 @@ from poke_env.environment.pokemon import Pokemon
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.battle_order import DefaultBattleOrder
 
-from champion_league.utils.directory_utils import DotDict
-
 
 class BaseScripted:
     def __init__(self, tag: str):

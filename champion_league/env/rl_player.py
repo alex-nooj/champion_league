@@ -1,5 +1,4 @@
 from asyncio import Queue
-from typing import Callable
 from typing import Dict
 from typing import Optional
 from typing import Tuple
@@ -13,6 +12,7 @@ from poke_env.player_configuration import PlayerConfiguration
 from poke_env.server_configuration import ServerConfiguration
 from poke_env.teambuilder.teambuilder import Teambuilder
 
+from champion_league.preprocessor import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
 
 
@@ -21,7 +21,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
 
     def __init__(
         self,
-        embed_battle: Callable,
+        preprocessor: Preprocessor,
         reward_scheme: RewardScheme,
         player_configuration: Optional[PlayerConfiguration] = None,
         *,
@@ -38,8 +38,8 @@ class RLPlayer(Gen8EnvSinglePlayer):
 
         Parameters
         ----------
-        embed_battle: Callable
-            Callable that accepts an AbstractBattle class and returns a tensor.
+        preprocessor: Preprocessor
+            The preprocessor for the agent.
         player_configuration: Optional[PlayerConfiguration]
             Player configuration. If empty, defaults to an
             automatically generated username with no password. This option must be set
@@ -54,7 +54,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
         server_configuration: Optional[ServerConfiguration]
             Server configuration. Defaults to Localhost Server Configuration
         start_timer_on_battle_start: bool
-            Whether or not to start the battle timer
+            Whether to start the battle timer
         start_listening: bool
             Whether to start listening to the server. Defaults to True
         team: Optional[Union[str, Teambuilder]]
@@ -75,7 +75,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
         self.reward_scheme = reward_scheme
         self._max_concurrent_battles = 2
         self._battle_count_queue = Queue(2)
-        self.embed_battle_cls = embed_battle
+        self.preprocessor = preprocessor
 
     def embed_battle(self, battle: Battle) -> Dict[str, torch.Tensor]:
         """Abstract function for embedding a battle using the chosen preprocessor
@@ -90,7 +90,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
         torch.Tensor
             The battle converted into something readable by the network.
         """
-        return self.embed_battle_cls(battle=battle)
+        return self.preprocessor.embed_battle(battle=battle)
 
     def compute_reward(self, battle: Battle) -> float:
         """Function for determining the reward from the current gamestate
@@ -151,4 +151,5 @@ class RLPlayer(Gen8EnvSinglePlayer):
 
     def reset(self) -> Dict[str, torch.Tensor]:
         self.reward_scheme.reset()
+        self.preprocessor.reset()
         return super().reset()

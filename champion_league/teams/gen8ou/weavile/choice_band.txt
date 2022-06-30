@@ -1,0 +1,8 @@
+Weavile @ Choice Band
+Ability: Pressure
+EVs: 252 Atk / 4 SpD / 252 Spe
+Adamant Nature
+- Knock Off
+- Triple Axel
+- Ice Shard
+- Low Kick

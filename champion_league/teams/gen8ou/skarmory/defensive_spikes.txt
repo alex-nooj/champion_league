@@ -1,0 +1,8 @@
+Skarmory @ Rocky Helmet
+Ability: Sturdy
+EVs: 252 HP / 252 Def / 4 SpD
+Bold Nature
+- Body Press
+- Spikes
+- Iron Defense
+- Roost

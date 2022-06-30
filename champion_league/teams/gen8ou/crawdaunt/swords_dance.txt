@@ -1,0 +1,8 @@
+Crawdaunt @ Life Orb
+Ability: Adaptability
+EVs: 252 Atk / 4 Def / 252 Spe
+Adamant Nature
+- Swords Dance
+- Crabhammer
+- Knock Off
+- Aqua Jet

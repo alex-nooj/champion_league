@@ -1,0 +1,8 @@
+Torkoal @ Heat Rock
+Ability: Drought
+EVs: 248 HP / 252 Def / 8 SpD
+Bold Nature
+- Stealth Rock
+- Lava Plume
+- Body Press
+- Rapid Spin

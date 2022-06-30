@@ -1,0 +1,8 @@
+Dragonite @ Heavy-Duty Boots
+Ability: Multiscale
+EVs: 252 HP / 252 Def / 4 SpD
+Relaxed Nature
+- Ice Beam
+- Earthquake
+- Roost
+- Heal Bell

@@ -1,14 +1,14 @@
 import asyncio
-import os
+from pathlib import Path
 from typing import List
 
 from poke_env.player.player import Player
 from poke_env.player_configuration import PlayerConfiguration
 from tqdm import tqdm
 
+from champion_league.config import parse_args
 from champion_league.env import OpponentPlayer
-from champion_league.matchmaking.skill_tracker import MultiSkillTracker
-from champion_league.utils.parse_args import parse_args
+from champion_league.matchmaking.skill_tracker import SkillTracker
 from champion_league.utils.progress_bar import centered
 from champion_league.utils.server_configuration import DockerServerConfiguration
 
@@ -33,7 +33,7 @@ async def match(player1: Player, player2: Player, nb_battles: int) -> None:
 
 
 def print_agent_stats(
-    agent_names: List[str], agent_skills: List[float], agent_wins: List[int]
+    agent_names: List[Path], agent_skills: List[float], agent_wins: List[int]
 ) -> None:
     """Prints out the Trueskill values for the agent, as well as the win rate.
 
@@ -89,7 +89,7 @@ def print_agent_stats(
 
 
 def league_competition(
-    league_dir: str, games_per_agent: int, p1_device: int, p2_device: int
+    league_dir: Path, games_per_agent: int, p1_device: int, p2_device: int
 ) -> None:
     """
 
@@ -109,11 +109,11 @@ def league_competition(
     None
     """
     usernames = {}
-    agent_tags = os.listdir(league_dir)
+    agent_tags = list(league_dir.iterdir())
     agent_tags.sort()
 
-    skill_tracker = MultiSkillTracker(
-        agent_paths=[os.path.join(league_dir, agent_name) for agent_name in agent_tags],
+    skill_tracker = SkillTracker(
+        agents_dir=league_dir,
     )
 
     agent_wins = {k: 0 for k in agent_tags}
@@ -127,7 +127,7 @@ def league_competition(
             usernames[agent] = 0
 
         current_player = OpponentPlayer.from_path(
-            path=os.path.join(league_dir, agent),
+            path=league_dir / agent,
             device=p1_device,
             max_concurrent_battles=games_per_agent,
             player_configuration=PlayerConfiguration(username, "none"),
@@ -143,7 +143,7 @@ def league_competition(
                 usernames[opponent] = 0
 
             opponent_player = OpponentPlayer.from_path(
-                path=os.path.join(league_dir, opponent),
+                path=league_dir / opponent,
                 device=p2_device,
                 max_concurrent_battles=games_per_agent,
                 player_configuration=PlayerConfiguration(username, "none"),
@@ -156,9 +156,9 @@ def league_competition(
 
             for victory in current_player.battle_history:
                 if victory:
-                    skill_tracker.update(agent, opponent)
+                    skill_tracker.update(agent.stem, opponent)
                 else:
-                    skill_tracker.update(opponent, agent)
+                    skill_tracker.update(opponent, agent.stem)
             agent_wins[agent] += current_player.n_won_battles
             agent_wins[opponent] += current_player.n_lost_battles
             current_player.reset_battles()
@@ -171,8 +171,8 @@ def league_competition(
         agent_wins=[agent_wins[v] for v in agent_tags],
     )
 
-    skill_tracker.save_trueskills()
+    skill_tracker.save_skill_ratings()
 
 
 if __name__ == "__main__":
-    league_competition(**parse_args())
+    league_competition(**parse_args(__file__))

@@ -1,0 +1,8 @@
+Ferrothorn @ Leftovers
+Ability: Iron Barbs
+EVs: 252 HP / 252 Def / 4 SpD
+Impish Nature
+- Spikes
+- Knock Off
+- Leech Seed
+- Power Whip

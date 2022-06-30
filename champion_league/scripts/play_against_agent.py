@@ -1,7 +1,8 @@
 import asyncio
+from pathlib import Path
 
+from champion_league.config import parse_args
 from champion_league.env import OpponentPlayer
-from champion_league.utils.parse_args import parse_args
 from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
@@ -29,14 +30,14 @@ def agent_battle(
     None
     """
     player1 = OpponentPlayer.from_path(
-        path=agent_dir,
+        path=Path(agent_dir),
         device=device,
         max_concurrent_battles=nb_battles,
         server_configuration=DockerServerConfiguration,
     )
 
     player2 = OpponentPlayer.from_path(
-        path=opponent_dir,
+        path=Path(opponent_dir),
         device=device,
         max_concurrent_battles=nb_battles,
         server_configuration=DockerServerConfiguration,
@@ -50,4 +51,4 @@ def agent_battle(
 
 
 if __name__ == "__main__":
-    agent_battle(**parse_args())
+    agent_battle(**parse_args(__file__))

@@ -1,10 +1,10 @@
-import json
-import os
+from pathlib import Path
 from typing import List
 from typing import Optional
 from typing import Union
 
 import torch
+from omegaconf import OmegaConf
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.player import Player
@@ -12,9 +12,9 @@ from poke_env.player.player import Player
 from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.scripted import SCRIPTED_AGENTS
 from champion_league.agent.scripted.base_scripted import BaseScripted
-from champion_league.network import build_network_from_args
-from champion_league.preprocessors import build_preprocessor_from_args
-from champion_league.utils.directory_utils import DotDict
+from champion_league.network import NETWORKS
+from champion_league.preprocessor import Preprocessor
+from champion_league.teams.team_builder import AgentTeamBuilder
 
 
 class OpponentPlayer(Player):
@@ -30,7 +30,7 @@ class OpponentPlayer(Player):
 
     @classmethod
     def from_path(
-        cls, path: str, device: Optional[int] = None, **kwargs
+        cls, path: Path, device: Optional[int] = None, **kwargs
     ) -> "OpponentPlayer":
         """Creates the player from a given path
 
@@ -49,22 +49,27 @@ class OpponentPlayer(Player):
         if device is None:
             device = 0
 
-        with open(os.path.join(path, "args.json"), "r") as fp:
-            args = DotDict(json.load(fp))
+        args = OmegaConf.to_container(OmegaConf.load(path / "args.yaml"))
 
         if "scripted" in args:
-            opponent = SCRIPTED_AGENTS[args.agent]
+            opponent = SCRIPTED_AGENTS[args["agent"]]
+            team = AgentTeamBuilder()
         else:
-            args.resume = False
-            network = build_network_from_args(args)
+            preprocessor = Preprocessor(args["device"], **args["preprocessor"])
+            network_args = {}
+            if args["network"] in args:
+                network_args = args[args["network"]]
+            network = NETWORKS[args["network"]](
+                nb_actions=args["nb_actions"],
+                in_shape=preprocessor.output_shape,
+                **network_args,
+            ).eval()
             network.load_state_dict(
                 torch.load(
-                    os.path.join(path, "network.pt"),
+                    Path(path, "network.pt"),
                     map_location=lambda storage, loc: storage,
                 )
             )
-
-            preprocessor = build_preprocessor_from_args(args)
 
             opponent = RLOpponent(
                 network=network,
@@ -73,7 +78,8 @@ class OpponentPlayer(Player):
                 sample_moves=False,
             )
 
-        return cls(opponent, **kwargs)
+            team = AgentTeamBuilder(agent_path=path.parent)
+        return cls(opponent, battle_format=args["battle_format"], team=team, **kwargs)
 
     def choose_move(self, battle: Battle) -> BattleOrder:
         """Function that allows the agent to select a move.

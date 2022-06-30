@@ -1,0 +1,8 @@
+Excadrill @ Leftovers
+Ability: Sand Rush
+EVs: 252 Atk / 4 SpD / 252 Spe
+Jolly Nature
+- Swords Dance
+- Earthquake
+- Iron Head
+- Rapid Spin

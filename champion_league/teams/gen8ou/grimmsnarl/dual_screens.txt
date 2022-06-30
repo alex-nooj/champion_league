@@ -1,0 +1,8 @@
+Grimmsnarl @ Light Clay
+Ability: Prankster
+EVs: 92 HP / 252 Atk / 164 Spe
+Adamant Nature
+- Reflect
+- Light Screen
+- Taunt
+- Spirit Break

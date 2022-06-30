@@ -1,0 +1,8 @@
+Arctozolt @ Heavy-Duty Boots
+Ability: Slush Rush
+EVs: 252 Atk / 4 SpA / 252 Spe
+Naive Nature
+- Substitute
+- Bolt Beak
+- Blizzard
+- Low Kick

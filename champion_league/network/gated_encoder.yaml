@@ -1,0 +1,5 @@
+nb_encoders: 1
+nb_heads: 1
+nb_layers: 3
+scale: False
+dropout: 0.0

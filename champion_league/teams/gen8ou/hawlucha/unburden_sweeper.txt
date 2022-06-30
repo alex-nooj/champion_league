@@ -1,0 +1,8 @@
+Hawlucha @ Grassy Seed
+Ability: Unburden
+EVs: 252 Atk / 132 SpD / 124 Spe
+Adamant Nature
+- Swords Dance
+- Acrobatics
+- Close Combat
+- Taunt

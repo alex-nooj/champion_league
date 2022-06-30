@@ -1,0 +1,8 @@
+Slowking-Galar @ Assault Vest
+Ability: Regenerator
+EVs: 252 HP / 12 Def / 124 SpA / 120 SpD
+Calm Nature
+- Future Sight
+- Sludge Bomb
+- Flamethrower
+- Scald

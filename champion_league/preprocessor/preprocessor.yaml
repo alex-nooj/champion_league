@@ -1,0 +1,17 @@
+ops:
+  AllyActive:
+    - EmbedActive
+    - EmbedMoves
+  OpponentActive:
+    - EmbedActive
+  Team:
+    - EmbedTeam
+op_args:
+  AllyActive:
+    EmbedActive:
+      ally: True
+    EmbedMoves:
+      ally: True
+  OpponentActive:
+    EmbedActive:
+      ally: True

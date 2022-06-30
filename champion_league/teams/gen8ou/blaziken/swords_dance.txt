@@ -1,0 +1,8 @@
+Blaziken @ Life Orb
+Ability: Speed Boost
+EVs: 252 Atk / 4 Def / 252 Spe
+Jolly Nature
+- Swords Dance
+- Flare Blitz
+- Close Combat
+- Thunder Punch

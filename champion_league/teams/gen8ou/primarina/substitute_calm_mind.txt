@@ -1,0 +1,8 @@
+Primarina @ Leftovers
+Ability: Torrent
+EVs: 248 HP / 40 SpA / 44 SpD / 176 Spe
+Calm Nature
+- Substitute
+- Calm Mind
+- Scald
+- Moonblast

@@ -1,0 +1,8 @@
+Toxtricity @ Choice Specs
+Ability: Punk Rock
+EVs: 252 SpA / 4 SpD / 252 Spe
+Modest Nature
+- Overdrive
+- Sludge Wave
+- Boomburst
+- Volt Switch

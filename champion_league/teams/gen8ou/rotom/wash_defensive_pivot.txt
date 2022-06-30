@@ -1,0 +1,8 @@
+Rotom-Wash @ Leftovers
+Ability: Levitate
+EVs: 252 HP / 168 SpD / 88 Spe
+Calm Nature
+- Volt Switch
+- Hydro Pump
+- Thunder Wave
+- Pain Split

@@ -1,9 +1,0 @@
-Goodra (M) @ Assault Vest
-Ability: Sap Sipper
-EVs: 248 HP / 252 SpA / 8 Spe
-Modest Nature
-IVs: 0 Atk
-- Dragon Pulse
-- Flamethrower
-- Sludge Wave
-- Thunderbolt
