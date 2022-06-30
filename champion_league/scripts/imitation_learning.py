@@ -15,7 +15,7 @@ from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.config import parse_args
 from champion_league.env import OpponentPlayer
 from champion_league.env import RLPlayer
-from champion_league.preprocessors import Preprocessor
+from champion_league.preprocessor import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.teams.team_builder import AgentTeamBuilder
 from champion_league.utils.agent_utils import build_network_and_preproc
@@ -26,19 +26,26 @@ from champion_league.utils.replay import cumulative_sum
 from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
+class IdentityPreprocessor:
+    def __init__(self, device: int):
+        self.device = device
+
+    def embed_battle(self, battle: Battle) -> Battle:
+        return battle
+
+    def reset(self):
+        pass
+
+
 def identity_embedding(battle: Battle, reset: bool) -> Battle:
     """Pass-through embedding function.
 
-    Parameters
-    ----------
-    reset
-    battle: Battle
-        The current state of the environment.
+    Args:
+        reset: Unused
+        battle: The current state of the environment.
 
-    Returns
-    -------
-    Battle
-        The current state of the environment.
+    Returns:
+        Battle: The current state of the environment.
     """
     return battle
 
@@ -48,18 +55,10 @@ async def agent_battle(
 ):
     """Function for battling between two agents.
 
-    Parameters
-    ----------
-    player1
-        The player that will issue the challenges.
-    player2
-        The player that will accept the challenges.
-    nb_battles
-        The number of battles to perform.
-
-    Returns
-    -------
-    None
+    Args:
+        player1: The player that will issue the challenges.
+        player2: The player that will accept the challenges.
+        nb_battles: The number of battles to perform.
     """
     await player1.battle_against(player2, nb_battles)
 
@@ -70,17 +69,13 @@ def record_episode(
 ) -> Tuple[Dict[str, List[Tensor]], List[int], List[float]]:
     """Records a single battle.
 
-    Parameters
-    ----------
-    player
-        The environment that is communicating with Showdown.
-    agent
-        The agent that is playing the game.
+    Args:
+        player: The environment that is communicating with Showdown.
+        agent: The agent that is playing the game.
 
-    Returns
-    -------
-    Tuple[Dict[str, List[Tensor]], List[int], List[float]]
-        Tuple containing the observations, actions, and rewards-to-go, respectively.
+    Returns:
+        Tuple[Dict[str, List[Tensor]], List[int], List[float]]: Tuple containing the observations,
+        actions, and rewards-to-go, respectively.
     """
     observation = player.reset()
     reset = True
@@ -115,27 +110,18 @@ def record_epoch(
     progress_bar: ProgressBar,
     train: bool,
 ) -> PokeSet:
-    """Records all of the state, action, and value pairs from the agent we'd like to imitate.
+    """Records all state, action, and value pairs from the agent we'd like to imitate.
 
-    Parameters
-    ----------
-    player
-        The environment that is communicating with Showdown.
-    agent
-        The agent that is playing the game.
-    batch_size
-        The number of samples to include in one batch.
-    nb_batches
-        The number of batches to collect.
-    progress_bar
-        Used to print the progress so users don't go insane.
-    train
-        Whether this is a training epoch.
+    Args:
+        player: The environment that is communicating with Showdown.
+        agent: The agent that is playing the game.
+        batch_size: The number of samples to include in one batch.
+        nb_batches: The number of batches to collect.
+        progress_bar: Used to print the progress so users don't go insane.
+        train: Whether this is a training epoch.
 
-    Returns
-    -------
-    PokeSet
-        The recorded dataset (Subclass of PyTorch's Dataset class).
+    Returns:
+        PokeSet: The recorded dataset (Subclass of PyTorch's Dataset class).
     """
     states = {}
     actions = []
@@ -172,22 +158,12 @@ def train_epoch(
 ):
     """Records the training dataset for the agent.
 
-    Parameters
-    ----------
-    player
-        The environment that is communicating with Showdown.
-    agent
-        The agent that is playing the game.
-    batch_size
-        The number of samples to include in one batch.
-    nb_batches
-        The number of batches to collect.
-    progress_bar
-        Used to print the progress so users don't go insane.
-
-    Returns
-    -------
-    None
+    Args:
+        player: The environment that is communicating with Showdown.
+        agent: The agent that is playing the game.
+        batch_size: The number of samples to include in one batch.
+        nb_batches: The number of batches to collect.
+        progress_bar: Used to print the progress so users don't go insane.
     """
     agent.training_set = DataLoader(
         record_epoch(player, agent, nb_batches, batch_size, progress_bar, True),
@@ -206,22 +182,12 @@ def validation_epoch(
 ):
     """Records the validation dataset for the agent.
 
-    Parameters
-    ----------
-    player
-        The environment that is communicating with Showdown.
-    agent
-        The agent that is playing the game.
-    batch_size
-        The number of samples to include in one batch.
-    nb_batches
-        The number of batches to collect.
-    progress_bar
-        Used to print the progress so users don't go insane.
-
-    Returns
-    -------
-    None
+    Args:
+        player: The environment that is communicating with Showdown.
+        agent: The agent that is playing the game.
+        batch_size: The number of samples to include in one batch.
+        nb_batches: The number of batches to collect.
+        progress_bar: Used to print the progress so users don't go insane.
     """
     agent.validation_set = DataLoader(
         record_epoch(player, agent, nb_batches, batch_size, progress_bar, False),
@@ -236,35 +202,28 @@ def imitation_learning(
 ):
     """The main loop for performing supervised learning between a network and a trained agent.
 
-    Parameters
-    ----------
-    league_path
-    preprocessor
-        The preprocessor that this agent will be using to convert Battle objects to tensors.
-    network
-        The network that will be training.
-    args
-        Hyperparameters used for training. MUST CONTAIN:
-        - batch_size: int
-        - battle_format: str
-        - batches_per_epoch
-        - device: int
-        - logdir: str
-        - nb_epochs: int
-        - patience: int
-        - rewards: Dict[str, float]
-        - tag: str
-
-    Returns
-    -------
-    None
+    Args:
+        league_path
+        preprocessor: The preprocessor that this agent will be using to convert Battle objects to tensors.
+        network: The network that will be training.
+        args: Hyperparameters used for training. MUST CONTAIN:
+            - batch_size: int
+            - battle_format: str
+            - batches_per_epoch
+            - device: int
+            - logdir: str
+            - nb_epochs: int
+            - patience: int
+            - rewards: Dict[str, float]
+            - tag: str
     """
 
+    # TODO: Can we make the type of agent configurable?
     agent = ImitationAgent(
         device=args["device"],
         network=network,
         lr=args["lr"],
-        embed_battle=preprocessor.embed_battle,
+        preprocessor=preprocessor,
         league_path=league_path,
         tag=args["tag"],
     )
@@ -279,7 +238,7 @@ def imitation_learning(
 
     player = RLPlayer(
         battle_format=args["battle_format"],
-        embed_battle=identity_embedding,
+        preprocessor=IdentityPreprocessor(args["device"]),
         reward_scheme=reward_scheme,
         server_configuration=DockerServerConfiguration,
         team=team_builder,

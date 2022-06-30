@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 from typing import Dict
@@ -21,7 +20,7 @@ from champion_league.env.league_player import LeaguePlayer
 from champion_league.env.rl_player import RLPlayer
 from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
-from champion_league.preprocessors import Preprocessor
+from champion_league.preprocessor import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.teams.team_builder import AgentTeamBuilder
 from champion_league.utils.agent_utils import build_network_and_preproc
@@ -170,7 +169,7 @@ def league_score(
 
         for result in challenger.battle_history:
             skill_tracker.update(result, league_agent.stem)
-        agent.write_to_tboard(
+        agent.log_scalar(
             f"League Validation/{league_agent.stem}",
             challenger.win_rate * nb_battles,
         )
@@ -263,19 +262,19 @@ def league_epoch(
         episode = collect_episode(player=player, agent=agent, step_counter=step_counter)
         episode_end_step = step_counter.steps
 
-        agent.write_to_tboard(
+        agent.log_scalar(
             "Agent Outputs/Average Episode Reward",
             float(np.sum(episode.rewards)),
         )
 
-        agent.write_to_tboard(
+        agent.log_scalar(
             "Agent Outputs/Average Probabilities",
             float(np.mean([np.exp(lp) for lp in episode.log_probabilities])),
         )
 
         agent.update_winrates(opponent.tag, int(episode.rewards[-1] > 0))
 
-        agent.write_to_tboard(
+        agent.log_scalar(
             f"League Training/{opponent.tag}",
             float(np.mean(agent.win_rates[opponent.tag])),
         )
@@ -283,7 +282,7 @@ def league_epoch(
         if opponent.tag != "self":
             skill_tracker.update(episode.rewards[-1] > 0, opponent.tag)
             for k, v in skill_tracker.skill.items():
-                agent.write_to_tboard(f"True Skill/{k}", v)
+                agent.log_scalar(f"True Skill/{k}", v)
 
         opponent_name = matchmaker.choose_match(
             skill_tracker.agent_skill,
@@ -312,7 +311,7 @@ def league_epoch(
             opponent.update_network(agent.network)
 
             for k, v in epoch_losses.items():
-                agent.write_to_tboard(f"League Loss/{k}", np.mean(v))
+                agent.log_scalar(f"League Loss/{k}", np.mean(v))
 
             history.free_memory()
 
@@ -382,7 +381,7 @@ def league_play(
     team_builder.save_team()
     player = RLPlayer(
         battle_format=args["battle_format"],
-        embed_battle=preprocessor.embed_battle,
+        preprocessor=preprocessor,
         reward_scheme=RewardScheme(args["rewards"]),
         server_configuration=DockerServerConfiguration,
         team=team_builder,

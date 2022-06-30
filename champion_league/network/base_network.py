@@ -1,10 +1,10 @@
 from abc import abstractmethod
 from pathlib import Path
 from typing import Dict
-from typing import Tuple
 
 import torch
 from torch import nn
+from torch import Tensor
 
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
@@ -12,9 +12,7 @@ from champion_league.utils.directory_utils import get_save_dir
 
 class BaseNetwork(nn.Module):
     @abstractmethod
-    def forward(
-        self, x_internals: Dict[str, Dict[str, torch.Tensor]]
-    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
+    def forward(self, x: Dict[str, Tensor]) -> Dict[str, Tensor]:
         raise NotImplementedError
 
     def reset(self, device: int) -> Dict[str, torch.Tensor]:

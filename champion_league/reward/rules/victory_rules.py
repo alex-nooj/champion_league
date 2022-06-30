@@ -19,7 +19,9 @@ class VictoryRule(Rule):
         float
             self.weight if the agent has won, 0 otherwise.
         """
-        return self.weight * (curr_step.won is not None)
+        if curr_step.won is not None:
+            return self.weight * curr_step.won
+        return 0
 
     @property
     def max(self) -> float:

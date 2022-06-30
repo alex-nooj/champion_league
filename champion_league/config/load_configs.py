@@ -1,4 +1,3 @@
-import inspect
 from pathlib import Path
 from typing import Any
 from typing import Dict
@@ -7,8 +6,6 @@ from omegaconf import DictConfig
 from omegaconf import MissingMandatoryValue
 from omegaconf import OmegaConf
 
-from champion_league.network import NETWORKS
-from champion_league.preprocessors import PREPROCESSORS
 from champion_league.utils.directory_utils import get_save_dir
 
 
@@ -32,27 +29,6 @@ def handle_special_args(args) -> DictConfig:
                 raise RuntimeError(f"Could not load config file! File does not exist.")
             args = OmegaConf.merge(args, OmegaConf.load(config_path))
 
-    if "network" in args:
-        default_network_args = get_default_args(
-            inspect.getfile(NETWORKS[args["network"]])
-        )
-        if args["network"] in args:
-            args[args["network"]] = OmegaConf.merge(
-                default_network_args, args[args["network"]]
-            )
-        else:
-            args[args["network"]] = default_network_args
-
-    if "preprocessor" in args:
-        default_preproc_args = get_default_args(
-            inspect.getfile(PREPROCESSORS[args["preprocessor"]])
-        )
-        if args["preprocessor"] in args:
-            args[args["preprocessor"]] = OmegaConf.merge(
-                default_preproc_args, args[args["preprocessor"]]
-            )
-        else:
-            args[args["preprocessor"]] = default_preproc_args
     return args
 
 

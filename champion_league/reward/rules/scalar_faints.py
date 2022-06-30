@@ -1,8 +1,9 @@
 from poke_env.environment.battle import Battle
 
-from champion_league.preprocessors.modular_preprocessor import NB_POKEMON
 from champion_league.reward.rules.binary_faints import count_faints
 from champion_league.reward.rules.rule import Rule
+
+NB_POKEMON = 12
 
 
 class OpponentScalarFaints(Rule):

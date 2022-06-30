@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from champion_league.agent.base.base_agent import Agent
 from champion_league.agent.scripted import SimpleHeuristic
+from champion_league.preprocessor import Preprocessor
 from champion_league.utils.poke_path import PokePath
 from champion_league.utils.progress_bar import ProgressBar
 
@@ -23,7 +24,7 @@ class ImitationAgent(Agent):
         device: int,
         network: nn.Module,
         lr: float,
-        embed_battle: Callable[[Battle, bool], Dict[str, Tensor]],
+        preprocessor: Preprocessor,
         league_path: PokePath,
         tag: str,
     ):
@@ -37,8 +38,8 @@ class ImitationAgent(Agent):
             The network that will be training.
         lr
             The learning rate for the network.
-        embed_battle
-            Callable that will convert the Battle objects to the format expected by the network.
+        preprocessor
+            The preprocessor for the agent.
         league_path
             The path to the agent's directory.
         tag
@@ -49,7 +50,7 @@ class ImitationAgent(Agent):
         self.network = network
         self.optimizer = torch.optim.Adam(network.parameters(), lr=lr)
         self._policy = SimpleHeuristic("simple_heuristic")
-        self._embed_battle = embed_battle
+        self._preprocessor = preprocessor
         self._action_loss = torch.nn.CrossEntropyLoss()
         self._value_loss = torch.nn.MSELoss()
 
@@ -58,9 +59,7 @@ class ImitationAgent(Agent):
         self.training_set = None
         self.validation_set = None
 
-    def sample_action(
-        self, state: Dict[str, Tensor], internals: Dict[str, Tensor]
-    ) -> Tuple[float, float, float]:
+    def sample_action(self, state: Dict[str, Tensor]) -> Tuple[float, float, float]:
         """Method for sampling an action from a distribution. This method should take in a
         state and return an action, log_probability, and the value of the current state.
 
@@ -68,8 +67,6 @@ class ImitationAgent(Agent):
         ----------
         state: Dict[str, torch.Tensor]
             The current, preprocessed state
-        internals: Dict[str, torch.Tensor]
-            The previous internals of the network.
 
         Returns
         -------
@@ -190,7 +187,7 @@ class ImitationAgent(Agent):
         Dict[str, Tensor]
             The embedded battle.
         """
-        return self._embed_battle(battle, reset)
+        return self._preprocessor.embed_battle(battle)
 
     def _predict_batch(
         self,
@@ -214,7 +211,7 @@ class ImitationAgent(Agent):
         Dict[str, Tensor]
             Dictionary containing the loss and accuracy for this batch.-
         """
-        y, _ = self.network(x_internals={"x": states, "internals": {}})
+        y = self.network(x=states)
         x_action = y["rough_action"]
         x_value = y["critic"]
         action_loss = self._action_loss(x_action, actions)

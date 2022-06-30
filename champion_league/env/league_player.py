@@ -14,8 +14,7 @@ from torch import nn
 from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.scripted import SCRIPTED_AGENTS
 from champion_league.network import NETWORKS
-from champion_league.preprocessors import Preprocessor
-from champion_league.preprocessors import PREPROCESSORS
+from champion_league.preprocessor import Preprocessor
 from champion_league.teams.team_builder import AgentTeamBuilder
 
 
@@ -139,19 +138,17 @@ class LeaguePlayer(Player):
                 # Otherwise, we have an ML agent, and have to build the LeagueOpponent class using
                 # this network as a selection strategy.
                 self.mode = "ml"
-                preprocessor = PREPROCESSORS[args["preprocessor"]](
-                    args["device"], **args[args["preprocessor"]]
-                )
+                processor = Preprocessor(args["device"], **args[args["preprocessor"]])
                 network = NETWORKS[args["network"]](
                     nb_actions=args["nb_actions"],
-                    in_shape=preprocessor.output_shape,
+                    in_shape=processor.output_shape,
                     **args[args["network"]],
                 ).eval()
                 network.load_state_dict(torch.load(Path(agent_path, "network.pt")))
 
                 self.opponent = RLOpponent(
                     network=network,
-                    preprocessor=preprocessor,
+                    preprocessor=processor,
                     device=self.device,
                     sample_moves=self.sample_moves,
                 )

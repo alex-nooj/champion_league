@@ -13,7 +13,8 @@ from champion_league.agent.opponent.rl_opponent import RLOpponent
 from champion_league.agent.scripted import SCRIPTED_AGENTS
 from champion_league.agent.scripted.base_scripted import BaseScripted
 from champion_league.network import NETWORKS
-from champion_league.preprocessors import PREPROCESSORS
+from champion_league.preprocessor import Preprocessor
+from champion_league.teams.team_builder import AgentTeamBuilder
 
 
 class OpponentPlayer(Player):
@@ -52,14 +53,16 @@ class OpponentPlayer(Player):
 
         if "scripted" in args:
             opponent = SCRIPTED_AGENTS[args["agent"]]
+            team = AgentTeamBuilder()
         else:
-            preprocessor = PREPROCESSORS[args["preprocessor"]](
-                args["device"], **args[args["preprocessor"]]
-            )
+            preprocessor = Preprocessor(args["device"], **args["preprocessor"])
+            network_args = {}
+            if args["network"] in args:
+                network_args = args[args["network"]]
             network = NETWORKS[args["network"]](
                 nb_actions=args["nb_actions"],
                 in_shape=preprocessor.output_shape,
-                **args[args["network"]],
+                **network_args,
             ).eval()
             network.load_state_dict(
                 torch.load(
@@ -75,7 +78,8 @@ class OpponentPlayer(Player):
                 sample_moves=False,
             )
 
-        return cls(opponent, **kwargs)
+            team = AgentTeamBuilder(agent_path=path.parent)
+        return cls(opponent, battle_format=args["battle_format"], team=team, **kwargs)
 
     def choose_move(self, battle: Battle) -> BattleOrder:
         """Function that allows the agent to select a move.

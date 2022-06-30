@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 from torch import nn
+from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
 
 from champion_league.utils.directory_utils import get_most_recent_epoch
@@ -44,9 +45,7 @@ class Agent:
             except ValueError:
                 pass
 
-    def sample_action(
-        self, state: Dict[str, torch.Tensor], internals: Dict[str, torch.Tensor]
-    ) -> Tuple[float, float, float]:
+    def sample_action(self, state: Dict[str, Tensor]) -> Tuple[float, float, float]:
         """Abstract method for sampling an action from a distribution. This method should take in a
         state and return an action, log_probability, and the value of the current state.
 
@@ -54,8 +53,6 @@ class Agent:
         ----------
         state: Dict[str, torch.Tensor]
             The current, preprocessed state
-        internals: Dict[str, torch.Tensor]
-            The previous internals of the network.
 
         Returns
         -------
@@ -101,7 +98,7 @@ class Agent:
 
         OmegaConf.save(config=win_rates, f=save_dir / "win_rates.yaml")
 
-    def write_to_tboard(self, label: str, value: Union[float, np.ndarray]) -> None:
+    def log_scalar(self, label: str, value: Union[float, np.ndarray]) -> None:
         """Writes a value to tensorboard, while keeping track of the tensorboard index.
 
         Parameters

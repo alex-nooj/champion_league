@@ -4,14 +4,16 @@ import torch
 from torch import nn
 
 from champion_league.network.ability_network import AbilityNetwork
-from champion_league.network.encoder_lstm import EncoderLSTM
+from champion_league.network.conv_lstm import ConvLSTM
 from champion_league.network.gated_encoder import GatedEncoder
+from champion_league.network.simple_network import SimpleNetwork
 from champion_league.utils.directory_utils import get_save_dir
 
 NETWORKS = {
     GatedEncoder.__name__: GatedEncoder,
     AbilityNetwork.__name__: AbilityNetwork,
-    EncoderLSTM.__name__: EncoderLSTM,
+    ConvLSTM.__name__: ConvLSTM,
+    SimpleNetwork.__name__: SimpleNetwork,
 }
 
 

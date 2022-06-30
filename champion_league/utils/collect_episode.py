@@ -9,32 +9,32 @@ from champion_league.utils.step_counter import StepCounter
 def collect_episode(
     player: RLPlayer, agent: PPOAgent, step_counter: Optional[StepCounter] = None
 ) -> Episode:
-    internals = agent.network.reset(device=agent.device)
     observation = player.reset()
     episode = Episode()
     done = False
-
+    ep_reward = []
     while not done:
-        action, log_prob, value, new_internals = agent.sample_action(
-            observation, internals
-        )
+        action, log_prob, value = agent.sample_action(observation)
 
         new_observation, reward, done, info = player.step(action)
         if step_counter is not None:
             step_counter()
+
+        for k, v in reward.items():
+            agent.log_scalar(f"Rewards/{k}", v)
+        total_reward = sum([v for v in reward.values()])
+        ep_reward.append(total_reward)
         episode.append(
             observation=observation,
-            internals=internals,
             action=action,
-            reward=reward,
+            reward=total_reward,
             value=value,
             log_probability=log_prob,
             reward_scale=player.reward_scheme.max,
         )
 
         observation = new_observation
-        internals = new_internals
-
+    agent.log_scalar(f"Rewards/Total", sum(ep_reward))
     episode.end_episode(last_value=0)
 
     return episode

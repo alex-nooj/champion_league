@@ -6,12 +6,29 @@ logdir: ???
 tag: ???
 team_path: ???
 
-preprocessor: ModularPreprocessor
-network: AbilityNetwork
+network: SimpleNetwork
+preprocessor:
+  ops:
+    AllyActive:
+      - EmbedActive
+      - EmbedMoves
+    OpponentActive:
+      - EmbedActive
+    Team:
+      - EmbedTeam
+  op_args:
+    AllyActive:
+      EmbedActive:
+        ally: True
+      EmbedMoves:
+        ally: True
+    OpponentActive:
+      EmbedActive:
+        ally: True
 
-nb_steps: 10_000_000
+nb_steps: 100_000_000
 epoch_len: 100_000
-batch_size: 64
+batch_size: 256
 
 lr: 0.001
 entropy_weight: 0.01

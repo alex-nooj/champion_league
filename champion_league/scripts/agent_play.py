@@ -1,7 +1,9 @@
+from pathlib import Path
 from typing import Any
 from typing import Dict
 
 import numpy as np
+from poke_env.teambuilder.teambuilder import Teambuilder
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -10,15 +12,27 @@ from champion_league.config import parse_args
 from champion_league.config.load_configs import save_args
 from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
-from champion_league.preprocessors import Preprocessor
+from champion_league.preprocessor import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.teams.team_builder import AgentTeamBuilder
 from champion_league.utils.agent_utils import build_network_and_preproc
 from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.poke_path import PokePath
+from champion_league.utils.random_team_generator import generate_random_team
 from champion_league.utils.replay import History
 from champion_league.utils.server_configuration import DockerServerConfiguration
 from champion_league.utils.step_counter import StepCounter
+
+
+class ConstantTeamBuilder(Teambuilder):
+    def __init__(self):
+        self._team = self.join_team(self.parse_showdown_team(generate_random_team()))
+
+    def yield_team(self) -> str:
+        return self._team
+
+    def clear_team(self):
+        pass
 
 
 def agent_epoch(
@@ -38,7 +52,7 @@ def agent_epoch(
 
         agent.update_winrates(opponent.tag, int(episode.rewards[-1] > 0))
 
-        agent.write_to_tboard(
+        agent.log_scalar(
             f"Agent Play/{opponent.tag}", np.mean(agent.win_rates[opponent.tag])
         )
 
@@ -55,7 +69,7 @@ def agent_epoch(
             epoch_losses = agent.learn_step(data_loader)
 
             for k, v in epoch_losses.items():
-                agent.write_to_tboard(f"League Loss/{k}", float(np.mean(v)))
+                agent.log_scalar(f"League Loss/{k}", float(np.mean(v)))
 
             history.free_memory()
 
@@ -84,27 +98,28 @@ def agent_play(
     team_builder = AgentTeamBuilder(
         agent_path=league_path.agent, battle_format=args["battle_format"]
     )
-    for opponent_path in args["opponents"]:
+    opponent_builder = AgentTeamBuilder()
+    opponents = [Path(o) for o in args["opponents"]]
+    for opponent_path in opponents:
         for epoch in range(
             starting_epoch, args["nb_steps"] // args["epoch_len"] + starting_epoch
         ):
-            print(f"\nAgent {opponent_path.rsplit('/')[-1]} - Epoch {epoch:3d}\n")
-
-            agent.save_model(epoch, agent.network)
+            save_args(agent_dir=league_path.agent, args=args, epoch=epoch)
+            print(f"\nAgent {opponent_path.stem} - Epoch {epoch:3d}\n")
 
             opponent = LeaguePlayer(
                 device=args["device"],
                 network=network,
                 preprocessor=preprocessor,
                 sample_moves=False,
-                team=AgentTeamBuilder(),
+                team=opponent_builder,
                 battle_format=args["battle_format"],
             )
             opponent.change_agent(opponent_path)
 
             player = RLPlayer(
                 battle_format=args["battle_format"],
-                embed_battle=preprocessor.embed_battle,
+                preprocessor=preprocessor,
                 reward_scheme=RewardScheme(args["rewards"]),
                 server_configuration=DockerServerConfiguration,
                 team=team_builder,
@@ -122,8 +137,9 @@ def agent_play(
                     "step_counter": step_counter,
                 },
             )
+            agent.save_model(epoch, agent.network)
 
-            if np.mean(agent.win_rates[opponent.tag]) > 0.7:
+            if np.mean(agent.win_rates[opponent.tag]) > 0.85:
                 break
 
 

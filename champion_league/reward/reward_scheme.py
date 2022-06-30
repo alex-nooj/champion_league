@@ -17,18 +17,18 @@ class RewardScheme(Rule):
             for each of those rules as values.
         """
         super().__init__(weight=1.0)
-        self.rules = [RULES[rule](weight) for rule, weight in rules.items()]
+        self.rules = {rule: RULES[rule](weight) for rule, weight in rules.items()}
         self.prev_step = None
-        self._max = sum([r.max for r in self.rules])
+        self._max = sum([r.max for r in self.rules.values()])
 
     def reset(self):
         """Reset function for the reward scheme."""
         self.prev_step = None
 
-        for rule in self.rules:
+        for rule in self.rules.values():
             rule.reset()
 
-    def compute(self, step: Battle) -> float:
+    def compute(self, step: Battle) -> Dict[str, float]:
         """Computes the reward for the given step of the battle.
 
         Parameters
@@ -38,14 +38,10 @@ class RewardScheme(Rule):
 
         Returns
         -------
-        float
+        Dict[str, float]
             The reward for `step`
         """
-        reward = 0
-        for rule in self.rules:
-            reward += rule.compute(
-                curr_step=step,
-            )
+        reward = {k: rule.compute(curr_step=step) for k, rule in self.rules.items()}
         self.prev_step = step
         return reward
 

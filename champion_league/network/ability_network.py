@@ -3,11 +3,11 @@ from typing import Optional
 from typing import Tuple
 
 import torch
-from torch import nn
 from torch import Tensor
 
 from champion_league.network.base_network import BaseNetwork
 from champion_league.network.gated_encoder import GatedEncoder
+from champion_league.network.modules import Embedding
 from champion_league.utils.abilities import ABILITIES
 
 
@@ -17,7 +17,7 @@ class AbilityNetwork(BaseNetwork):
     def __init__(
         self,
         nb_actions: int,
-        in_shape: Dict[str, Tuple[int, int]],
+        in_shape: Dict[str, Tuple[int, ...]],
         embedding_dim: Optional[int],
         nb_encoders: Optional[int],
         nb_heads: Optional[int],
@@ -48,7 +48,8 @@ class AbilityNetwork(BaseNetwork):
         """
         super().__init__()
 
-        self.abilities_embedding = nn.Embedding(
+        self.abilities_embedding = Embedding(
+            in_shape=in_shape["abilities"],
             num_embeddings=len(ABILITIES),
             embedding_dim=embedding_dim,
         )
@@ -56,9 +57,9 @@ class AbilityNetwork(BaseNetwork):
         self.gated_encoder = GatedEncoder(
             nb_actions=nb_actions,
             in_shape={
-                "2D": (
-                    in_shape["2D"][0],
-                    in_shape["2D"][1] + embedding_dim,
+                "pokemon": (
+                    in_shape["pokemon"][0],
+                    in_shape["pokemon"][1] + embedding_dim,
                 )
             },
             nb_encoders=nb_encoders,
@@ -68,34 +69,28 @@ class AbilityNetwork(BaseNetwork):
             dropout=dropout,
         )
 
-    def forward(
-        self, x_internals: Dict[str, Dict[str, Tensor]]
-    ) -> Tuple[Dict[str, Tensor], Dict[str, Tensor]]:
+    def forward(self, x: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """Forward function for the nerual network
 
         Parameters
         ----------
-        x_internals
-            The current observation. Must include keys '1D' and '2D' and values have dimensions
-            matching those specified in `input_shape` during construction.
+        x
+            The current observation.
 
         Returns
         -------
-        Tuple[Dict[str, Tensor], Dict[str, Tensor]]
-            The output predictions and new internals, respectively. The output predictions contain
-            keys 'rough action' for the action prediction sans softmax, 'action' for action
-            prediction with softmax, and 'critic' for the critic prediction.
+        Dict[str, Tensor]
+            The output predictions. The output predictions contain keys 'rough action' for the
+            action prediction sans softmax, 'action' for action prediction with softmax, and
+            'critic' for the critic prediction.
         """
-        x = x_internals["x"]
 
-        abilities = self.abilities_embedding(x["1D"])
+        abilities = self.abilities_embedding(x["abilities"])
         return self.gated_encoder(
-            x_internals={
-                "x": {
-                    "2D": torch.cat(
-                        (x["2D"], abilities),
-                        dim=-1,
-                    )
-                }
+            x={
+                "pokemon": torch.cat(
+                    (x["pokemon"], abilities),
+                    dim=-1,
+                )
             }
         )

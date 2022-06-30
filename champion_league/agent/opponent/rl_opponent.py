@@ -7,7 +7,7 @@ from poke_env.player.battle_order import BattleOrder
 from poke_env.player.battle_order import DefaultBattleOrder
 from torch import nn
 
-from champion_league.preprocessors import Preprocessor
+from champion_league.preprocessor import Preprocessor
 
 
 class RLOpponent:
@@ -37,7 +37,6 @@ class RLOpponent:
         self.preprocessor = preprocessor
         self.sample_moves = sample_moves
         self.device = device
-        self._prev_internals = {}
 
     def choose_move(self, battle: Battle) -> BattleOrder:
         """The function used to pass the current state into the network and receive a battle order.
@@ -53,17 +52,9 @@ class RLOpponent:
             The move that the agent would like to select, converted into a form that is readable by
             PokeEnv and Showdown.
         """
-        state = self.preprocessor.embed_battle(battle, False)
+        state = self.preprocessor.embed_battle(battle)
 
-        if battle.battle_tag not in self._prev_internals:
-            self._prev_internals[battle.battle_tag] = self.network.reset(self.device)
-
-        y, self._prev_internals[battle.battle_tag] = self.network(
-            x_internals={
-                "x": state,
-                "internals": self._prev_internals[battle.battle_tag],
-            }
-        )
+        y = self.network(x=state)
 
         if self.sample_moves:
             action = torch.multinomial(y["action"][0:], 1)
@@ -127,4 +118,4 @@ class RLOpponent:
             return DefaultBattleOrder()
 
     def reset(self):
-        self._prev_internals = {}
+        self.preprocessor.reset()

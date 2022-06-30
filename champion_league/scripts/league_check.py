@@ -14,7 +14,7 @@ from champion_league.config import parse_args
 from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
 from champion_league.network import NETWORKS
-from champion_league.preprocessors import PREPROCESSORS
+from champion_league.preprocessor import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.scripts.league_play import move_to_league
 from champion_league.utils.collect_episode import collect_episode
@@ -196,9 +196,7 @@ def main(logdir: str, tag: str, nb_battles: int):
 
     agent_dir = Path(logdir, "challengers", args["tag"])
 
-    preprocessor = PREPROCESSORS[args["preprocessor"]](
-        args["device"], **args[args["preprocessor"]]
-    )
+    preprocessor = Preprocessor(args["device"], **args[args["preprocessor"]])
 
     network = NETWORKS[args["network"]](
         args["nb_actions"], preprocessor.output_shape, **args[args["network"]]
@@ -229,7 +227,7 @@ def main(logdir: str, tag: str, nb_battles: int):
 
     player = RLPlayer(
         battle_format=args["battle_format"],
-        embed_battle=preprocessor.embed_battle,
+        preprocessor=preprocessor,
         reward_scheme=reward_scheme,
         server_configuration=DockerServerConfiguration,
     )

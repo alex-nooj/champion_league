@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
-import asyncio
 from typing import Any
 
 import numpy as np
 from poke_env.environment.abstract_battle import AbstractBattle
-from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.env_player import Gen8EnvSinglePlayer
 from poke_env.teambuilder.teambuilder import Teambuilder
 
 from champion_league.teams.team_builder import load_team_from_file
-from champion_league.utils.random_team_generator import generate_random_team
 from champion_league.utils.server_configuration import DockerServerConfiguration
 
 
