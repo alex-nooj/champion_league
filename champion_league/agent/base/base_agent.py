@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
-from champion_league.utils.poke_path import PokePath
+from champion_league.utils.directory_utils import PokePath
 
 
 class Agent:
@@ -30,7 +30,7 @@ class Agent:
         tag: str
             The name of the agent
         resume: Optional[bool]
-            Whether or not we're starting from a previously trained agent.
+            Whether we're starting from a previously trained agent.
         """
         self.league_path = league_path
         self.logdir = league_path
@@ -38,14 +38,14 @@ class Agent:
         self.writer = SummaryWriter(log_dir=str(league_path.agent))
         self.index_dict = {}
         self.win_rates = {}
-
+        self.replay_buffer = None
         if resume:
             try:
                 self.reload_tboard(get_most_recent_epoch(league_path.agent))
             except ValueError:
                 pass
 
-    def sample_action(self, state: Dict[str, Tensor]) -> Tuple[float, float, float]:
+    def sample_action(self, state: Dict[str, Tensor]) -> Tuple[int, float, float]:
         """Abstract method for sampling an action from a distribution. This method should take in a
         state and return an action, log_probability, and the value of the current state.
 
@@ -160,3 +160,6 @@ class Agent:
 
         self.win_rates[opponent].append(win)
         self.win_rates[opponent].popleft()
+
+    def learn_step(self, epoch: int) -> None:
+        raise NotImplementedError

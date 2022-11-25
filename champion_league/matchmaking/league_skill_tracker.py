@@ -7,7 +7,7 @@ from omegaconf import OmegaConf
 
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
-from champion_league.utils.poke_path import PokePath
+from champion_league.utils.directory_utils import PokePath
 
 
 class LeagueSkillTracker:

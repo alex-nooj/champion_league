@@ -4,7 +4,7 @@ from typing import Dict
 import numpy as np
 import trueskill
 
-from champion_league.utils.poke_path import PokePath
+from champion_league.utils.directory_utils import PokePath
 
 
 class MatchMaker:

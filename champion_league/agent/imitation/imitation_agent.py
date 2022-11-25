@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from champion_league.agent.base.base_agent import Agent
 from champion_league.agent.scripted import SimpleHeuristic
 from champion_league.preprocessor import Preprocessor
-from champion_league.utils.poke_path import PokePath
+from champion_league.utils.directory_utils import PokePath
 from champion_league.utils.progress_bar import ProgressBar
 
 
