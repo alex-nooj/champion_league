@@ -4,6 +4,7 @@ import random
 import typing
 
 import torch
+import trueskill
 from omegaconf import OmegaConf
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
@@ -12,8 +13,21 @@ from poke_env.player.player import Player
 from torch import nn
 
 from champion_league.agent.scripted import SCRIPTED_AGENTS
+from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.preprocessor import Preprocessor
-from champion_league.teams.team_builder import AgentTeamBuilder
+from champion_league.teams.agent_team_builder import AgentTeamBuilder
+from champion_league.training.league.league_team_builder import LeagueTeamBuilder
+
+
+def scripted(tag: typing.Union[str, pathlib.Path]) -> bool:
+    if isinstance(tag, str):
+        parent_dir = pathlib.Path(tag).stem
+    else:
+        parent_dir = tag.stem
+    return any(
+        name == parent_dir
+        for name in ["random_0", "max_base_power_0", "simple_heuristic_0"]
+    )
 
 
 class LeaguePlayer(Player):
@@ -24,8 +38,9 @@ class LeaguePlayer(Player):
         device: int,
         network: nn.Module,
         preprocessor: Preprocessor,
+        matchmaker: MatchMaker,
         sample_moves: typing.Optional[bool] = True,
-        team: typing.Optional[AgentTeamBuilder] = None,
+        team: typing.Optional[LeagueTeamBuilder] = None,
         training_team: typing.Optional[AgentTeamBuilder] = None,
         **kwargs: typing.Any,
     ):
@@ -39,6 +54,8 @@ class LeaguePlayer(Player):
             sample_moves: Whether to sample the output distribution of the network.
             kwargs: Additional keyword arguments. Any of those used by PokeEnv would be placed here
         """
+        if team is None:
+            team = LeagueTeamBuilder()
         super().__init__(team=team, **kwargs)
         self.sample_moves = sample_moves
 
@@ -47,12 +64,15 @@ class LeaguePlayer(Player):
         self.device = device
         self.training_network = None
         self.training_preprocessor = preprocessor
+        self.training_team = training_team
+
         self.network = None
         self.preprocessor = None
         self.update_network(network)
-        self.training_team = training_team
         self.team = team
-        self.tag = self.change_agent("self")
+        self.matchmaker = matchmaker
+        self._next_opponent = "self"
+        self.tag = None
 
     def choose_move(self, battle: Battle) -> BattleOrder:
         """The function used to pass the current state into the network or scripted agent and
@@ -96,22 +116,23 @@ class LeaguePlayer(Player):
 
     def change_agent(
         self,
-        agent_path: typing.Union[str, pathlib.Path],
+        agent_skill: trueskill.Rating,
+        trueskills: typing.Dict[str, trueskill.Rating],
     ) -> str:
         """This handles the swapping of the agent choosing the moves. For the league, this is useful
         as it allows the agent to see many selection strategies during training, making it
         more robust. From a software engineering standpoint, this also allows us to switch agents
         really quickly while maintaining the current connection to the server.
 
-        NOTE: LeaguePlayer does not handle the logic of which agent to select, it just switches to
-        the desired agent.
-
         Args:
-            agent_path: The path to the chosen agent.
+            agent_skill: The trueskill rating of the training agent.
+            trueskills: The trueskill ratings of the league agents.
 
         Returns:
             str: The name of the current agent, or 'self' if we are currently running self-play
         """
+
+        agent_path = self._choose_agent(agent_skill, trueskills)
 
         if agent_path == "self":
             # If we're doing self-play, then this loads up an opponent that is a copy of the current
@@ -120,23 +141,19 @@ class LeaguePlayer(Player):
             self.preprocessor = self.training_preprocessor
             self.mode = "self"
             self.tag = "self"
-            self._team = self.training_team
         else:
             # Otherwise, we're playing a league agent, so we have to build that network. So first we
             # load up the arguments, which will act as build instructions.
-
             args = OmegaConf.to_container(
                 OmegaConf.load(pathlib.Path(agent_path, "args.yaml"))
             )
-            if "scripted" in args:
+            if scripted(agent_path):
                 # Scripted agents act differently than ML agents, so we have to treat them a little
                 # differently.
                 self.mode = "scripted"
                 self.scripted_agent = SCRIPTED_AGENTS[args["tag"]]
                 self.network = None
                 self.preprocessor = None
-                self._team = self.team
-                self._team.clear_team()
             else:
                 # Otherwise, we have an ML agent, and have to build the LeagueOpponent class using
                 # this network as a selection strategy.
@@ -146,7 +163,6 @@ class LeaguePlayer(Player):
                 )
                 self.network = agent_data["network"]
                 self.preprocessor = agent_data["preprocessor"]
-                self._team = agent_data["team"]
 
             # Sometimes, we aren't actually fighting a league opponent and are instead just fighting
             # an earlier iteration of the current agent, which should still count as self-play
@@ -189,3 +205,19 @@ class LeaguePlayer(Player):
             return available_orders[int(random.random() * len(available_orders))]
         else:
             return DefaultBattleOrder()
+
+    def _choose_agent(
+        self,
+        agent_skill: trueskill.Rating,
+        trueskills: typing.Dict[str, trueskill.Rating],
+    ) -> typing.Union[str, pathlib.Path]:
+        opponent = self._next_opponent
+        self._next_opponent = self.matchmaker.choose_match(agent_skill, trueskills)
+        if scripted(self._next_opponent):
+            self._team.add_random_to_stack()
+        elif self._next_opponent == "self":
+            self._team.add_to_stack(self.training_team.yield_team())
+        else:
+            team_builder = torch.load(self._next_opponent, map_location="cpu")["team"]
+            self._team.add_to_stack(team_builder.yield_team)
+        return opponent

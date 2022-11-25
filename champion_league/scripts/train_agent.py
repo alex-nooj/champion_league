@@ -7,7 +7,7 @@ from torch import nn
 from champion_league.config import parse_args
 from champion_league.network import NETWORKS
 from champion_league.preprocessor import Preprocessor
-from champion_league.teams.team_builder import AgentTeamBuilder
+from champion_league.teams.agent_team_builder import AgentTeamBuilder
 from champion_league.training import league_play
 from champion_league.training.agent.agent_play import agent_play
 from champion_league.training.agent.agent_play_args import AgentPlayArgs

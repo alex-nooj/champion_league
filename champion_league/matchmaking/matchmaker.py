@@ -1,3 +1,4 @@
+import typing
 from pathlib import Path
 from typing import Dict
 
@@ -16,12 +17,9 @@ class MatchMaker:
     ):
         """This class handles all the logic in selecting an opponent for the league.
 
-        Parameters
-        ----------
-        self_play_prob: float
-            The desired probability of choosing the training agent as the opponent.
-        league_play_prob: float
-            The desired probability of choosing a league agent as the opponent.
+        Args:
+            self_play_prob: The desired probability of choosing the training agent as the opponent.
+            league_play_prob: The desired probability of choosing a league agent as the opponent.
         """
         if 1 - self_play_prob - league_play_prob < 0:
             raise RuntimeError("Self Play and League Play Probs are too high!")
@@ -41,17 +39,12 @@ class MatchMaker:
     ) -> Path:
         """Function for choosing the opponent.
 
-        Parameters
-        ----------
-        agent_skill: trueskill.Rating
-            The trueskill rating of the training agent.
-        trueskills: Dict[str, trueskill.Rating]
-            The trueskill ratings of all of the league agents.
+        Args:
+            agent_skill: The trueskill rating of the training agent.
+            trueskills: The trueskill ratings of the league agents.
 
-        Returns
-        -------
-        Path
-            The path to the opponent
+        Returns:
+            Path: The path to the opponent
         """
         mode_probs = []
         mode_options = []
@@ -77,14 +70,12 @@ class MatchMaker:
         elif game_mode == "exploiters":
             return self._choose_exploiter()
 
-    def _choose_self(self) -> Path:
+    def _choose_self(self) -> typing.Union[str, Path]:
         """Function for choosing a version of the training agent for self-play.
 
-        Returns
-        -------
-        Union[str, Path]
-            Either the path to a previous version of the agent, or 'self', to use just the current
-            agent.
+        Returns:
+            Union[str, Path]: Either the path to a previous version of the agent, or 'self', to use
+                              just the current agent.
         """
         selves = [
             epoch
@@ -103,17 +94,12 @@ class MatchMaker:
     ) -> str:
         """Function for selecting an agent from the league to serve as the opponent.
 
-        Parameters
-        ----------
-        agent_skill: trueskill.Rating
-            The trueskill rating of the training agent.
-        trueskills: Dict[str, trueskill.Rating]
-            The trueskill ratings of all of the league agents.
+        Args:
+            agent_skill: The trueskill rating of the training agent.
+            trueskills: The trueskill ratings of the league agents.
 
-        Returns
-        -------
-        str
-            The path to a league agent.
+        Returns:
+            str: The path to a league agent.
         """
 
         if any(

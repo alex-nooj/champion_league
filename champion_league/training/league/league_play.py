@@ -11,7 +11,7 @@ from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
 from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.preprocessor import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
-from champion_league.teams.team_builder import AgentTeamBuilder
+from champion_league.teams.agent_team_builder import AgentTeamBuilder
 from champion_league.training.league.league_args import LeagueArgs
 from champion_league.training.league.league_epoch import league_epoch
 from champion_league.training.league.utils import beating_league
@@ -66,6 +66,7 @@ def league_play(
         device=agent.device,
         network=agent.network,
         preprocessor=preprocessor,
+        matchmaker=matchmaker,
         sample_moves=args.sample_moves,
         max_concurrent_battles=10,
         server_configuration=DockerServerConfiguration,

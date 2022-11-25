@@ -2,16 +2,15 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from poke_env.teambuilder.teambuilder import Teambuilder
 from torch import nn
 
-from champion_league.agent import AGENTS
+from champion_league.agent.ppo import PPOAgent
 from champion_league.config.load_configs import save_args
 from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
 from champion_league.preprocessor import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
-from champion_league.teams.team_builder import AgentTeamBuilder
+from champion_league.teams.agent_team_builder import AgentTeamBuilder
 from champion_league.training.agent.agent_epoch import agent_epoch
 from champion_league.training.agent.agent_play_args import AgentPlayArgs
 from champion_league.utils.directory_utils import PokePath
@@ -27,7 +26,7 @@ def agent_play(
     args: AgentPlayArgs,
     epoch: Optional[int] = 0,
 ) -> int:
-    agent = AGENTS[args.agent](
+    agent = PPOAgent(
         league_path=league_path,
         tag=args.tag,
         resume=True,
@@ -73,7 +72,7 @@ def agent_play(
                 opponent=opponent,
                 env_algorithm_kwargs={
                     "agent": agent,
-                    "opponent": opponent,
+                    "opponent_tag": opponent.tag,
                     "epoch_len": args.epoch_len,
                     "step_counter": step_counter,
                     "epoch": e,
