@@ -3,6 +3,8 @@ from typing import Dict
 from typing import List
 from typing import Union
 
+from poke_env.teambuilder.teambuilder import Teambuilder
+
 from champion_league.config.load_configs import Args
 
 

@@ -5,12 +5,13 @@ import torch
 from torch import nn
 
 from champion_league.config import parse_args
+from champion_league.network import NETWORKS
 from champion_league.preprocessor import Preprocessor
+from champion_league.teams.team_builder import AgentTeamBuilder
 from champion_league.training import league_play
 from champion_league.training.agent.agent_play import agent_play
 from champion_league.training.agent.agent_play_args import AgentPlayArgs
 from champion_league.training.league.league_args import LeagueArgs
-from champion_league.utils.build_network_and_preproc import build_network_and_preproc
 from champion_league.utils.directory_utils import PokePath
 
 
@@ -39,9 +40,27 @@ def train_agent(args: typing.Dict[str, typing.Any]):
     league_path = PokePath(args["logdir"], args["tag"])
 
     if args["resume"]:
-        network, preprocessor = resume_network(league_path.agent, args["device"])
+        network, preprocessor, team_builder = torch.load(
+            args["resume"], map_location=args["device"]
+        )
     else:
-        network, preprocessor = build_network_and_preproc(args)
+        preprocessor = Preprocessor(args["device"], **args["preprocessor"])
+        if args["network"] in args:
+            network_args = args[args["network"]]
+        else:
+            network_args = {}
+        network = (
+            NETWORKS[args["network"]](
+                nb_actions=args["nb_actions"],
+                in_shape=preprocessor.output_shape,
+                **network_args,
+            )
+            .eval()
+            .to(args["device"])
+        )
+        team_builder = AgentTeamBuilder(
+            agent_path=league_path.agent, battle_format=args["battle_format"]
+        )
 
     epoch = 0
     if args["mode"]["agent"]:
@@ -67,6 +86,7 @@ def train_agent(args: typing.Dict[str, typing.Any]):
             agent_play(
                 preprocessor=preprocessor,
                 network=network,
+                team_builder=team_builder,
                 league_path=league_path,
                 args=agent_play_args,
                 epoch=epoch,

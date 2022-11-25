@@ -9,6 +9,12 @@ from omegaconf import OmegaConf
 from champion_league.utils.directory_utils import get_save_dir
 
 
+class Args:
+    @property
+    def dict_args(self) -> Dict[str, Any]:
+        raise NotImplementedError
+
+
 def get_default_args(filename: str) -> DictConfig:
     path_to_network = Path(filename)
     parent_dir = path_to_network.parent

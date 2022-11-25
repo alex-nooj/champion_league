@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from poke_env.teambuilder.teambuilder import Teambuilder
 from torch import nn
 
 from champion_league.agent import AGENTS
@@ -21,6 +22,7 @@ from champion_league.utils.step_counter import StepCounter
 def agent_play(
     preprocessor: Preprocessor,
     network: nn.Module,
+    team_builder: AgentTeamBuilder,
     league_path: PokePath,
     args: AgentPlayArgs,
     epoch: Optional[int] = 0,
@@ -39,9 +41,6 @@ def agent_play(
     starting_epoch = epoch
     final_epoch = epoch
 
-    team_builder = AgentTeamBuilder(
-        agent_path=league_path.agent, battle_format=args.battle_format
-    )
     opponent_builder = AgentTeamBuilder()
     opponents = [Path(o) for o in args.opponents]
     for opponent_path in opponents:
