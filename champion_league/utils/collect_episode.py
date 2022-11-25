@@ -1,13 +1,13 @@
 from typing import Optional
 
-from champion_league.agent.ppo import PPOAgent
+from champion_league.agent.base.base_agent import Agent
 from champion_league.env import RLPlayer
 from champion_league.utils.replay import Episode
 from champion_league.utils.step_counter import StepCounter
 
 
 def collect_episode(
-    player: RLPlayer, agent: PPOAgent, step_counter: Optional[StepCounter] = None
+    player: RLPlayer, agent: Agent, step_counter: Optional[StepCounter] = None
 ) -> Episode:
     observation = player.reset()
     episode = Episode()

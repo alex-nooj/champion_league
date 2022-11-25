@@ -15,6 +15,11 @@ async def main(args: Dict[str, Any]):
         args["device"],
         server_configuration=DockerServerConfiguration,
     )
+    # env_player = OpponentPlayer.from_path(
+    #     Path("/home/anewgent/Projects/pokemon/johto_league/league/simple_heuristic_0"),
+    #     args["device"],
+    #     server_configuration=DockerServerConfiguration,
+    # )
 
     await env_player.send_challenges(args["challenger"], 1)
 

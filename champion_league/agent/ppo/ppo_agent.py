@@ -12,7 +12,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from champion_league.agent.base.base_agent import Agent
-from champion_league.utils.poke_path import PokePath
+from champion_league.utils.directory_utils import PokePath
+from champion_league.utils.replay import History
 
 
 def ac_loss(
@@ -78,7 +79,7 @@ class PPOAgent(Agent):
         self.optimizer = torch.optim.Adam(network.parameters(), lr=lr)
         self.entropy_weight = entropy_weight
         self.clip = clip
-
+        self.replay_buffer = History()
         self.mini_epochs = mini_epochs
         self.updates = 0
 

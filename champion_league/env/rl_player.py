@@ -92,33 +92,27 @@ class RLPlayer(Gen8EnvSinglePlayer):
         """
         return self.preprocessor.embed_battle(battle=battle)
 
-    def compute_reward(self, battle: Battle) -> float:
+    def compute_reward(self, battle: Battle) -> Dict[str, float]:
         """Function for determining the reward from the current gamestate
 
-        Parameters
-        ----------
-        battle: Battle
-            The current state of the game
+        Args:
+            battle: The current state of the game
 
-        Returns
-        -------
-        float
-            The reward, determined by the state
+        Returns:
+            Dict[str, float]: The reward, determined by the state
         """
         return self.reward_scheme.compute(battle)
 
-    def step(self, action: int) -> Tuple[Battle, float, bool, Dict[str, int]]:
+    def step(
+        self, action: int
+    ) -> Tuple[Battle, Dict[str, float], bool, Dict[str, int]]:
         """Function for stepping the environment
 
-        Parameters
-        ----------
-        action: int
+        Args:
+            action: int
 
-        Returns
-        -------
-        Tuple[Battle, float, bool, Dict[str, int]]
-            A tuple containing the state, reward, whether or not the game is done, and who won the
-            game for the current engagment
+        Returns:
+            Tuple[Battle, Dict[str, float], bool, Dict[str, int]]: obs, reward, done, info
         """
         obs, reward, done, _ = super().step(action)
         return obs, reward, done, {"won": 1 if self._current_battle.won else 0}
