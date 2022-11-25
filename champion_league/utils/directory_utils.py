@@ -29,7 +29,7 @@ def get_most_recent_epoch(agent_path: Path) -> int:
 class PokePath:
     def __init__(self, logdir: str, tag: str):
         self._logdir = logdir
-        self._tag = tag
+        self.tag = tag
 
     @property
     def league(self) -> Path:
@@ -45,4 +45,4 @@ class PokePath:
 
     @property
     def agent(self) -> Path:
-        return Path(self._logdir, "challengers", self._tag)
+        return Path(self._logdir, "challengers", self.tag)

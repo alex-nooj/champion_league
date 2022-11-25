@@ -1,5 +1,5 @@
 import asyncio
-from pathlib import Path
+import pathlib
 
 from champion_league.config import parse_args
 from champion_league.env import OpponentPlayer
@@ -14,30 +14,21 @@ def agent_battle(
 ) -> None:
     """Method for having two agents play against each other and printing out the number of wins.
 
-    Parameters
-    ----------
-    agent_dir: str
-        The path to the agent's weights file.
-    opponent_dir: str
-        The path to the opponents weights file.
-    device: int
-        The device to load the agents onto.
-    nb_battles: int
-        How many battles the agents should play.
-
-    Returns
-    -------
-    None
+    Args:
+        agent_dir: The path to the agent's weights file.
+        opponent_dir: The path to the opponents weights file.
+        device: The device to load the agents onto.
+        nb_battles: How many battles the agents should play.
     """
-    player1 = OpponentPlayer.from_path(
-        path=Path(agent_dir),
+    player1 = OpponentPlayer(
+        path=pathlib.Path(agent_dir),
         device=device,
         max_concurrent_battles=nb_battles,
         server_configuration=DockerServerConfiguration,
     )
 
-    player2 = OpponentPlayer.from_path(
-        path=Path(opponent_dir),
+    player2 = OpponentPlayer(
+        path=pathlib.Path(opponent_dir),
         device=device,
         max_concurrent_battles=nb_battles,
         server_configuration=DockerServerConfiguration,

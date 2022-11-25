@@ -3,7 +3,7 @@ from typing import Optional
 from poke_env.player_configuration import PlayerConfiguration
 from torch import nn
 
-from champion_league.agent import AGENTS
+from champion_league.agent.ppo import PPOAgent
 from champion_league.config.load_configs import save_args
 from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
@@ -37,8 +37,7 @@ def league_play(
         args: Hyperparameters used for training.
         epoch: If we're resuming, this is the epoch we're resuming from.
     """
-
-    agent = AGENTS[args.agent](
+    agent = PPOAgent(
         league_path=league_path, tag=args.tag, resume=True, **args.agent_args
     )
 
@@ -79,7 +78,7 @@ def league_play(
     )
 
     for e in range(epoch, epoch + args.nb_steps // args.epoch_len):
-        agent.save_model(e, network)
+        agent.save_model(e, network, preprocessor, team_builder)
         save_args(agent_dir=league_path.agent, args=args.dict_args, epoch=e)
         team_builder.save_team()
 
