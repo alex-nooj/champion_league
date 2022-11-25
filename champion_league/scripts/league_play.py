@@ -297,7 +297,7 @@ def league_epoch(
         history.add_episode(episode)
 
         if episode_end_step // 100_000 != episode_start_step // 100_000:
-            agent.save_model(epoch, agent.network)
+            agent.save_model(epoch, agent.network, player._team)
 
         if len(history) > batch_size * rollout_len:
             history.build_dataset()
@@ -424,7 +424,7 @@ def league_play(
             },
         )
 
-        agent.save_model(epoch, network)
+        agent.save_model(epoch, network, team_builder)
         skill_tracker.save_skill_ratings(epoch)
 
         if beating_league(agent):

@@ -137,7 +137,7 @@ def agent_play(
                     "step_counter": step_counter,
                 },
             )
-            agent.save_model(epoch, agent.network)
+            agent.save_model(epoch, agent.network, team_builder)
 
             if np.mean(agent.win_rates[opponent.tag]) > 0.85:
                 break

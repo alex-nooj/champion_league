@@ -7,10 +7,12 @@ from typing import Union
 import numpy as np
 import torch
 from omegaconf import OmegaConf
+from poke_env.teambuilder.teambuilder import Teambuilder
 from torch import nn
 from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
 
+from champion_league.preprocessor import Preprocessor
 from champion_league.utils.directory_utils import get_most_recent_epoch
 from champion_league.utils.directory_utils import get_save_dir
 from champion_league.utils.poke_path import PokePath
@@ -61,7 +63,13 @@ class Agent:
         """
         raise NotImplementedError
 
-    def save_model(self, epoch: int, network: nn.Module) -> None:
+    def save_model(
+        self,
+        epoch: int,
+        network: nn.Module,
+        preprocesor: Preprocessor,
+        team_builder: Teambuilder,
+    ) -> None:
         """Saves the current network into an epoch directory so that it can be called back later.
 
         Parameters
@@ -76,8 +84,15 @@ class Agent:
         None
         """
         save_dir = get_save_dir(self.league_path.agent, epoch)
-        save_file = save_dir / "network.pt"
-        torch.save(network.state_dict(), str(save_file))
+        save_file = save_dir / f"{self.league_path.tag}.pth"
+        torch.save(
+            {
+                "network": network,
+                "preprocessor": preprocesor,
+                "team": team_builder,
+            },
+            str(save_file),
+        )
         OmegaConf.save(config=self.index_dict, f=str(save_dir / "tboard_info.yaml"))
 
     def save_wins(self, epoch: int, win_rates: Dict[str, float]) -> None:
