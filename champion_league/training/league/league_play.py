@@ -7,13 +7,14 @@ from champion_league.agent.ppo import PPOAgent
 from champion_league.config.load_configs import save_args
 from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
-from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
-from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.preprocessor import Preprocessor
 from champion_league.reward.reward_scheme import RewardScheme
 from champion_league.teams.agent_team_builder import AgentTeamBuilder
 from champion_league.training.league.league_args import LeagueArgs
 from champion_league.training.league.league_epoch import league_epoch
+from champion_league.training.league.league_matchmaker import LeagueMatchMaker
+from champion_league.training.league.league_skill_tracker import LeagueSkillTracker
+from champion_league.training.league.league_team_builder import LeagueTeamBuilder
 from champion_league.training.league.utils import beating_league
 from champion_league.training.league.utils import move_to_league
 from champion_league.utils.directory_utils import PokePath
@@ -38,12 +39,22 @@ def league_play(
         epoch: If we're resuming, this is the epoch we're resuming from.
     """
     agent = PPOAgent(
-        league_path=league_path, tag=args.tag, resume=True, **args.agent_args
+        league_path=league_path,
+        tag=args.tag,
+        resume=True,
+        network=network,
+        device=args.device,
+        lr=args.agent_args["lr"],
+        entropy_weight=args.agent_args["entropy_weight"],
+        clip=args.agent_args["clip"],
+        mini_epochs=args.agent_args["mini_epochs"],
+        batch_size=args.agent_args["batch_size"],
+        rollout_len=args.agent_args["rollout_len"],
     )
 
     step_counter = StepCounter()
     skill_tracker = LeagueSkillTracker(league_path, args.resume)
-    matchmaker = MatchMaker(
+    matchmaker = LeagueMatchMaker(
         args.probs["self_play_prob"], args.probs["league_play_prob"], league_path
     )
     team_builder = AgentTeamBuilder(
@@ -70,7 +81,7 @@ def league_play(
         sample_moves=args.sample_moves,
         max_concurrent_battles=10,
         server_configuration=DockerServerConfiguration,
-        team=AgentTeamBuilder(),
+        team=LeagueTeamBuilder(battle_format=args.battle_format),
         training_team=team_builder,
         battle_format=args.battle_format,
         player_configuration=PlayerConfiguration(
@@ -89,7 +100,6 @@ def league_play(
             env_algorithm_kwargs={
                 "agent": agent,
                 "opponent": opponent,
-                "matchmaker": matchmaker,
                 "skill_tracker": skill_tracker,
                 "epoch_len": args.epoch_len,
                 "step_counter": step_counter,

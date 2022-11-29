@@ -4,7 +4,7 @@ from champion_league.agent.scripted.simple_heuristic import SimpleHeuristic
 
 
 SCRIPTED_AGENTS = {
-    "MaxBasePower": MaxBasePower("MaxBasePower"),
-    "SimpleHeuristic": SimpleHeuristic("SimpleHeuristic"),
-    "RandomActor": RandomActor("RandomActor"),
+    "max_base_power_0": MaxBasePower("MaxBasePower"),
+    "simple_heuristic_0": SimpleHeuristic("SimpleHeuristic"),
+    "random_0": RandomActor("RandomActor"),
 }

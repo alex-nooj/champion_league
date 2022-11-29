@@ -5,10 +5,11 @@ from typing import Dict
 import numpy as np
 import trueskill
 
+from champion_league.training.common import MatchMaker
 from champion_league.utils.directory_utils import PokePath
 
 
-class MatchMaker:
+class LeagueMatchMaker(MatchMaker):
     def __init__(
         self,
         self_play_prob: float,

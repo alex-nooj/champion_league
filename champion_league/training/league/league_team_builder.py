@@ -7,7 +7,7 @@ from champion_league.utils.random_team_generator import generate_random_team
 
 
 class LeagueTeamBuilder(Teambuilder):
-    def __init__(self, battle_format: typing.Optional[str] = "genou"):
+    def __init__(self, battle_format: typing.Optional[str] = "gen8ou"):
         self.battle_format = battle_format
         self._teams = collections.deque()
 

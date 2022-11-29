@@ -3,7 +3,7 @@ from typing import Dict
 
 import pytest
 
-from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
+from champion_league.training.league.league_skill_tracker import LeagueSkillTracker
 
 
 @pytest.mark.parametrize(

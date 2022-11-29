@@ -1,0 +1,6 @@
+lr: 0.0007
+entropy_weight: 0.01
+clip: 0.2
+mini_epochs: 4
+batch_size: 64
+rollout_len: 20

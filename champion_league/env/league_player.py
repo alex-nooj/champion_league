@@ -13,9 +13,9 @@ from poke_env.player.player import Player
 from torch import nn
 
 from champion_league.agent.scripted import SCRIPTED_AGENTS
-from champion_league.matchmaking.matchmaker import MatchMaker
 from champion_league.preprocessor import Preprocessor
 from champion_league.teams.agent_team_builder import AgentTeamBuilder
+from champion_league.training.common import MatchMaker
 from champion_league.training.league.league_team_builder import LeagueTeamBuilder
 
 
@@ -61,7 +61,7 @@ class LeaguePlayer(Player):
 
         self.scripted_agent = None
         self.mode = None
-        self.device = device
+        self.device = torch.device(f"cuda:{device}")
         self.training_network = None
         self.training_preprocessor = preprocessor
         self.training_team = training_team
@@ -71,7 +71,7 @@ class LeaguePlayer(Player):
         self.update_network(network)
         self.team = team
         self.matchmaker = matchmaker
-        self._next_opponent = "self"
+        self._next_opponent = None
         self.tag = None
 
     def choose_move(self, battle: Battle) -> BattleOrder:
@@ -91,6 +91,9 @@ class LeaguePlayer(Player):
             raise RuntimeError("Agent cannot be none!")
 
         if self.mode != "scripted":
+            timeout = 0
+            while not isinstance(self.preprocessor, Preprocessor):
+                timeout += 1
             state = self.preprocessor.embed_battle(battle)
 
             with torch.no_grad():
@@ -152,8 +155,6 @@ class LeaguePlayer(Player):
                 # differently.
                 self.mode = "scripted"
                 self.scripted_agent = SCRIPTED_AGENTS[args["tag"]]
-                self.network = None
-                self.preprocessor = None
             else:
                 # Otherwise, we have an ML agent, and have to build the LeagueOpponent class using
                 # this network as a selection strategy.
@@ -211,6 +212,17 @@ class LeaguePlayer(Player):
         agent_skill: trueskill.Rating,
         trueskills: typing.Dict[str, trueskill.Rating],
     ) -> typing.Union[str, pathlib.Path]:
+        if self._next_opponent is None:
+            self._next_opponent = self.matchmaker.choose_match(agent_skill, trueskills)
+            if scripted(self._next_opponent):
+                self._team.add_random_to_stack()
+            elif self._next_opponent == "self":
+                self._team.add_to_stack(self.training_team.yield_team())
+            else:
+                team_builder = torch.load(
+                    self._next_opponent / "network.pth", map_location="cpu"
+                )["team"]
+                self._team.add_to_stack(team_builder.yield_team())
         opponent = self._next_opponent
         self._next_opponent = self.matchmaker.choose_match(agent_skill, trueskills)
         if scripted(self._next_opponent):
@@ -218,6 +230,8 @@ class LeaguePlayer(Player):
         elif self._next_opponent == "self":
             self._team.add_to_stack(self.training_team.yield_team())
         else:
-            team_builder = torch.load(self._next_opponent, map_location="cpu")["team"]
-            self._team.add_to_stack(team_builder.yield_team)
+            team_builder = torch.load(
+                self._next_opponent / "network.pth", map_location="cpu"
+            )["team"]
+            self._team.add_to_stack(team_builder.yield_team())
         return opponent

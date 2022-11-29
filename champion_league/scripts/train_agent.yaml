@@ -1,4 +1,4 @@
-agent: DQNAgent
+agent: PPOAgent
 battle_format: gen8ou
 nb_actions: 10
 device: 0
@@ -27,7 +27,7 @@ preprocessor:
         ally: True
     OpponentActive:
       EmbedActive:
-        ally: True
+        ally: False
 
 resume: False
 team_path: ???
@@ -51,7 +51,7 @@ mode:
 
 agent_play:
   nb_steps: 10_000_000
-  epoch_len: 1_000_000
+  epoch_len: 100_000
   batch_size: 64
   lr: 0.001
   entropy_weight: 0.01

@@ -8,10 +8,10 @@ from champion_league.config import parse_args
 from champion_league.network import NETWORKS
 from champion_league.preprocessor import Preprocessor
 from champion_league.teams.agent_team_builder import AgentTeamBuilder
-from champion_league.training import league_play
 from champion_league.training.agent.agent_play import agent_play
 from champion_league.training.agent.agent_play_args import AgentPlayArgs
 from champion_league.training.league.league_args import LeagueArgs
+from champion_league.training.league.league_play import league_play
 from champion_league.utils.directory_utils import PokePath
 
 
@@ -40,9 +40,10 @@ def train_agent(args: typing.Dict[str, typing.Any]):
     league_path = PokePath(args["logdir"], args["tag"])
 
     if args["resume"]:
-        network, preprocessor, team_builder = torch.load(
-            args["resume"], map_location=args["device"]
-        )
+        agent_data = torch.load(args["resume"], map_location=f"cuda:{args['device']}")
+        network = agent_data["network"]
+        preprocessor = agent_data["preprocessor"]
+        team_builder = agent_data["team"]
     else:
         preprocessor = Preprocessor(args["device"], **args["preprocessor"])
         if args["network"] in args:

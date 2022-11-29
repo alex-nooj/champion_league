@@ -1,5 +1,4 @@
 from typing import Dict
-from typing import List
 from typing import Optional
 from typing import Tuple
 
@@ -12,8 +11,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from champion_league.agent.base.base_agent import Agent
+from champion_league.agent.ppo.ppo_replay_buffer import PPOReplayBuffer
+from champion_league.config.load_configs import get_default_args
 from champion_league.utils.directory_utils import PokePath
-from champion_league.utils.replay import History
 
 
 def ac_loss(
@@ -47,15 +47,17 @@ def ac_loss(
 class PPOAgent(Agent):
     def __init__(
         self,
-        device: int,
-        network: nn.Module,
-        lr: float,
-        entropy_weight: float,
-        clip: float,
         league_path: PokePath,
         tag: str,
-        mini_epochs: Optional[int] = 4,
-        resume: Optional[bool] = False,
+        network: nn.Module,
+        device: int,
+        resume: bool,
+        lr: Optional[float] = None,
+        entropy_weight: Optional[float] = None,
+        clip: Optional[float] = None,
+        mini_epochs: Optional[int] = None,
+        batch_size: Optional[int] = None,
+        rollout_len: Optional[int] = None,
     ):
         """Agent used to train a network using PPO. Used to choose moves and perform the learn step.
 
@@ -71,15 +73,31 @@ class PPOAgent(Agent):
             league_path: The path to the network's directory (up to "challengers")
             tag: The name of the agent.
             mini_epochs: How many mini-epochs to run during the update.
+            batch_size: How many tensors to pass through the network at once at training.
+            rollout_len: Length of the rollout.
             resume: Whether we're starting from a previously trained agent.
         """
-        super().__init__(league_path, tag, resume)
-        self.device = device
-        self.network = network
+        cfg = get_default_args(__file__)
+        lr = lr or cfg["lr"]
+        entropy_weight = entropy_weight or cfg["entropy_weight"]
+        clip = clip or cfg["clip"]
+        mini_epochs = mini_epochs or cfg["mini_epochs"]
+        batch_size = batch_size or cfg["batch_size"]
+        rollout_len = rollout_len or cfg["rollout_len"]
+
+        super().__init__(
+            league_path=league_path,
+            tag=tag,
+            network=network,
+            device=device,
+            replay_buffer=PPOReplayBuffer(),
+            resume=resume,
+        )
         self.optimizer = torch.optim.Adam(network.parameters(), lr=lr)
         self.entropy_weight = entropy_weight
         self.clip = clip
-        self.replay_buffer = History()
+        self.batch_size = batch_size
+        self.rollout_len = rollout_len
         self.mini_epochs = mini_epochs
         self.updates = 0
 
@@ -94,7 +112,7 @@ class PPOAgent(Agent):
         """
         y = self.network.forward(state)
 
-        dist = Categorical(y["action"])
+        dist = Categorical(torch.sigmoid(y["rough_action"]))
 
         action = dist.sample()
 
@@ -110,11 +128,11 @@ class PPOAgent(Agent):
             state: The preprocessed state of the Pokemon battle.
 
         Returns:
-            Dict[str, torch.Tensor]: The action chosen by the network.
+            int: The action chosen by the network.
         """
         y = self.network.forward(x=state)
 
-        return torch.argmax(y["action"], -1).item()
+        return torch.argmax(y["rough_action"], -1).item()
 
     def evaluate_actions(
         self,
@@ -133,22 +151,25 @@ class PPOAgent(Agent):
         """
         y = self.network(x=states)
 
-        dist = Categorical(y["action"])
+        dist = Categorical(torch.sigmoid(y["rough_action"]))
         entropy = dist.entropy()
         log_probabilities = dist.log_prob(actions)
 
         return log_probabilities, entropy, y["critic"].squeeze(1)
 
-    def learn_step(self, data_loader: DataLoader) -> Dict[str, List[float]]:
-        """The PPO learn step. This updates the network using the given rollout.
+    def learn_step(self, epoch: int) -> bool:
+        """The PPO learn step. This updates the network using the given rollout."""
+        if len(self.replay_buffer) < self.batch_size * self.rollout_len:
+            return False
 
-        Args:
-            data_loader: The rollout to train on.
+        self.replay_buffer.build_dataset()
 
-        Returns:
-            Dict[str, List[float]]: A dictionary with keys 'Policy Loss', 'Entropy Loss',
-            'Value Loss', and 'Total Loss' and values representing those losses for each epoch.
-        """
+        data_loader = DataLoader(
+            self.replay_buffer,
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
         self.network = self.network.train()
         self.updates += 1
         epoch_losses = {
@@ -213,5 +234,8 @@ class PPOAgent(Agent):
             for key in epoch_losses:
                 epoch_losses[key].append(np.mean(losses[key]))
 
+        for k, v in epoch_losses.items():
+            self.log_scalar(f"Loss/{k}", float(np.mean(v)))
         self.network = self.network.eval()
-        return epoch_losses
+        self.replay_buffer.free_memory()
+        return True

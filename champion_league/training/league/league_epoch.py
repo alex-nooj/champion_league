@@ -3,7 +3,7 @@ import numpy as np
 from champion_league.agent.base.base_agent import Agent
 from champion_league.env import LeaguePlayer
 from champion_league.env import RLPlayer
-from champion_league.matchmaking.league_skill_tracker import LeagueSkillTracker
+from champion_league.training.league.league_skill_tracker import LeagueSkillTracker
 from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.step_counter import StepCounter
 
@@ -41,7 +41,7 @@ def league_epoch(
         agent: Handles the sampling of moves and also performing the learn step for the agent.
         opponent: The agent that is playing against the training agent. This agent handles scheme
             selection, but its actual action selection is being done in a separate thread.
-        skill_tracker: This object tracks the trueskill of the agent, as well as all of agents in
+        skill_tracker: This object tracks the trueskill of the agent, as well as all the agents in
             the league.
         epoch_len: How many steps are in an epoch.
         step_counter: Tracks the total number of steps across each epoch.
@@ -65,17 +65,21 @@ def league_epoch(
             float(np.mean([np.exp(lp) for lp in episode.log_probabilities])),
         )
 
-        agent.update_winrates(opponent_name, int(episode.rewards[-1] > 0))
-
-        agent.log_scalar(
-            f"League Training/{opponent_name}",
-            float(np.mean(agent.win_rates[opponent_name])),
-        )
-
-        if opponent.tag != "self":
+        if opponent.tag.rsplit("_")[0] != agent.tag:
+            agent.update_winrates(opponent_name, int(episode.rewards[-1] > 0))
+            agent.log_scalar(
+                f"League Training/{opponent_name}",
+                float(np.mean(agent.win_rates[opponent_name])),
+            )
             skill_tracker.update(episode.rewards[-1] > 0, opponent_name)
             for k, v in skill_tracker.skill.items():
                 agent.log_scalar(f"True Skill/{k}", v)
+        else:
+            agent.update_winrates("self", int(episode.rewards[-1] > 0))
+            agent.log_scalar(
+                f"League Training/self",
+                float(np.mean(agent.win_rates["self"])),
+            )
 
         opponent_name = opponent.change_agent(
             skill_tracker.agent_skill,
@@ -85,4 +89,5 @@ def league_epoch(
         #     flush_teams(player)
         agent.replay_buffer.add_episode(episode)
 
-        agent.learn_step(epoch)
+        if agent.learn_step(epoch):
+            agent.save_model(epoch, agent.network, player.preprocessor, player.team)

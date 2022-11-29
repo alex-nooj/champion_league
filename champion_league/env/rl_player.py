@@ -76,6 +76,7 @@ class RLPlayer(Gen8EnvSinglePlayer):
         self._max_concurrent_battles = 2
         self._battle_count_queue = Queue(2)
         self.preprocessor = preprocessor
+        self.team = team
 
     def embed_battle(self, battle: Battle) -> Dict[str, torch.Tensor]:
         """Abstract function for embedding a battle using the chosen preprocessor
