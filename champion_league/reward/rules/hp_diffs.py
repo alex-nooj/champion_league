@@ -21,7 +21,7 @@ class OpponentHPDiff(Rule):
         reward = self.weight * (self.prev_hp_total - curr_hp_total)
         self.prev_hp_total = curr_hp_total
 
-        return reward
+        return max(reward, 0.0)
 
     @property
     def max(self) -> float:

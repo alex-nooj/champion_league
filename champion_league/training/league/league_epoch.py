@@ -8,22 +8,6 @@ from champion_league.utils.collect_episode import collect_episode
 from champion_league.utils.step_counter import StepCounter
 
 
-def flush_teams(player: RLPlayer):
-    """Runs a battle just taking the first available action.
-
-    Because PokeEnv is a little odd, changing teams between battles is difficult. If we change teams
-    after `done` is True, then we need to run another battle before our team change is reflected on
-    the server.
-
-    Args:
-        player: The player that is actually running the game. This acts as our environment.
-    """
-    _ = player.reset()
-    done = False
-    while not done:
-        _, _, done, _ = player.step(0)
-
-
 def league_epoch(
     player: RLPlayer,
     agent: Agent,
@@ -55,14 +39,10 @@ def league_epoch(
 
     while step_counter.steps - start_step < epoch_len or len(agent.replay_buffer) != 0:
         episode = collect_episode(player=player, agent=agent, step_counter=step_counter)
+
         agent.log_scalar(
             "Agent Outputs/Average Episode Reward",
             float(np.sum(episode.rewards)),
-        )
-
-        agent.log_scalar(
-            "Agent Outputs/Average Probabilities",
-            float(np.mean([np.exp(lp) for lp in episode.log_probabilities])),
         )
 
         if opponent.tag.rsplit("_")[0] != agent.tag:
@@ -75,19 +55,16 @@ def league_epoch(
             for k, v in skill_tracker.skill.items():
                 agent.log_scalar(f"True Skill/{k}", v)
         else:
-            agent.update_winrates("self", int(episode.rewards[-1] > 0))
+            tag = "self" if int(opponent.tag.rsplit("_")[-1]) == epoch else "prev_self"
+            agent.update_winrates(tag, int(episode.rewards[-1] > 0))
             agent.log_scalar(
-                f"League Training/self",
-                float(np.mean(agent.win_rates["self"])),
+                f"League Training/{tag}",
+                float(np.mean(agent.win_rates[tag])),
             )
-
         opponent_name = opponent.change_agent(
             skill_tracker.agent_skill,
             skill_tracker.skill_ratings,
         )
-        # if opponent.mode == "ml":
-        #     flush_teams(player)
         agent.replay_buffer.add_episode(episode)
-
         if agent.learn_step(epoch):
             agent.save_model(epoch, agent.network, player.preprocessor, player.team)

@@ -75,14 +75,11 @@ def league_play(
 
     opponent = LeaguePlayer(
         device=agent.device,
-        network=agent.network,
-        preprocessor=preprocessor,
         matchmaker=matchmaker,
         sample_moves=args.sample_moves,
+        team=LeagueTeamBuilder(battle_format=args.battle_format),
         max_concurrent_battles=10,
         server_configuration=DockerServerConfiguration,
-        team=LeagueTeamBuilder(battle_format=args.battle_format),
-        training_team=team_builder,
         battle_format=args.battle_format,
         player_configuration=PlayerConfiguration(
             username=f"rlopponent", password="rlopponent1234"

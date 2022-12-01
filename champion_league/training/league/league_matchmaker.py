@@ -78,11 +78,7 @@ class LeagueMatchMaker(MatchMaker):
             Union[str, Path]: Either the path to a previous version of the agent, or 'self', to use
                               just the current agent.
         """
-        selves = [
-            epoch
-            for epoch in self.league_path.agent.iterdir()
-            if epoch.is_dir() and epoch.stem != "sl"
-        ]
+        selves = [epoch for epoch in self.league_path.agent.iterdir() if epoch.is_dir()]
 
         selves.sort()
         if np.random.randint(low=0, high=100) < 99:

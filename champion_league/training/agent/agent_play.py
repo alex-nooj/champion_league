@@ -14,7 +14,6 @@ from champion_league.teams.agent_team_builder import AgentTeamBuilder
 from champion_league.training.agent.agent_epoch import agent_epoch
 from champion_league.training.agent.agent_matchmaker import AgentMatchMaker
 from champion_league.training.agent.agent_play_args import AgentPlayArgs
-from champion_league.training.league.league_team_builder import LeagueTeamBuilder
 from champion_league.utils.directory_utils import PokePath
 from champion_league.utils.server_configuration import DockerServerConfiguration
 from champion_league.utils.step_counter import StepCounter
@@ -42,7 +41,6 @@ def agent_play(
     starting_epoch = epoch
     final_epoch = epoch
 
-    opponent_builder = LeagueTeamBuilder()
     opponents = [Path(o) for o in args.opponents]
     for opponent_path in opponents:
         for e in range(
@@ -53,11 +51,8 @@ def agent_play(
 
             opponent = LeaguePlayer(
                 device=args.device,
-                network=network,
-                preprocessor=preprocessor,
                 matchmaker=AgentMatchMaker(opponent_path),
                 sample_moves=False,
-                team=opponent_builder,
                 battle_format=args.battle_format,
             )
 

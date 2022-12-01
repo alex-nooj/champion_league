@@ -1,20 +1,19 @@
-import copy
+import collections
 import pathlib
 import random
 import typing
 
 import torch
 import trueskill
-from omegaconf import OmegaConf
 from poke_env.environment.battle import Battle
 from poke_env.player.battle_order import BattleOrder
 from poke_env.player.battle_order import DefaultBattleOrder
 from poke_env.player.player import Player
 from torch import nn
 
+from champion_league.agent.base.base_agent import Agent
 from champion_league.agent.scripted import SCRIPTED_AGENTS
 from champion_league.preprocessor import Preprocessor
-from champion_league.teams.agent_team_builder import AgentTeamBuilder
 from champion_league.training.common import MatchMaker
 from champion_league.training.league.league_team_builder import LeagueTeamBuilder
 
@@ -36,12 +35,9 @@ class LeaguePlayer(Player):
     def __init__(
         self,
         device: int,
-        network: nn.Module,
-        preprocessor: Preprocessor,
         matchmaker: MatchMaker,
         sample_moves: typing.Optional[bool] = True,
         team: typing.Optional[LeagueTeamBuilder] = None,
-        training_team: typing.Optional[AgentTeamBuilder] = None,
         **kwargs: typing.Any,
     ):
         """This is the player for the league. It acts as the opponent for the training agent and
@@ -49,30 +45,23 @@ class LeaguePlayer(Player):
 
         Args:
             device: The device to load the networks onto.
-            network: The network that is currently training, used for self-play.
-            preprocessor: The preprocessor that the agent is using.
             sample_moves: Whether to sample the output distribution of the network.
             kwargs: Additional keyword arguments. Any of those used by PokeEnv would be placed here
         """
         if team is None:
             team = LeagueTeamBuilder()
+
         super().__init__(team=team, **kwargs)
         self.sample_moves = sample_moves
-
-        self.scripted_agent = None
-        self.mode = None
         self.device = torch.device(f"cuda:{device}")
-        self.training_network = None
-        self.training_preprocessor = preprocessor
-        self.training_team = training_team
-
+        self.matchmaker = matchmaker
         self.network = None
         self.preprocessor = None
-        self.update_network(network)
-        self.team = team
-        self.matchmaker = matchmaker
-        self._next_opponent = None
+        self._next_opponent = collections.deque()
         self.tag = None
+        self.scripted_agent = None
+        self.mode = None
+        self.team = None
 
     def choose_move(self, battle: Battle) -> BattleOrder:
         """The function used to pass the current state into the network or scripted agent and
@@ -135,55 +124,27 @@ class LeaguePlayer(Player):
             str: The name of the current agent, or 'self' if we are currently running self-play
         """
 
-        agent_path = self._choose_agent(agent_skill, trueskills)
+        actor, preprocessor, self.tag, team = self._choose_agent(
+            agent_skill, trueskills
+        )
 
-        if agent_path == "self":
-            # If we're doing self-play, then this loads up an opponent that is a copy of the current
-            # network.
-            self.network = self.training_network
-            self.preprocessor = self.training_preprocessor
-            self.mode = "self"
-            self.tag = "self"
+        if preprocessor is None:
+            # Scripted agents act differently than ML agents, so we have to treat them a little
+            # differently.
+            self.mode = "scripted"
+            self.scripted_agent = actor
         else:
-            # Otherwise, we're playing a league agent, so we have to build that network. So first we
-            # load up the arguments, which will act as build instructions.
-            args = OmegaConf.to_container(
-                OmegaConf.load(pathlib.Path(agent_path, "args.yaml"))
-            )
-            if scripted(agent_path):
-                # Scripted agents act differently than ML agents, so we have to treat them a little
-                # differently.
-                self.mode = "scripted"
-                self.scripted_agent = SCRIPTED_AGENTS[args["tag"]]
-            else:
-                # Otherwise, we have an ML agent, and have to build the LeagueOpponent class using
-                # this network as a selection strategy.
-                self.mode = "ml"
-                agent_data = torch.load(
-                    pathlib.Path(agent_path, "network.pth"), map_location=self.device
-                )
-                self.network = agent_data["network"]
-                self.preprocessor = agent_data["preprocessor"]
-
-            # Sometimes, we aren't actually fighting a league opponent and are instead just fighting
-            # an earlier iteration of the current agent, which should still count as self-play
-            if list(agent_path.parents)[2] == "challengers":
-                self.tag = "self"
-            else:
-                self.tag = agent_path.stem
-
+            # Otherwise, we have an ML agent, and have to build the LeagueOpponent class using
+            # this network as a selection strategy.
+            self.mode = "ml"
+            self.network = actor.to(self.device)
+            self.preprocessor = preprocessor
+            self.team = team
         return self.tag
 
-    def update_network(self, network: nn.Module) -> None:
-        """Performs a deep copy of the network. Useful for handling self-play.
-
-        Args:
-            network: The network that should replace the current one stored by the agent.
-        """
-        self.training_network = copy.deepcopy(network).eval()
-
     def reset(self):
-        self.preprocessor.reset()
+        if self.preprocessor is not None:
+            self.preprocessor.reset()
 
     def teampreview(self, battle):
         return "/team " + "".join([str(i + 1) for i in range(6)])
@@ -211,27 +172,29 @@ class LeaguePlayer(Player):
         self,
         agent_skill: trueskill.Rating,
         trueskills: typing.Dict[str, trueskill.Rating],
-    ) -> typing.Union[str, pathlib.Path]:
-        if self._next_opponent is None:
-            self._next_opponent = self.matchmaker.choose_match(agent_skill, trueskills)
-            if scripted(self._next_opponent):
+    ) -> typing.Tuple[
+        typing.Union[Agent, nn.Module],
+        typing.Union[Preprocessor, None],
+        str,
+        typing.Union[str, None],
+    ]:
+        while len(self._next_opponent) < 4:
+            opponent = self.matchmaker.choose_match(agent_skill, trueskills)
+            if scripted(opponent):
+                self._next_opponent.append(
+                    (SCRIPTED_AGENTS[opponent.stem], None, opponent.stem, None)
+                )
                 self._team.add_random_to_stack()
-            elif self._next_opponent == "self":
-                self._team.add_to_stack(self.training_team.yield_team())
             else:
-                team_builder = torch.load(
-                    self._next_opponent / "network.pth", map_location="cpu"
-                )["team"]
-                self._team.add_to_stack(team_builder.yield_team())
-        opponent = self._next_opponent
-        self._next_opponent = self.matchmaker.choose_match(agent_skill, trueskills)
-        if scripted(self._next_opponent):
-            self._team.add_random_to_stack()
-        elif self._next_opponent == "self":
-            self._team.add_to_stack(self.training_team.yield_team())
-        else:
-            team_builder = torch.load(
-                self._next_opponent / "network.pth", map_location="cpu"
-            )["team"]
-            self._team.add_to_stack(team_builder.yield_team())
-        return opponent
+                agent_data = torch.load(opponent / "network.pth", map_location="cpu")
+                self._next_opponent.append(
+                    (
+                        agent_data["network"],
+                        agent_data["preprocessor"],
+                        opponent.stem,
+                        agent_data["team"].yield_team(),
+                    )
+                )
+                self._team.add_to_stack(agent_data["team"].yield_team())
+
+        return self._next_opponent.popleft()

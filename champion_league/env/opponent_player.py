@@ -24,7 +24,7 @@ class OpponentPlayer(Player):
         elif isinstance(device, int):
             device = f"cuda:{device}"
 
-        agent_data = torch.load(path, map_location=device)
+        agent_data = torch.load(path / "network.pth", map_location=device)
         self.network = agent_data["network"]
         self.preprocessor = agent_data["preprocessor"]
         self.team = agent_data["team"]
