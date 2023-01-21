@@ -25,4 +25,4 @@ def normalize_stats(pokemon: Pokemon) -> Tensor:
             acc_boost,
             eva_boost,
         ]
-    )
+    ).view(-1)

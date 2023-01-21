@@ -1,4 +1,6 @@
 import typing
+from enum import auto
+from enum import IntEnum
 
 import torch
 from poke_env.environment.battle import Battle
@@ -9,9 +11,72 @@ from poke_env.environment.side_condition import SideCondition
 from poke_env.environment.weather import Weather
 
 from champion_league.preprocessor.ops.base_op import Op
-from champion_league.preprocessor.util.move_effects import MoveIdx
 from champion_league.utils.damage_helpers import calc_move_damage
-from champion_league.utils.gather_opponent_team import gather_opponent_team
+
+
+class MoveIdx(IntEnum):
+    dmg_1 = 0
+    dmg_2 = auto()
+    dmg_3 = auto()
+    dmg_4 = auto()
+    dmg_5 = auto()
+    dmg_6 = auto()
+    crit_chance = auto()  # Max 6
+    acc = auto()
+    drain = auto()
+    heal = auto()
+    pp_ratio = auto()
+    recoil = auto()
+    brn = auto()
+    frz = auto()
+    par = auto()
+    psn = auto()
+    slp = auto()
+    tox = auto()
+    con = auto()
+    usr_att = auto()
+    usr_def = auto()
+    usr_spa = auto()
+    usr_spd = auto()
+    usr_spe = auto()
+    usr_acc = auto()
+    usr_switch = auto()
+    tgt_att = auto()
+    tgt_def = auto()
+    tgt_spa = auto()
+    tgt_spd = auto()
+    tgt_spe = auto()
+    tgt_acc = auto()
+    stat_chance = auto()
+    tgt_switch = auto()
+    tgt_trap = auto()
+    flinch = auto()
+    prevents_sound = auto()
+    priority = auto()
+    breaks_protect = auto()
+    protects = auto()
+    light_screen = auto()
+    reflect = auto()
+    aurora_veil = auto()
+    health = auto()
+    stat_reset = auto()
+    encore = auto()
+    clears_tgt_hazards = auto()
+    clears_usr_hazards = auto()
+    physical = auto()
+    special = auto()
+    status = auto()
+
+
+secondary_effects = {}
+
+
+def gather_opponent_team(battle: Battle) -> typing.List[Pokemon]:
+    opponent_team = [battle.opponent_active_pokemon]
+    for mon in battle._teampreview_opponent_team:
+        if mon.species not in [m.species for m in opponent_team]:
+            opponent_team.append(mon)
+    return opponent_team
 
 
 class EmbedMoves(Op):
@@ -21,7 +86,7 @@ class EmbedMoves(Op):
         self._out_shape = (in_shape[0] + 4 * len(MoveIdx),)
 
     def preprocess(self, battle: Battle, state: torch.Tensor) -> torch.Tensor:
-        ret_tensor = -1 * torch.ones(self._out_shape)
+        ret_tensor = torch.zeros(self._out_shape)
         ret_tensor[: self._in_shape[0]] = state
 
         if self.ally:
@@ -44,9 +109,9 @@ class EmbedMoves(Op):
                     weather[0] if len(weather) > 0 else None,
                 )
             )
-        if len(moves) > 0:
-            moves = torch.stack(moves).view(-1)
-            ret_tensor[self._in_shape[0] : self._in_shape[0] + moves.shape[0]] = moves
+        moves = torch.stack(moves).view(-1)
+
+        ret_tensor[self._in_shape[0] : self._in_shape[0] + moves.shape[0]] = moves
         return ret_tensor
 
     def _embed_move(
@@ -69,8 +134,10 @@ class EmbedMoves(Op):
         move_tensor[MoveIdx.acc] = move.accuracy
         move_tensor[MoveIdx.drain] = move.drain
         move_tensor[MoveIdx.heal] = move.heal
-        move_tensor[MoveIdx.pp_ratio] = max((move.current_pp / move.max_pp, 0))
+        move_tensor[MoveIdx.pp_ratio] = max((move.current_pp, move.max_pp, 0))
         move_tensor[MoveIdx.recoil] = move.recoil
+        for key, value in secondary_effects[move.id].items():
+            move_tensor[key] = value
 
         move_tensor[MoveIdx.physical] = float(move.category == MoveCategory.PHYSICAL)
         move_tensor[MoveIdx.special] = float(move.category == MoveCategory.SPECIAL)

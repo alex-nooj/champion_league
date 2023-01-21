@@ -1,6 +1,7 @@
-nb_layers: 3
-nb_hidden: 128
-critic_layers: 2
+layers:
+  - 512
+  - 256
+  - 256
+  - 128
 critic_hidden: 64
-action_layers: 2
 action_hidden: 64

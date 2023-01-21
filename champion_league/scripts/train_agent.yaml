@@ -15,9 +15,7 @@ preprocessor:
       - AddBatchDim
     OpponentActive:
       - EmbedActive
-      - AddBatchDim
-    Team:
-      - EmbedTeam
+      - EmbedMoves
       - AddBatchDim
   op_args:
     AllyActive:
@@ -28,21 +26,23 @@ preprocessor:
     OpponentActive:
       EmbedActive:
         ally: False
+      EmbedMoves:
+        ally: False
 
 resume: False
 team_path: ???
 
 rewards:
   OpponentBinaryFaints: 1.0
-  AlliedBinaryFaints: 0.0
+  AlliedBinaryFaints: 1.0
   OpponentScalarFaints: 0
   AlliedScalarFaints: 0
   OpponentStatusRule: 0
   AlliedStatusRule: 0
   OpponentHPDiff: 0.0
   AlliedHPDiff: 0.0
-  VictoryRule: 10.0
-  LossRule: 10.0
+  VictoryRule: 6.0
+  LossRule: 6.0
 
 mode:
   agent: False

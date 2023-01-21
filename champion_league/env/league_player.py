@@ -36,7 +36,6 @@ class LeaguePlayer(Player):
         self,
         device: int,
         matchmaker: MatchMaker,
-        sample_moves: typing.Optional[bool] = True,
         team: typing.Optional[LeagueTeamBuilder] = None,
         **kwargs: typing.Any,
     ):
@@ -45,14 +44,12 @@ class LeaguePlayer(Player):
 
         Args:
             device: The device to load the networks onto.
-            sample_moves: Whether to sample the output distribution of the network.
             kwargs: Additional keyword arguments. Any of those used by PokeEnv would be placed here
         """
         if team is None:
             team = LeagueTeamBuilder()
 
         super().__init__(team=team, **kwargs)
-        self.sample_moves = sample_moves
         self.device = torch.device(f"cuda:{device}")
         self.matchmaker = matchmaker
         self.network = None
@@ -87,11 +84,7 @@ class LeaguePlayer(Player):
 
             with torch.no_grad():
                 y = self.network(x=state)
-
-            if self.sample_moves:
-                action = torch.multinomial(y["action"][0:], 1).item()
-            else:
-                action = torch.argmax(y["action"][0:], dim=-1).item()
+                action = torch.argmax(y["rough_action"][0:], dim=-1).item()
 
             if (
                 action < 4

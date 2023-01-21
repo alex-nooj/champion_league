@@ -52,7 +52,6 @@ def agent_play(
             opponent = LeaguePlayer(
                 device=args.device,
                 matchmaker=AgentMatchMaker(opponent_path),
-                sample_moves=False,
                 battle_format=args.battle_format,
             )
 
@@ -77,7 +76,7 @@ def agent_play(
             )
             final_epoch = e
 
-            if np.mean(agent.win_rates[opponent.tag]) > 0.6:
+            if np.mean(agent.win_rates[opponent.tag]) > 0.8:
                 break
         starting_epoch = final_epoch
     return final_epoch

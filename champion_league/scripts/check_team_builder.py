@@ -29,7 +29,6 @@ if __name__ == "__main__":
     player1 = LeaguePlayer(
         device=0,
         matchmaker=SimpleMatchMaker(True),
-        sample_moves=False,
         team=LeagueTeamBuilder(),
         battle_format="gen8ou",
         max_concurrent_battles=1,
@@ -38,7 +37,6 @@ if __name__ == "__main__":
     player2 = LeaguePlayer(
         device=0,
         matchmaker=SimpleMatchMaker(False),
-        sample_moves=False,
         team=LeagueTeamBuilder(),
         battle_format="gen8ou",
         max_concurrent_battles=1,

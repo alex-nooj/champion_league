@@ -76,7 +76,6 @@ def league_play(
     opponent = LeaguePlayer(
         device=agent.device,
         matchmaker=matchmaker,
-        sample_moves=args.sample_moves,
         team=LeagueTeamBuilder(battle_format=args.battle_format),
         max_concurrent_battles=10,
         server_configuration=DockerServerConfiguration,

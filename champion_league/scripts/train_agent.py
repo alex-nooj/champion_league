@@ -3,6 +3,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from torchsummary import summary
 
 from champion_league.config import parse_args
 from champion_league.network import NETWORKS
@@ -62,7 +63,7 @@ def train_agent(args: typing.Dict[str, typing.Any]):
         team_builder = AgentTeamBuilder(
             agent_path=league_path.agent, battle_format=args["battle_format"]
         )
-
+    print(preprocessor.output_shape)
     epoch = 0
     if args["mode"]["agent"]:
         agent_play_args = AgentPlayArgs(
@@ -80,7 +81,7 @@ def train_agent(args: typing.Dict[str, typing.Any]):
             opponents=args["agent_play"]["opponents"],
             rewards=args["rewards"],
             agent_args=args[args["agent"]],
-            network_args=args[args["network"]],
+            network_args=args[args["network"]] if args["network"] in args else {},
         )
 
         epoch = (
@@ -113,7 +114,7 @@ def train_agent(args: typing.Dict[str, typing.Any]):
             rewards=args["rewards"],
             probs=args["league_play"]["probs"],
             agent_args=args[args["agent"]],
-            network_args=args[args["network"]],
+            network_args=args[args["network"]] if args["network"] in args else {},
         )
         league_play(
             preprocessor=preprocessor,
