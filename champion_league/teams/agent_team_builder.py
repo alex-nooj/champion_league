@@ -33,7 +33,6 @@ class AgentTeamBuilder(Teambuilder):
             except FileNotFoundError:
                 team = generate_random_team(battle_format=battle_format)
                 self._team = self.join_team(self.parse_showdown_team(team))
-                save_team_to_file(agent_path, team)
 
         else:
             self._team = None

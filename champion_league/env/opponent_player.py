@@ -1,83 +1,130 @@
-import pathlib
-import random
 import typing
 
 import torch
-from poke_env.environment.battle import Battle
-from poke_env.player.battle_order import BattleOrder
-from poke_env.player.battle_order import DefaultBattleOrder
-from poke_env.player.player import Player
+from poke_env.environment import Battle
+from poke_env.environment import DoubleBattle
+from poke_env.environment import Move
+from poke_env.environment import Pokemon
+from poke_env.player import BattleOrder
+from poke_env.player import ForfeitBattleOrder
+from poke_env.player import Player
+from stable_baselines3.common.base_class import BaseAlgorithm
+
+from champion_league.preprocessor import Preprocessor
 
 
 class OpponentPlayer(Player):
-    BATTLES = {}
-
     def __init__(
         self,
-        path: pathlib.Path,
-        device: typing.Optional[int] = None,
-        **kwargs,
+        preprocessor: Preprocessor,
+        model: BaseAlgorithm,
+        name: str,
+        *args,
+        **kwargs
     ):
-        super().__init__(**kwargs)
-        if device is None:
-            device = "cpu"
-        elif isinstance(device, int):
-            device = f"cuda:{device}"
-
-        agent_data = torch.load(path / "network.pth", map_location=device)
-        self.network = agent_data["network"]
-        self.preprocessor = agent_data["preprocessor"]
-        self.team = agent_data["team"]
+        super(OpponentPlayer, self).__init__(*args, **kwargs)
+        self._preprocessor = preprocessor
+        self._model = model
+        self.name = name
 
     def choose_move(self, battle: Battle) -> BattleOrder:
-        """Function that allows the agent to select a move.
+        action, _ = self._model.predict(
+            torch.from_numpy(self._preprocessor.embed_battle(battle)).view(1, -1)
+        )
+        return self.action_to_move(int(action), battle)
 
-        Args:
-            battle: The current game state.
+    def action_to_move(self, action: int, battle: Battle) -> BattleOrder:  # pyre-ignore
+        """Converts actions to move orders.
 
-        Returns:
-            BattleOrder: The action the agent would like to take, in a format readable by Showdown!
+        The conversion is done as follows:
+
+        action = -1:
+            The battle will be forfeited.
+        0 <= action < 4:
+            The actionth available move in battle.available_moves is executed.
+        4 <= action < 8:
+            The action - 4th available move in battle.available_moves is executed, with
+            z-move.
+        8 <= action < 12:
+            The action - 8th available move in battle.available_moves is executed, with
+            mega-evolution.
+        8 <= action < 12:
+            The action - 8th available move in battle.available_moves is executed, with
+            mega-evolution.
+        12 <= action < 16:
+            The action - 12th available move in battle.available_moves is executed,
+            while dynamaxing.
+        16 <= action < 22
+            The action - 16th available switch in battle.available_switches is executed.
+
+        If the proposed action is illegal, a random legal move is performed.
+
+        :param action: The action to convert.
+        :type action: int
+        :param battle: The battle in which to act.
+        :type battle: Battle
+        :return: the order to send to the server.
+        :rtype: str
         """
-        state = self.preprocessor.embed_battle(battle)
-
-        with torch.no_grad():
-            y = self.network(x=state)
-        action = torch.argmax(y["action"][0:], dim=-1).item()
-        if (
+        if action == -1:
+            return ForfeitBattleOrder()
+        elif (
             action < 4
             and action < len(battle.available_moves)
             and not battle.force_switch
         ):
-            return BattleOrder(battle.available_moves[action])
-        elif 0 <= action - 4 < len(battle.available_switches):
-            return BattleOrder(battle.available_switches[action - 4])
+            return self.create_order(battle.available_moves[action])
+        elif (
+            not battle.force_switch
+            and battle.can_z_move
+            and battle.active_pokemon
+            and 0
+            <= action - 4
+            < len(battle.active_pokemon.available_z_moves)  # pyre-ignore
+        ):
+            return self.create_order(
+                battle.active_pokemon.available_z_moves[action - 4], z_move=True
+            )
+        elif (
+            battle.can_mega_evolve
+            and 0 <= action - 8 < len(battle.available_moves)
+            and not battle.force_switch
+        ):
+            return self.create_order(battle.available_moves[action - 8], mega=True)
+        elif (
+            battle.can_dynamax
+            and 0 <= action - 12 < len(battle.available_moves)
+            and not battle.force_switch
+        ):
+            return self.create_order(battle.available_moves[action - 12], dynamax=True)
+        elif 0 <= action - 16 < len(battle.available_switches):
+            return self.create_order(battle.available_switches[action - 16])
         else:
             return self.choose_random_move(battle)
 
-    def choose_random_move(self, battle: Battle) -> BattleOrder:
-        """This allows the agent to choose a random move when the order it would like is unavailable
+    @staticmethod
+    def create_order(
+        order: typing.Union[Move, Pokemon],
+        mega: bool = False,
+        z_move: bool = False,
+        dynamax: bool = False,
+        move_target: int = DoubleBattle.EMPTY_TARGET_POSITION,
+    ) -> BattleOrder:
+        """Formats an move order corresponding to the provided pokemon or move.
 
-        Args:
-        battle: The current, raw state of the Pokemon battle.
-
-        Returns:
-            BattleOrder: The selected action that is readable by the environment.
+        :param order: Move to make or Pokemon to switch to.
+        :type order: Move or Pokemon
+        :param mega: Whether to mega evolve the pokemon, if a move is chosen.
+        :type mega: bool
+        :param z_move: Whether to make a zmove, if a move is chosen.
+        :type z_move: bool
+        :param dynamax: Whether to dynamax, if a move is chosen.
+        :type dynamax: bool
+        :param move_target: Target Pokemon slot of a given move
+        :type move_target: int
+        :return: Formatted move order
+        :rtype: str
         """
-        available_orders = [BattleOrder(move) for move in battle.available_moves]
-        available_orders.extend(
-            [BattleOrder(switch) for switch in battle.available_switches]
+        return BattleOrder(
+            order, mega=mega, move_target=move_target, z_move=z_move, dynamax=dynamax
         )
-
-        if available_orders:
-            return available_orders[int(random.random() * len(available_orders))]
-        else:
-            return DefaultBattleOrder()
-
-    @property
-    def battle_history(self) -> typing.List[bool]:
-        """Returns a list containing the win/loss results of the agent.
-
-        Returns:
-            List[bool]: Contains the win/loss history of the agent.
-        """
-        return [b.won for b in self._battles.values()]

@@ -1,5 +1,6 @@
 from typing import Dict
 
+from poke_env.environment import AbstractBattle
 from poke_env.environment.battle import Battle
 
 from champion_league.reward.rules import RULES
@@ -28,7 +29,7 @@ class RewardScheme(Rule):
         for rule in self.rules.values():
             rule.reset()
 
-    def compute(self, step: Battle) -> Dict[str, float]:
+    def compute(self, step: AbstractBattle) -> Dict[str, float]:
         """Computes the reward for the given step of the battle.
 
         Parameters
