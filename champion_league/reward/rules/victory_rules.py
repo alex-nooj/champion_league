@@ -55,7 +55,10 @@ class LossRule(Rule):
         float
             -1 * self.weight if the agent has won, 0 otherwise.
         """
-        return -1 * self.weight * curr_step.lost
+        if curr_step.lost is not None:
+            return -1 * self.weight * curr_step.lost
+        else:
+            return 0.0
 
     @property
     def max(self) -> float:
